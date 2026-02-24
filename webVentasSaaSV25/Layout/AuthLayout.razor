@@ -1,0 +1,10 @@
+﻿@* Layouts/AuthLayout.razor — VentasSaaSDU.Web
+   Layout para páginas que no requieren autenticación (Login, etc.)
+   Solo renderiza el @Body sin topbar ni menú.
+   Las páginas de login declaran: @layout AuthLayout
+*@
+@inherits LayoutComponentBase
+
+<PageTitle>VentasSaaSDU — Acceso</PageTitle>
+
+@Body

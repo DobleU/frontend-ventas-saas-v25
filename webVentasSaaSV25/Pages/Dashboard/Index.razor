@@ -1,0 +1,276 @@
+﻿@* Pages/Dashboard/Index.razor — VentasSaaSDU.Web
+   Dashboard principal. Ruta: /dashboard
+   Muestra KPIs operativos del tenant.
+   Por ahora: tarjetas estáticas con la estructura visual del template.
+   Cuando existan endpoints de reportes, se conectan aquí.
+*@
+@page "/"
+@page "/dashboard"
+@inject AppState Estado
+<PageTitle>Sistema de Ventas V2.5</PageTitle>
+<!-- Breadcrumb -->
+<div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
+    <div class="breadcrumb-title pe-3">Dashboard</div>
+    <div class="ps-3">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0 p-0">
+                <li class="breadcrumb-item">
+                    <a href="/dashboard"><i class="bx bx-home-alt"></i></a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">Inicio</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+
+    <!-- TARJETA BIENVENIDA -->
+    <div class="col-xxl-8 d-flex align-items-stretch">
+        <div class="card w-100 overflow-hidden rounded-4">
+            <div class="card-body position-relative p-4">
+                <div class="row">
+                    <div class="col-12 col-sm-8">
+                        <div class="d-flex align-items-center gap-3 mb-4">
+                            <div class="user-wrapper bg-primary text-primary bg-opacity-10 d-flex align-items-center justify-content-center"
+                                 style="width:60px;height:60px;border-radius:50%;font-size:1.4rem;font-weight:700;">
+                                @ObtenerIniciales(Estado.NombreUsuario)
+                            </div>
+                            <div>
+                                <p class="mb-0 fw-semibold text-muted">Bienvenido de nuevo</p>
+                                <h4 class="fw-semibold mb-0">@Estado.NombreUsuario</h4>
+                                <small class="text-muted">@Estado.NombreRol</small>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-5">
+                            <div>
+                                <h4 class="mb-1 fw-semibold d-flex align-items-center gap-1">
+                                    —
+                                    <i class="material-icons-outlined fs-5 text-muted">trending_flat</i>
+                                </h4>
+                                <p class="mb-2 text-muted">Ventas de hoy</p>
+                                <div class="progress mb-0" style="height:5px;">
+                                    <div class="progress-bar bg-grd-success" role="progressbar" style="width:0%"></div>
+                                </div>
+                            </div>
+                            <div class="vr"></div>
+                            <div>
+                                <h4 class="mb-1 fw-semibold d-flex align-items-center gap-1">
+                                    —
+                                    <i class="material-icons-outlined fs-5 text-muted">trending_flat</i>
+                                </h4>
+                                <p class="mb-2 text-muted">Órdenes activas</p>
+                                <div class="progress mb-0" style="height:5px;">
+                                    <div class="progress-bar bg-grd-danger" role="progressbar" style="width:0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-4 d-flex align-items-center justify-content-center">
+                        <span class="material-icons-outlined text-primary opacity-25" style="font-size:8rem;">storefront</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI: VENTAS HOY -->
+    <div class="col-xl-6 col-xxl-2 d-flex align-items-stretch">
+        <div class="card w-100 rounded-4">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between mb-2">
+                    <div>
+                        <h5 class="mb-0">—</h5>
+                        <p class="mb-0 text-muted">Ventas hoy</p>
+                    </div>
+                    <div class="wh-42 d-flex align-items-center justify-content-center rounded-3 bg-grd-success">
+                        <span class="material-icons-outlined text-white">point_of_sale</span>
+                    </div>
+                </div>
+                <p class="mb-0 font-12 text-muted">Conectar con endpoint de reportes</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI: CLIENTES -->
+    <div class="col-xl-6 col-xxl-2 d-flex align-items-stretch">
+        <div class="card w-100 rounded-4">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between mb-2">
+                    <div>
+                        <h5 class="mb-0">—</h5>
+                        <p class="mb-0 text-muted">Clientes activos</p>
+                    </div>
+                    <div class="wh-42 d-flex align-items-center justify-content-center rounded-3 bg-grd-primary">
+                        <span class="material-icons-outlined text-white">people</span>
+                    </div>
+                </div>
+                <p class="mb-0 font-12 text-muted">Conectar con endpoint de reportes</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI: INVENTARIO BAJO -->
+    <div class="col-xl-6 col-xxl-4 d-flex align-items-stretch">
+        <div class="card w-100 rounded-4">
+            <div class="card-body">
+                <h6 class="mb-3 fw-bold">Alertas de inventario</h6>
+                <div class="d-flex flex-column gap-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="material-icons-outlined text-danger fs-5">inventory</span>
+                            <span>Productos sin stock</span>
+                        </div>
+                        <span class="badge bg-danger">—</span>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="material-icons-outlined text-warning fs-5">warning</span>
+                            <span>Stock mínimo</span>
+                        </div>
+                        <span class="badge bg-warning text-dark">—</span>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="material-icons-outlined text-info fs-5">schedule</span>
+                            <span>Próx. a vencer (lote)</span>
+                        </div>
+                        <span class="badge bg-info">—</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI: ACCESOS RÁPIDOS -->
+    <div class="col-xl-6 col-xxl-4 d-flex align-items-stretch">
+        <div class="card w-100 rounded-4">
+            <div class="card-body">
+                <h6 class="mb-3 fw-bold">Accesos rápidos</h6>
+                <div class="d-flex flex-column gap-2">
+                    <PermCheck Modulo="ventas_tienda" Accion="crear">
+                        <a href="/ventas/tienda/nueva" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2">
+                            <i class="material-icons-outlined" style="font-size:18px;">add_shopping_cart</i>
+                            Nueva Venta
+                        </a>
+                    </PermCheck>
+                    <PermCheck Modulo="inventario" Accion="ver">
+                        <a href="/inventario" class="btn btn-outline-success btn-sm d-flex align-items-center gap-2">
+                            <i class="material-icons-outlined" style="font-size:18px;">inventory_2</i>
+                            Ver Inventario
+                        </a>
+                    </PermCheck>
+                    <PermCheck Modulo="reportes" Accion="ver">
+                        <a href="/reportes" class="btn btn-outline-info btn-sm d-flex align-items-center gap-2">
+                            <i class="material-icons-outlined" style="font-size:18px;">bar_chart</i>
+                            Reportes
+                        </a>
+                    </PermCheck>
+                    <PermCheck Modulo="catalogos" Accion="ver">
+                        <a href="/catalogos/productos" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+                            <i class="material-icons-outlined" style="font-size:18px;">inventory</i>
+                            Catálogo de Productos
+                        </a>
+                    </PermCheck>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA: Últimas ventas (placeholder) -->
+    <div class="col-lg-12 col-xxl-8 d-flex align-items-stretch">
+        <div class="card w-100 rounded-4">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <h5 class="mb-0">Ventas recientes</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Folio</th>
+                                <th>Cliente</th>
+                                <th>Sucursal</th>
+                                <th>Importe</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    <span class="material-icons-outlined d-block mb-2" style="font-size:2rem;opacity:.3;">receipt_long</span>
+                                    Los datos se conectarán cuando el módulo de ventas esté disponible.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Módulos disponibles para el usuario -->
+    <div class="col-xxl-4 d-flex align-items-stretch">
+        <div class="card w-100 rounded-4">
+            <div class="card-header border-0 p-3 border-bottom">
+                <h5 class="mb-0">Mis módulos</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="p-3 d-flex flex-column gap-2">
+                    @foreach (var mod in _modulosMostrar)
+                    {
+                        <a href="@mod.Ruta" class="d-flex align-items-center gap-3 text-decoration-none p-2 rounded-3 border-bottom">
+                            <div class="wh-42 d-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10">
+                                <span class="material-icons-outlined text-primary">@mod.Icono</span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0">@mod.Nombre</h6>
+                            </div>
+                            <i class="material-icons-outlined text-muted">chevron_right</i>
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    [Inject] private PermisoClienteService Permisos { get; set; } = default!;
+
+    // Lista de módulos a mostrar según permisos del usuario
+    private List<(string Nombre, string Icono, string Ruta)> _modulosMostrar = new();
+
+    private static readonly List<(string Codigo, string Nombre, string Icono, string Ruta)> _todosModulos = new()
+    {
+        ("catalogos",    "Catálogos",      "grid_view",       "/catalogos"),
+        ("ventas_tienda","Ventas Tienda",  "storefront",      "/ventas/tienda"),
+        ("ventas_ruta",  "Ventas Ruta",    "local_shipping",  "/ventas/ruta"),
+        ("compras",      "Compras",        "shopping_bag",    "/compras"),
+        ("inventario",   "Inventario",     "inventory_2",     "/inventario"),
+        ("almacenes",    "Almacenes",      "warehouse",       "/almacenes"),
+        ("finanzas",     "Finanzas",       "account_balance", "/finanzas"),
+        ("reportes",     "Reportes",       "bar_chart",       "/reportes"),
+        ("configuracion","Configuración",  "settings",        "/configuracion"),
+        ("seguridad",    "Seguridad",      "shield",          "/seguridad"),
+    };
+
+    protected override void OnInitialized()
+    {
+        _modulosMostrar = _todosModulos
+            .Where(m => Permisos.TieneAlgunoEn(m.Codigo))
+            .Select(m => (m.Nombre, m.Icono, m.Ruta))
+            .ToList();
+    }
+
+    private static string ObtenerIniciales(string nombre)
+    {
+        if (string.IsNullOrWhiteSpace(nombre)) return "?";
+        var partes = nombre.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return partes.Length >= 2
+            ? $"{partes[0][0]}{partes[1][0]}".ToUpper()
+            : nombre[..Math.Min(2, nombre.Length)].ToUpper();
+    }
+}

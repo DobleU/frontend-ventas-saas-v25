@@ -1,0 +1,124 @@
+﻿@* Shared/NavMenu.razor — VentasSaaSDU.Web
+   Menú de navegación horizontal (primary-menu del template).
+   Generado DINÁMICAMENTE desde los permisos del usuario en AppState.
+   Un módulo aparece en el menú SOLO si el usuario tiene al menos 1 permiso en él.
+   También incluye el offcanvas para versión móvil.
+*@
+@inject PermisoClienteService Permisos
+@inject AppState Estado
+@inject NavigationManager Nav
+@implements IDisposable
+
+<div class="primary-menu">
+    <nav class="navbar navbar-expand-xl align-items-center container-xxl px-4">
+
+        <!-- OFFCANVAS MÓVIL -->
+        <div class="offcanvas offcanvas-start w-260" tabindex="-1"
+             id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
+            <div class="offcanvas-header border-bottom h-70">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="material-icons-outlined text-primary" style="font-size:2rem;">store</span>
+                    <h4 class="logo-text mb-0">VentasSaaSDU</h4>
+                </div>
+                <a href="javascript:;" class="primaery-menu-close" data-bs-dismiss="offcanvas">
+                    <i class="material-icons-outlined">close</i>
+                </a>
+            </div>
+            <div class="offcanvas-body p-0">
+                <!-- Mismo menú reutilizado para móvil -->
+                <ul class="navbar-nav align-items-center flex-grow-1">
+                    @RenderMenuItems()
+                </ul>
+            </div>
+        </div>
+
+        <!-- MENÚ DESKTOP (visible XL+) -->
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+            <ul class="navbar-nav align-items-center flex-grow-1">
+                @RenderMenuItems()
+            </ul>
+        </div>
+
+    </nav>
+</div>
+
+@code {
+    // Definición de módulos del sistema con sus metadatos de UI
+    // El orden aquí determina el orden en el menú.
+    private static readonly List<ModuloMenu> _modulos = new()
+    {
+        new("catalogos",    "Catálogos",      "grid_view",           "/catalogos"),
+        new("ventas_tienda","Ventas Tienda",  "storefront",          "/ventas/tienda"),
+        new("ventas_ruta",  "Ventas Ruta",    "local_shipping",      "/ventas/ruta"),
+        new("compras",      "Compras",        "shopping_bag",        "/compras"),
+        new("inventario",   "Inventario",     "inventory_2",         "/inventario"),
+        new("almacenes",    "Almacenes",      "warehouse",           "/almacenes"),
+        new("finanzas",     "Finanzas",       "account_balance",     "/finanzas"),
+        new("rh_nomina",    "RH / Nómina",    "badge",               "/rh"),
+        new("reportes",     "Reportes",       "bar_chart",           "/reportes"),
+        new("configuracion","Configuración",  "settings",            "/configuracion"),
+        new("seguridad",    "Seguridad",      "shield",              "/seguridad"),
+        new("auditoria",    "Auditoría",      "manage_search",       "/auditoria"),
+    };
+
+    // Ruta actual para resaltar el ítem activo
+    private string _rutaActual = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        Estado.OnChange += StateHasChanged;
+        _rutaActual = Nav.Uri;
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        _rutaActual = e.Location;
+        StateHasChanged();
+    }
+
+    private RenderFragment RenderMenuItems() => __builder =>
+    {
+        // Dashboard siempre visible para usuarios autenticados
+        __builder.OpenElement(0, "li");
+        __builder.AddAttribute(1, "class", "nav-item");
+        __builder.OpenComponent<NavLink>(2);
+        __builder.AddAttribute(3, "class", "nav-link d-flex align-items-center gap-2");
+        __builder.AddAttribute(4, "href", "/dashboard");
+        __builder.AddAttribute(5, "Match", NavLinkMatch.All);
+        __builder.AddMarkupContent(6,
+            "<div class=\"parent-icon\"><i class=\"material-icons-outlined\">home</i></div>" +
+            "<div class=\"menu-title\">Dashboard</div>");
+        __builder.CloseComponent();
+        __builder.CloseElement();
+
+        // Módulos filtrados por permisos
+        int seq = 10;
+        foreach (var modulo in _modulos)
+        {
+            if (!Permisos.TieneAlgunoEn(modulo.Codigo)) continue;
+
+            bool esActivo = _rutaActual.Contains(modulo.Ruta, StringComparison.OrdinalIgnoreCase);
+
+            __builder.OpenElement(seq++, "li");
+            __builder.AddAttribute(seq++, "class", "nav-item");
+            __builder.OpenElement(seq++, "a");
+            __builder.AddAttribute(seq++, "class", $"nav-link d-flex align-items-center gap-2{(esActivo ? " active" : "")}");
+            __builder.AddAttribute(seq++, "href", modulo.Ruta);
+            __builder.AddMarkupContent(seq++,
+                $"<div class=\"parent-icon\"><i class=\"material-icons-outlined\">{modulo.Icono}</i></div>" +
+                $"<div class=\"menu-title\">{modulo.Nombre}</div>");
+            __builder.CloseElement();
+            __builder.CloseElement();
+        }
+    };
+
+    public void Dispose()
+    {
+        Estado.OnChange -= StateHasChanged;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+
+    // Modelo interno del menú
+    private sealed record ModuloMenu(string Codigo, string Nombre, string Icono, string Ruta);
+}

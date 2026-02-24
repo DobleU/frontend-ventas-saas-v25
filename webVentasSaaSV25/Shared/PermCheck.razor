@@ -1,0 +1,27 @@
+﻿@* Shared/PermCheck.razor — VentasSaaSDU.Web
+   Renderiza ChildContent SOLO si el usuario tiene el permiso indicado.
+   Uso:
+       <PermCheck Modulo="ventas_tienda" Accion="crear">
+           <button class="btn btn-primary">Nueva Venta</button>
+       </PermCheck>
+   
+   IMPORTANTE: esto es control de UI, NO reemplaza validación del backend.
+   El endpoint de la API siempre valida por JWT independientemente de este componente.
+*@
+@inject PermisoClienteService Permisos
+
+@if (Permisos.Tiene(Modulo, Accion))
+{
+    @ChildContent
+}
+
+@code {
+    /// <summary>Código del módulo. Ej: "ventas_tienda"</summary>
+    [Parameter, EditorRequired] public string Modulo { get; set; } = string.Empty;
+
+    /// <summary>Código de la acción. Ej: "crear", "editar", "ver_costo"</summary>
+    [Parameter, EditorRequired] public string Accion { get; set; } = string.Empty;
+
+    /// <summary>Contenido a renderizar si tiene el permiso.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

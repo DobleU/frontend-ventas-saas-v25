@@ -1,0 +1,122 @@
+﻿@* Shared/TopBar.razor — VentasSaaSDU.Web
+   Topbar fija. Muestra: logo, búsqueda, notificaciones, datos del usuario.
+   Nombre, rol y empresa vienen de AppState (JWT). Nunca hardcodeados.
+   El botón de logout invoca AuthService.LogoutAsync().
+*@
+@inject AppState Estado
+@inject AuthService AuthSvc
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IDisposable
+
+<header class="top-header">
+    <nav class="navbar navbar-expand align-items-center justify-content-between gap-4 container-xxl px-4">
+
+        <!-- Logo (visible solo en XL+) -->
+        <div class="logo-header d-none d-xl-flex align-items-center gap-2">
+            <div class="logo-icon">
+                <span class="material-icons-outlined text-primary" style="font-size:2rem;">store</span>
+            </div>
+            <div class="logo-name">
+                <h5 class="mb-0">VentasSaaSDU</h5>
+            </div>
+        </div>
+
+        <!-- Botón menú móvil -->
+        <div class="btn-toggle d-xl-none" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar">
+            <a href="javascript:;"><i class="material-icons-outlined">menu</i></a>
+        </div>
+
+        <!-- Barra de búsqueda (UI only por ahora) -->
+        <div class="search-bar">
+            <div class="position-relative">
+                <input class="form-control rounded-5 px-5 search-control d-lg-block d-none"
+                       type="text" placeholder="Buscar..." />
+                <span class="material-icons-outlined position-absolute d-lg-block d-none ms-3 translate-middle-y start-0 top-50">search</span>
+                <span class="material-icons-outlined position-absolute me-3 translate-middle-y end-0 top-50 search-close">close</span>
+            </div>
+        </div>
+
+        <!-- Iconos derechos -->
+        <ul class="navbar-nav gap-1 nav-right-links align-items-center">
+
+            <!-- Alerta de suscripción si no está en estado Active/Trial -->
+            @if (Estado.EstadoSusc is "Grace" or "PastDue")
+            {
+                <li class="nav-item d-none d-md-flex">
+                    <span class="badge bg-warning text-dark me-2 d-flex align-items-center gap-1">
+                        <i class="material-icons-outlined" style="font-size:14px;">warning</i>
+                        Suscripción por vencer
+                    </span>
+                </li>
+            }
+
+            <!-- Dropdown usuario -->
+            <li class="nav-item dropdown">
+                <a href="javascript:;" class="dropdown-toggle dropdown-toggle-nocaret d-flex align-items-center gap-2"
+                   data-bs-toggle="dropdown">
+                    <div class="user-wrapper bg-primary text-primary bg-opacity-10 d-flex align-items-center justify-content-center"
+                         style="width:38px;height:38px;border-radius:50%;font-weight:600;">
+                        @Iniciales
+                    </div>
+                </a>
+                <div class="dropdown-menu dropdown-user dropdown-menu-end shadow">
+                    <a class="dropdown-item gap-2 py-2" href="javascript:;">
+                        <div class="text-center py-2">
+                            <div class="user-wrapper bg-primary text-primary bg-opacity-10 mx-auto mb-3 d-flex align-items-center justify-content-center"
+                                 style="width:64px;height:64px;border-radius:50%;font-size:1.5rem;font-weight:600;">
+                                @Iniciales
+                            </div>
+                            <h6 class="user-name mb-0 fw-bold">@Estado.NombreUsuario</h6>
+                            <small class="text-muted">@Estado.NombreRol</small>
+                            <br />
+                            <span class="badge badge-suscripcion-@Estado.EstadoSusc.ToLower() mt-1">
+                                @Estado.EstadoSusc
+                            </span>
+                        </div>
+                    </a>
+                    <hr class="dropdown-divider" />
+                    <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="/dashboard">
+                        <i class="material-icons-outlined">dashboard</i>Dashboard
+                    </a>
+                    <hr class="dropdown-divider" />
+                    <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-danger"
+                       href="javascript:;" @onclick="HandleLogout" @onclick:preventDefault="true">
+                        <i class="material-icons-outlined">power_settings_new</i>Cerrar Sesión
+                    </a>
+                </div>
+            </li>
+        </ul>
+    </nav>
+</header>
+
+@code {
+    // Iniciales del usuario para el avatar
+    private string Iniciales => ObtenerIniciales(Estado.NombreUsuario);
+
+    protected override void OnInitialized()
+    {
+        // Suscribirse a cambios del estado global para re-renderizar
+        Estado.OnChange += StateHasChanged;
+    }
+
+    private async Task HandleLogout()
+    {
+        await AuthSvc.LogoutAsync();
+        Nav.NavigateTo("/login", forceLoad: true);
+    }
+
+    private static string ObtenerIniciales(string nombre)
+    {
+        if (string.IsNullOrWhiteSpace(nombre)) return "?";
+        var partes = nombre.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return partes.Length >= 2
+            ? $"{partes[0][0]}{partes[1][0]}".ToUpper()
+            : nombre[..Math.Min(2, nombre.Length)].ToUpper();
+    }
+
+    public void Dispose()
+    {
+        Estado.OnChange -= StateHasChanged;
+    }
+}

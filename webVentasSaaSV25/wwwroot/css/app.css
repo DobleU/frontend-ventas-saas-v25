@@ -1,0 +1,85 @@
+﻿/*
+ * app.css — VentasSaaSDU.Web
+ * Overrides y estilos propios. NO modificar archivos del template.
+ * Solo agregar aquí lo que no cubra bootstrap-extended.css o main.css.
+ */
+
+/* Ocultar el blazor-error-ui por defecto (se muestra programáticamente) */
+#blazor-error-ui {
+    display: none;
+}
+
+/* Spinner de splash screen al cargar WASM */
+#app .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Separador del login (línea + texto) */
+.separator {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+    .separator .line {
+        flex: 1;
+        height: 1px;
+        background-color: var(--bs-border-color);
+    }
+
+    .separator p {
+        font-size: 0.75rem;
+        white-space: nowrap;
+        color: var(--bs-secondary-color);
+    }
+
+/* Alerta de suscripción vencida / modo restringido */
+.alert-suscripcion {
+    border-left: 4px solid var(--bs-warning);
+    background-color: var(--bs-warning-bg-subtle);
+    color: var(--bs-warning-text-emphasis);
+}
+
+/* Badge de notificaciones en topbar */
+.badge-notify {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+    background: var(--bs-danger);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+/* Ajuste de ancho de card del login en pantallas pequeñas */
+@media (max-width: 576px) {
+    .login-card-wrapper {
+        margin: 1rem;
+    }
+}
+
+/* Estado de suscripción en topbar */
+.badge-suscripcion-active {
+    background-color: var(--bs-success);
+}
+
+.badge-suscripcion-grace {
+    background-color: var(--bs-warning);
+    color: #000;
+}
+
+.badge-suscripcion-suspended {
+    background-color: var(--bs-danger);
+}
+
+.badge-suscripcion-trial {
+    background-color: var(--bs-info);
+}

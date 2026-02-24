@@ -1,0 +1,27 @@
+﻿@* App.razor — VentasSaaSDU.Web
+   Router raíz. Decide qué layout usar según el estado de autenticación.
+   Rutas no encontradas → componente NotFound inline.
+*@
+
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="data">
+        <RouteView RouteData="@data" DefaultLayout="@typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="@data" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <div class="main-wrapper">
+                <div class="main-content container-xxl">
+                    <div class="d-flex flex-column align-items-center justify-content-center" style="min-height:60vh;">
+                        <h1 class="display-1 fw-bold text-primary">404</h1>
+                        <h4 class="mb-3">Página no encontrada</h4>
+                        <p class="text-muted mb-4">La ruta que buscas no existe en el sistema.</p>
+                        <a href="/" class="btn btn-grd-primary">
+                            <i class="material-icons-outlined me-2">home</i>Ir al Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

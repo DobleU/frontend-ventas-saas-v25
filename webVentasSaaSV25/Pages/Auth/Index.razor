@@ -1,0 +1,231 @@
+﻿@* Pages/Auth/Login.razor — VentasSaaSDU.Web
+   Página de acceso al sistema.
+   Basada en login.html del template Maxton.
+   Adaptaciones:
+     - Botones de Google/Facebook/LinkedIn eliminados (no aplica al sistema)
+     - Show/hide password sin jQuery (vía AppInterop.togglePasswordVisibility)
+     - Formulario maneja validación, errores y loading state
+     - Redirect post-login al dashboard
+*@
+@page "/login"
+@layout AuthLayout
+@inject AuthService AuthSvc
+@inject AppState Estado
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Sistema de Ventas V2.5</PageTitle>
+<div class="mx-3 mx-lg-0">
+    <div class="card my-5 col-xl-9 col-xxl-7 mx-auto rounded-4 overflow-hidden p-4">
+        <div class="row g-4">
+
+            <!-- PANEL IZQUIERDO: Formulario -->
+            <div class="col-lg-6 d-flex">
+                <div class="card-body">
+
+                    <!-- Logo / nombre del sistema -->
+                    <div class="d-flex align-items-center gap-2 mb-4">
+                        <span class="material-icons-outlined text-primary" style="font-size:2.5rem;">store</span>
+                        <div>
+                            <h5 class="mb-0 fw-bold">VentasSaaSDU</h5>
+                            <small class="text-muted">Sistema de Ventas e Inventarios</small>
+                        </div>
+                    </div>
+
+                    <h4 class="fw-bold">Bienvenido</h4>
+                    <p class="mb-0 text-muted">Ingresa tus credenciales para acceder al sistema</p>
+
+                    <!-- Separador -->
+                    <div class="separator my-4">
+                        <div class="line"></div>
+                        <p class="mb-0 fw-bold">INICIAR SESIÓN</p>
+                        <div class="line"></div>
+                    </div>
+
+                    <!-- Alerta de error -->
+                    @if (!string.IsNullOrEmpty(_errorMsg))
+                    {
+                        <div class="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3" role="alert">
+                            <i class="material-icons-outlined">error_outline</i>
+                            <span>@_errorMsg</span>
+                        </div>
+                    }
+
+                    <!-- Alerta de suscripción suspendida -->
+                    @if (_suscripcionSuspendida)
+                    {
+                        <div class="alert alert-warning d-flex align-items-center gap-2 py-2 mb-3">
+                            <i class="material-icons-outlined">warning_amber</i>
+                            <span>Tu empresa tiene la suscripción suspendida. Contacta al administrador.</span>
+                        </div>
+                    }
+
+                    <!-- FORMULARIO -->
+                    <div class="form-body mt-4">
+                        <EditForm Model="@_model" OnValidSubmit="HandleLogin">
+                            <DataAnnotationsValidator />
+
+                            <!-- Email -->
+                            <div class="mb-3">
+                                <label for="inputEmail" class="form-label">Usuario</label>
+                                <input type="text"
+                                       id="inputEmail"
+                                       class="form-control"
+                                       @bind="_model.Username"
+                                       @bind:event="oninput"
+                                       placeholder="usuario@empresa.com"
+                                       disabled="@_cargando"
+                                       autocomplete="username" />
+                                @if (_emailError)
+                                {
+                                    <div class="invalid-feedback">Ingresa un correo válido.</div>
+                                }
+                            </div>
+
+                            <!-- Password -->
+                            <div class="mb-3">
+                                <label for="inputPassword" class="form-label">Contraseña</label>
+                                <div class="input-group" id="show_hide_password">
+                                    <input type="password"
+                                           id="inputPassword"
+                                           class="form-control border-end-0 @(_passError ? "is-invalid" : "");"
+                                           @bind="_model.Password"
+                                           @bind:event="oninput"
+                                           placeholder="Contraseña"
+                                           disabled="@_cargando"
+                                           autocomplete="current-password" />
+                                    <a href="javascript:;"
+                                       class="input-group-text bg-transparent border-start-0"
+                                       @onclick="TogglePassword" tabindex="-1">
+                                        <i id="iconPassword" class="bi bi-eye-slash-fill"></i>
+                                    </a>
+                                    @if (_passError)
+                                    {
+                                        <div class="invalid-feedback">Ingresa tu contraseña.</div>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Recordar / Olvidé contraseña -->
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox"
+                                               id="recordarme" @bind="_recordarme" />
+                                        <label class="form-check-label" for="recordarme">Recordarme</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 text-end">
+                                    <a href="/forgot-password" class="text-primary">¿Olvidaste tu contraseña?</a>
+                                </div>
+                            </div>
+
+                            <!-- Botón submit -->
+                            <div class="d-grid mb-3">
+                                <button type="submit"
+                                        class="btn btn-grd-primary"
+                                        disabled="@_cargando">
+                                    @if (_cargando)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span>Verificando...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="material-icons-outlined me-2" style="font-size:18px;vertical-align:middle;">login</i>
+                                        <span>Iniciar Sesión</span>
+                                    }
+                                </button>
+                            </div>
+
+                        </EditForm>
+                    </div>
+
+                    <!-- Versión -->
+                    <div class="text-center mt-4">
+                        <small class="text-muted">VentasSaaSDU v2.5 &mdash; Fase 3</small>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- PANEL DERECHO: Imagen decorativa (oculto en móvil) -->
+            <div class="col-lg-6 d-lg-flex d-none">
+                <div class="p-4 rounded-4 w-100 d-flex flex-column align-items-center justify-content-center bg-grd-primary">
+                    <span class="material-icons-outlined text-white mb-3" style="font-size:6rem;">inventory</span>
+                    <h4 class="text-white fw-bold text-center">Control total de tu negocio</h4>
+                    <p class="text-white text-center opacity-75 mb-0">
+                        Ventas, inventario, rutas y reportes en una sola plataforma.
+                    </p>
+                </div>
+            </div>
+
+        </div><!-- end row -->
+    </div>
+</div>
+
+@code {
+    // Modelo del formulario
+    private readonly LoginRequest _model = new();
+
+    // Estado del componente
+    private bool _cargando = false;
+    private bool _recordarme = false;
+    private bool _suscripcionSuspendida = false;
+    private string _errorMsg = string.Empty;
+
+    // Validaciones inline
+    private bool _emailError => string.IsNullOrWhiteSpace(_model.Username);
+    private bool _passError => string.IsNullOrWhiteSpace(_model.Password);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        // Si ya tiene sesión activa → ir directo al dashboard
+        await AuthSvc.IntentarRestaurarSesionAsync();
+        if (Estado.EstaAutenticado)
+            Nav.NavigateTo("/dashboard", forceLoad: false);
+    }
+
+    private async Task HandleLogin()
+    {
+        // Validación básica antes de llamar a la API
+        if (string.IsNullOrWhiteSpace(_model.Username) ||
+     string.IsNullOrWhiteSpace(_model.Password))
+        {
+            _errorMsg = "Completa todos los campos.";
+            return;
+        }
+
+        _cargando = true;
+        _errorMsg = string.Empty;
+        _suscripcionSuspendida = false;
+
+        var (ok, error) = await AuthSvc.LoginAsync(_model);
+
+        _cargando = false;
+
+        if (ok)
+        {
+            // Login exitoso — redirigir al dashboard
+            Nav.NavigateTo("/dashboard", forceLoad: false);
+            return;
+        }
+
+        // Manejar errores específicos
+        if (error is not null && error.Contains("suspendida", StringComparison.OrdinalIgnoreCase))
+        {
+            _suscripcionSuspendida = true;
+        }
+        else
+        {
+            _errorMsg = error ?? "Error al iniciar sesión. Intenta de nuevo.";
+        }
+    }
+
+    private async Task TogglePassword()
+    {
+        await JS.InvokeVoidAsync("AppInterop.togglePasswordVisibility", "inputPassword", "iconPassword");
+    }
+}

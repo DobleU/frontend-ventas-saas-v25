@@ -1,0 +1,58 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\models\\auth\\loginrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:models\\auth\\loginrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\pages\\auth\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:pages\\auth\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 1,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedHeight": 430,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "LoginRequest.cs",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Models\\Auth\\LoginRequest.cs",
+              "RelativeDocumentMoniker": "Models\\Auth\\LoginRequest.cs",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Models\\Auth\\LoginRequest.cs",
+              "RelativeToolTip": "Models\\Auth\\LoginRequest.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-23T08:09:40.252Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Index.razor",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Auth\\Index.razor",
+              "RelativeDocumentMoniker": "Pages\\Auth\\Index.razor",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Auth\\Index.razor",
+              "RelativeToolTip": "Pages\\Auth\\Index.razor",
+              "ViewState": "AgIAAJwAAAAAAAAAAAAgwLEAAABJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-02-23T08:06:45.821Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
