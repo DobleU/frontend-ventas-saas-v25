@@ -58,3 +58,6 @@ nunit-*.xml
 *.vsidx
 *.db-wal
 *.db
+webVentasSaaSV25/.vs/webVentasSaaSV25/CopilotIndices/17.14.734.62261/CodeChunks.db
+webVentasSaaSV25/.vs/webVentasSaaSV25/CopilotIndices/17.14.734.62261/CodeChunks.db-wal
+webVentasSaaSV25/.vs/webVentasSaaSV25/CopilotIndices/17.14.734.62261/SemanticSymbols.db-wal
