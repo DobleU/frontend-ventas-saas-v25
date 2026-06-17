@@ -22,6 +22,17 @@ public sealed class MonitorMapaService(ApiClient api)
         return api.GetAsync<MapaRutaResponse>($"api/v1/mapa/ruta?{query}");
     }
 
+    public Task<(MonitorClienteResponse? D, string? E)> GetMonitorClienteAsync(
+        int idCliente,
+        int? idDireccion = null,
+        int topProductos = 5,
+        int mesesTendencia = 6)
+    {
+        var query = $"idCliente={idCliente}&topProductos={topProductos}&mesesTendencia={mesesTendencia}";
+        if (idDireccion.HasValue && idDireccion > 0) query += $"&idDireccion={idDireccion.Value}";
+        return api.GetAsync<MonitorClienteResponse>($"api/v1/mapa/clientes/detalle?{query}");
+    }
+
     public Task<(ReporteRecorridosResponse? D, string? E)> GetReporteRecorridosAsync(
         int? idRuta,
         DateTime? fechaInicio,
@@ -92,6 +103,7 @@ public sealed class MapaRutaResponse
 public sealed class MapaClientePuntoResponse
 {
     public int IdCliente { get; init; }
+    public int? IdDireccion { get; init; }
     public int Orden { get; init; }
     public string Nombre { get; init; } = string.Empty;
     public string? NombreRuta { get; init; }
@@ -247,6 +259,64 @@ public sealed class ReporteEventosResponse
 {
     public ReporteEventosKpiResponse Kpi { get; init; } = new();
     public IReadOnlyList<ReporteEventoRowResponse> Eventos { get; init; } = [];
+}
+
+public sealed class MonitorClienteResponse
+{
+    public MonitorClienteResumenResponse Resumen { get; init; } = new();
+    public IReadOnlyList<MonitorClienteProductoTopResponse> TopProductos { get; init; } = [];
+    public IReadOnlyList<MonitorClienteTendenciaResponse> Tendencia { get; init; } = [];
+}
+
+public sealed class MonitorClienteResumenResponse
+{
+    public int IdCliente { get; init; }
+    public int? IdDireccion { get; init; }
+    public string Cliente { get; init; } = string.Empty;
+    public string? NombreSucursal { get; init; }
+    public string? Ruta { get; init; }
+    public string? Zona { get; init; }
+    public string? Direccion { get; init; }
+    public string? Telefono { get; init; }
+    public string? Correo { get; init; }
+    public string? Rfc { get; init; }
+    public DateTime? ClienteDesdeUtc { get; init; }
+    public string? ListaPrecio { get; init; }
+    public decimal LimiteCredito { get; init; }
+    public int DiasCredito { get; init; }
+    public decimal MontoAcumulado { get; init; }
+    public decimal MontoUltimos30Dias { get; init; }
+    public int TotalVentas { get; init; }
+    public decimal TicketPromedio { get; init; }
+    public decimal DescuentoAcumulado { get; init; }
+    public int VentasConDescuento { get; init; }
+    public int FacturasEmitidas { get; init; }
+    public bool TienePreciosEspecialesCliente { get; init; }
+    public bool TienePreciosEspecialesZona { get; init; }
+    public bool TieneDatosFacturacion { get; init; }
+    public DateTime? UltimaCompraUtc { get; init; }
+    public string? RazonSocialFacturacion { get; init; }
+    public string? DireccionFiscal { get; init; }
+}
+
+public sealed class MonitorClienteProductoTopResponse
+{
+    public int RankProducto { get; init; }
+    public int IdProducto { get; init; }
+    public string? Sku { get; init; }
+    public string Producto { get; init; } = string.Empty;
+    public decimal CantidadVendida { get; init; }
+    public decimal MontoTotal { get; init; }
+    public DateTime? UltimaCompraUtc { get; init; }
+}
+
+public sealed class MonitorClienteTendenciaResponse
+{
+    public int Anio { get; init; }
+    public int Mes { get; init; }
+    public string Periodo { get; init; } = string.Empty;
+    public decimal MontoTotal { get; init; }
+    public int Ventas { get; init; }
 }
 
 public sealed class ReporteEventosKpiResponse

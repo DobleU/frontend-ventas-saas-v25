@@ -147,11 +147,11 @@
 
                     <div class="detail-mosaic">
                         <div><span>Orden</span><strong>@_selected.Order</strong></div>
-                        <div><span>Credito</span><strong>@_selected.CreditText</strong></div>
-                        <div><span>Ultima visita</span><strong>@_selected.LastVisit</strong></div>
+                        <div><span>Credito</span><strong>@(_detail?.Resumen.LimiteCredito > 0 ? $"{_detail.Resumen.LimiteCredito:N0} / {_detail.Resumen.DiasCredito} dias" : _selected.CreditText)</strong></div>
+                        <div><span>Ultima compra</span><strong>@FormatDate(_detail?.Resumen.UltimaCompraUtc, _selected.LastVisit)</strong></div>
                         <div><span>GPS</span><strong>@GeoText(_selected.GeoSource)</strong></div>
-                        <div><span>Telefono</span><strong>@TextOrDash(_selected.Phone)</strong></div>
-                        <div><span>RFC</span><strong>@TextOrDash(_selected.Rfc)</strong></div>
+                        <div><span>Telefono</span><strong>@TextOrDash(_detail?.Resumen.Telefono ?? _selected.Phone)</strong></div>
+                        <div><span>RFC</span><strong>@TextOrDash(_detail?.Resumen.Rfc ?? _selected.Rfc)</strong></div>
                     </div>
 
                     <div class="detail-actions">
@@ -160,13 +160,94 @@
                         <a class="btn btn-sm btn-outline-secondary" href="/catalogos/clientes">Ir a catalogo</a>
                     </div>
 
-                    <div class="clients-card mini-card">
-                        <div class="mini-card-head">
-                            <h6>Top de productos</h6>
-                            <small>Resumen comercial</small>
+                    @if (_detailLoading)
+                    {
+                        <div class="empty-box small">Cargando resumen del cliente...</div>
+                    }
+                    else if (_detail is not null)
+                    {
+                        <div class="detail-mosaic kpi-mosaic">
+                            <div><span>Monto acumulado</span><strong>@Money(_detail.Resumen.MontoAcumulado)</strong></div>
+                            <div><span>Ultimos 30 dias</span><strong>@Money(_detail.Resumen.MontoUltimos30Dias)</strong></div>
+                            <div><span>Ventas</span><strong>@_detail.Resumen.TotalVentas</strong></div>
+                            <div><span>Ticket promedio</span><strong>@Money(_detail.Resumen.TicketPromedio)</strong></div>
+                            <div><span>Descuento acumulado</span><strong>@Money(_detail.Resumen.DescuentoAcumulado)</strong></div>
+                            <div><span>Facturas emitidas</span><strong>@_detail.Resumen.FacturasEmitidas</strong></div>
                         </div>
-                        <pre>@TextOrDash(_selected.ProductTop)</pre>
-                    </div>
+
+                        <div class="detail-mosaic info-mosaic">
+                            <div><span>Lista de precio</span><strong>@TextOrDash(_detail.Resumen.ListaPrecio)</strong></div>
+                            <div><span>Zona</span><strong>@TextOrDash(_detail.Resumen.Zona)</strong></div>
+                            <div><span>Cliente desde</span><strong>@FormatDate(_detail.Resumen.ClienteDesdeUtc)</strong></div>
+                            <div><span>Precio especial cliente</span><strong>@BoolText(_detail.Resumen.TienePreciosEspecialesCliente)</strong></div>
+                            <div><span>Precio especial zona</span><strong>@BoolText(_detail.Resumen.TienePreciosEspecialesZona)</strong></div>
+                            <div><span>Facturacion</span><strong>@BoolText(_detail.Resumen.TieneDatosFacturacion)</strong></div>
+                        </div>
+
+                        <div class="detail-split">
+                            <div class="clients-card mini-card">
+                                <div class="mini-card-head">
+                                    <h6>Top de productos</h6>
+                                    <small>Lo que mas compra este cliente</small>
+                                </div>
+                                @if (_detail.TopProductos.Any())
+                                {
+                                    <div class="top-products-list">
+                                        @foreach (var product in _detail.TopProductos)
+                                        {
+                                            <div class="top-product-row">
+                                                <strong>#@product.RankProducto @product.Producto</strong>
+                                                <small>@TextOrDash(product.Sku) · @product.CantidadVendida:N2 u · @Money(product.MontoTotal)</small>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="empty-box small">Sin compras registradas.</div>
+                                }
+                            </div>
+
+                            <div class="clients-card mini-card">
+                                <div class="mini-card-head">
+                                    <h6>Tendencia</h6>
+                                    <small>Ultimos meses del cliente</small>
+                                </div>
+                                @if (_detail.Tendencia.Any())
+                                {
+                                    <div class="trend-list">
+                                        @foreach (var item in _detail.Tendencia)
+                                        {
+                                            <div class="trend-row">
+                                                <span>@item.Periodo</span>
+                                                <strong>@Money(item.MontoTotal)</strong>
+                                                <small>@item.Ventas ventas</small>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="empty-box small">Sin tendencia disponible.</div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="detail-mosaic info-mosaic">
+                            <div class="wide-card"><span>Razon social facturacion</span><strong>@TextOrDash(_detail.Resumen.RazonSocialFacturacion)</strong></div>
+                            <div class="wide-card"><span>Direccion fiscal</span><strong>@TextOrDash(_detail.Resumen.DireccionFiscal)</strong></div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="clients-card mini-card">
+                            <div class="mini-card-head">
+                                <h6>Top de productos</h6>
+                                <small>Resumen comercial</small>
+                            </div>
+                            <pre>@TextOrDash(_selected.ProductTop)</pre>
+                        </div>
+                    }
                 </div>
             }
         </main>
@@ -215,13 +296,19 @@
     .detail-mosaic{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem}
     .detail-mosaic>div,.mini-card{background:#f8fafc;border:1px solid #edf2f7;border-radius:10px;padding:.9rem}
     .mini-card pre{margin:0;white-space:pre-line;font-family:inherit;color:#344054}
+    .detail-split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+    .top-products-list,.trend-list{display:grid;gap:.6rem}
+    .top-product-row,.trend-row{display:grid;gap:.15rem;padding:.75rem;border-radius:10px;background:#f8fafc;border:1px solid #edf2f7}
+    .top-product-row small,.trend-row small{color:#667085}
+    .trend-row span{color:#667085;font-size:.82rem}
+    .info-mosaic .wide-card{grid-column:span 3}
     .empty-box{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem;min-height:320px;text-align:center;color:#667085;background:#fff;border:1px dashed #d7dde6;border-radius:10px}
     .empty-box.small{min-height:140px;background:transparent;border:0}
     .empty-box i{font-size:52px;color:#98a2b3}
     .status-dot{width:12px;height:12px;border-radius:50%;background:#98a2b3;flex:0 0 auto;margin-top:.25rem}
     .status-dot.pending{background:#0d6efd}.status-dot.done{background:#198754}.status-dot.alert{background:#dc3545}
     .badge-soft-primary{background:#eaf2ff;color:#0d6efd}.badge-soft-success{background:#eafbf2;color:#198754}.badge-soft-danger{background:#fff2f4;color:#dc3545}
-    @@media (max-width:1199.98px){.clients-monitor-shell,.monitor-shortcuts{grid-template-columns:1fr}.clients-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.detail-mosaic{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @@media (max-width:1199.98px){.clients-monitor-shell,.monitor-shortcuts,.detail-split{grid-template-columns:1fr}.clients-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.detail-mosaic{grid-template-columns:repeat(2,minmax(0,1fr))}.info-mosaic .wide-card{grid-column:span 2}}
     @@media (max-width:767.98px){.clients-metrics,.detail-mosaic{grid-template-columns:1fr}}
 </style>
 
@@ -241,7 +328,9 @@
     private string? _search;
     private string? _error;
     private bool _loading;
+    private bool _detailLoading;
     private bool _restored;
+    private MonitorClienteResponse? _detail;
 
     private List<ClientRowModel> VisibleClients => _clients
         .Where(x => _filter is null || x.Status == _filter)
@@ -304,6 +393,7 @@
     private async Task SelectClientAsync(ClientRowModel client)
     {
         _selected = client;
+        await LoadDetailAsync(client.Id, client.IdDireccion);
         await SaveStateAsync();
     }
 
@@ -336,7 +426,30 @@
             _selected = _clients.FirstOrDefault(x => x.Id == QueryClientId.Value) ?? _selected;
         }
 
+        if (_selected is not null)
+        {
+            await LoadDetailAsync(_selected.Id, _selected.IdDireccion);
+        }
+
         await SaveStateAsync();
+    }
+
+    private async Task LoadDetailAsync(int idCliente, int? idDireccion)
+    {
+        _detail = null;
+        if (idCliente <= 0)
+        {
+            return;
+        }
+
+        _detailLoading = true;
+        var (detail, error) = await MonitorApi.GetMonitorClienteAsync(idCliente, idDireccion);
+        _detailLoading = false;
+        _detail = detail;
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            _error = error;
+        }
     }
 
     private async Task RestoreStateAsync()
@@ -394,6 +507,10 @@
         _ => "badge-soft-primary"
     };
     private static string TextOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "Sin dato" : value;
+    private static string Money(decimal value) => value == 0 ? "$0" : value.ToString("$#,##0.##");
+    private static string BoolText(bool value) => value ? "Si" : "No";
+    private static string FormatDate(DateTime? value, string fallback = "Sin dato")
+        => value.HasValue ? value.Value.ToString("dd/MM/yyyy") : fallback;
     private static string GeoText(string source) => source switch
     {
         "REAL_FIN" => "GPS real de cierre",
@@ -407,6 +524,7 @@
 
     private static ClientRowModel FromApi(MapaClientePuntoResponse point) => new(
         point.IdCliente,
+        point.IdDireccion,
         point.Orden,
         point.Nombre,
         point.NombreRuta ?? "Sin ruta",
@@ -426,6 +544,7 @@
 
     private sealed record ClientRowModel(
         int Id,
+        int? IdDireccion,
         int Order,
         string Name,
         string RouteName,
