@@ -79,8 +79,9 @@
                 <ul class="dropdown-menu">
                     <li><h6 class="dropdown-header text-uppercase small">Tiempo Real</h6></li>
                     <li>@Item("/monitor/mapa",       "map",           "Mapa general")</li>
+                    <li>@Item("/monitor/rutas",      "directions_car","Monitor rutas")</li>
+                    <li>@Item("/monitor/clientes",   "groups",        "Monitor clientes")</li>
                     <li>@Item("/monitor/pos",        "point_of_sale", "POS activos", pronto:true)</li>
-                    <li>@Item("/monitor/rutas",      "directions_car","Rutas campo", pronto:true)</li>
                     <li>@Item("/monitor/alertas",    "warning_amber", "Alertas",    pronto:true)</li>
                     <li><hr class="dropdown-divider"></li>
                     <li><h6 class="dropdown-header text-uppercase small">Resumen</h6></li>
@@ -137,7 +138,7 @@
                         </div>
                         <div style="min-width:160px">
                             <h6 class="dropdown-header text-uppercase small px-0">Comercial</h6>
-                            @ItemRaw("/catalogos/clientes",    "people",        "Clientes", pronto:true)
+                            @ItemRaw("/catalogos/clientes",    "people",        "Clientes")
                             @ItemRaw("/catalogos/proveedores", "local_shipping","Proveedores", pronto:true)
                         </div>
                         <div style="min-width:160px">
@@ -297,21 +298,15 @@
                 </a>
                 <ul class="dropdown-menu">
                     <li><h6 class="dropdown-header text-uppercase small">Ventas</h6></li>
-                    <li>@Item("/reportes/ventas/kpis",      "trending_up",    "KPIs",        pronto:true)</li>
-                    <li>@Item("/reportes/ventas/periodo",   "date_range",     "Por per&iacute;odo", pronto:true)</li>
-                    <li>@Item("/reportes/ventas/vendedor",  "person",         "Vendedor",    pronto:true)</li>
+                    <li>@Item("/reportes/ventas",           "trending_up",    "Ventas")</li>
+                    <li>@Item("/ventas/ruta/recorridos",    "route",          "Recorridos")</li>
+                    <li>@Item("/ventas/ruta/visitas",       "location_on",    "Visitas")</li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Compras</h6></li>
-                    <li>@Item("/reportes/compras/proveedor","local_shipping", "Proveedor",   pronto:true)</li>
-                    <li>@Item("/reportes/compras/periodo",  "date_range",     "Por per&iacute;odo", pronto:true)</li>
+                    <li><h6 class="dropdown-header text-uppercase small">Clientes</h6></li>
+                    <li>@Item("/reportes/clientes",         "people",         "Clientes")</li>
                     <li><hr class="dropdown-divider"></li>
                     <li><h6 class="dropdown-header text-uppercase small">Almac&eacute;n</h6></li>
-                    <li>@Item("/reportes/inventario/stock", "inventory",      "Existencias", pronto:true)</li>
-                    <li>@Item("/reportes/inventario/movim", "swap_vert",      "Movimientos", pronto:true)</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Operativos</h6></li>
-                    <li>@Item("/reportes/rh",               "badge",          "RH",          pronto:true)</li>
-                    <li>@Item("/reportes/finanzas",         "account_balance","Finanzas",    pronto:true)</li>
+                    <li>@Item("/reportes/inventario/movimientos", "swap_vert", "Movimientos")</li>
                 </ul>
             </li>
         }

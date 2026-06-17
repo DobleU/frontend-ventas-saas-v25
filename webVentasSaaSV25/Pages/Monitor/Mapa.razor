@@ -1,5 +1,6 @@
 @page "/monitor/mapa"
 @inject MonitorMapaService MapaApi
+@inject IJSRuntime JS
 
 <PageTitle>Mapa General - Integra*System</PageTitle>
 
@@ -11,6 +12,14 @@
         </div>
 
         <div class="route-map-actions">
+            <a class="btn btn-outline-secondary" href="@RutasRouteUrl">
+                <i class="material-icons-outlined">route</i>
+                Monitor rutas
+            </a>
+            <a class="btn btn-outline-secondary" href="@ClientesRouteUrl">
+                <i class="material-icons-outlined">groups</i>
+                Monitor clientes
+            </a>
             <button class="btn btn-outline-secondary" type="button" @onclick="LoadDemo">
                 <i class="material-icons-outlined">science</i>
                 Demo
@@ -199,6 +208,37 @@
             }
         </aside>
     </section>
+
+    <section class="monitor-shortcuts">
+        <a class="shortcut-card" href="@RecorridosRouteUrl">
+            <span class="material-icons-outlined">route</span>
+            <div>
+                <strong>Recorridos</strong>
+                <small>Consulta cierres y efectividad.</small>
+            </div>
+        </a>
+        <a class="shortcut-card" href="@VisitasRouteUrl">
+            <span class="material-icons-outlined">location_on</span>
+            <div>
+                <strong>Visitas</strong>
+                <small>Auditoria y tiempos entre clientes.</small>
+            </div>
+        </a>
+        <a class="shortcut-card" href="@VentasReportUrl">
+            <span class="material-icons-outlined">bar_chart</span>
+            <div>
+                <strong>Reporte ventas</strong>
+                <small>Busqueda y exportacion desde operacion.</small>
+            </div>
+        </a>
+        <a class="shortcut-card" href="@ClientesReportUrl">
+            <span class="material-icons-outlined">download</span>
+            <div>
+                <strong>Reporte clientes</strong>
+                <small>Consulta base operativa por ruta.</small>
+            </div>
+        </a>
+    </section>
 </div>
 
 <style>
@@ -264,14 +304,26 @@
     .detail-grid strong{font-weight:650;color:#344054}
     .preline{white-space:pre-line}
     .detail-actions{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:1.25rem}
+    .monitor-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;margin-top:.85rem}
+    .shortcut-card{display:flex;align-items:flex-start;gap:.8rem;text-decoration:none;padding:.95rem 1rem;border-radius:10px;border:1px solid #e6eaf0;background:linear-gradient(180deg,#fff,#f8fbff);box-shadow:0 4px 18px rgba(18,38,63,.04);color:#344054}
+    .shortcut-card:hover{border-color:#bfd7ff;background:#eef5ff}
+    .shortcut-card span{font-size:22px;color:#0d6efd}
+    .shortcut-card strong,.shortcut-card small{display:block}
+    .shortcut-card small{color:#667085}
     .empty-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#667085;gap:.25rem;padding:1rem}
     .empty-state.small{position:static;min-height:180px}
     .empty-state i{font-size:52px;color:#98a2b3}
     @@media (max-width:1399.98px){.route-map-shell{grid-template-columns:320px 1fr}.detail-panel{grid-column:1/-1;min-height:auto}.map-canvas{min-height:520px}}
-    @@media (max-width:991.98px){.route-map-page{width:100%;margin-left:0}.route-map-header{flex-direction:column}.map-metrics{grid-template-columns:1fr 1fr}.route-map-shell{grid-template-columns:1fr}.stop-list{max-height:360px}.map-stage,.route-sidebar{min-height:auto}.map-canvas{min-height:430px}}
+    @@media (max-width:991.98px){.route-map-page{width:100%;margin-left:0}.route-map-header{flex-direction:column}.map-metrics,.monitor-shortcuts{grid-template-columns:1fr 1fr}.route-map-shell{grid-template-columns:1fr}.stop-list{max-height:360px}.map-stage,.route-sidebar{min-height:auto}.map-canvas{min-height:430px}}
+    @@media (max-width:767.98px){.monitor-shortcuts{grid-template-columns:1fr}}
 </style>
 
 @code {
+    [SupplyParameterFromQuery(Name = "ruta")] public int? QueryRouteId { get; set; }
+    [SupplyParameterFromQuery(Name = "cliente")] public int? QueryClientId { get; set; }
+
+    private const string StorageKey = "monitor-mapa-state";
+
     private enum MapMode { Route, Tour }
     private enum VisitStatus { Pending, Done, Alert }
 
@@ -286,6 +338,7 @@
     private decimal _zoom = 1m;
     private int _panX;
     private int _panY;
+    private bool _restored;
     private List<MapaRutaOptionResponse> _routes = [];
     private List<MapaRecorridoOptionResponse> _recorridos = [];
     private List<MapStop> _stops = [];
@@ -303,6 +356,13 @@
         ? $"{VisibleStops.Count} punto(s) listos para operar."
         : "Sin clientes cargados para esta ruta.";
 
+    private string RutasRouteUrl => _routeId > 0 ? $"/monitor/rutas?ruta={_routeId}" : "/monitor/rutas";
+    private string ClientesRouteUrl => _routeId > 0 ? $"/monitor/clientes?ruta={_routeId}" : "/monitor/clientes";
+    private string RecorridosRouteUrl => _routeId > 0 ? $"/ventas/ruta/recorridos?ruta={_routeId}" : "/ventas/ruta/recorridos";
+    private string VisitasRouteUrl => _routeId > 0 ? $"/ventas/ruta/visitas?ruta={_routeId}" : "/ventas/ruta/visitas";
+    private string VentasReportUrl => _routeId > 0 ? $"/reportes/ventas?ruta={_routeId}" : "/reportes/ventas";
+    private string ClientesReportUrl => _routeId > 0 ? $"/reportes/clientes?ruta={_routeId}" : "/reportes/clientes";
+
     protected override async Task OnInitializedAsync()
     {
         var (routes, error) = await MapaApi.GetRutasAsync();
@@ -310,9 +370,32 @@
         _error = error;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _restored)
+        {
+            return;
+        }
+
+        _restored = true;
+        await RestoreStateAsync();
+        if (QueryRouteId is > 0)
+        {
+            _routeId = QueryRouteId.Value;
+        }
+
+        if (_routeId > 0)
+        {
+            await LoadRecorridosAsync();
+            await LoadRouteAsync();
+            StateHasChanged();
+        }
+    }
+
     private async Task OnRouteChangedAsync(ChangeEventArgs e)
     {
         _routeId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        await SaveStateAsync();
         await LoadRecorridosAsync();
         await LoadRouteAsync();
     }
@@ -320,6 +403,7 @@
     private async Task OnRecorridoChangedAsync(ChangeEventArgs e)
     {
         _recorridoId = long.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        await SaveStateAsync();
         await LoadRouteAsync();
     }
 
@@ -331,6 +415,7 @@
         _recorridos = items?.ToList() ?? [];
         _error ??= error;
         _recorridoId = _recorridos.FirstOrDefault()?.IdRecorrido ?? 0;
+        await SaveStateAsync();
     }
 
     private async Task LoadRouteAsync()
@@ -361,6 +446,11 @@
 
         _stops = map?.Puntos.Select(FromApiPoint).ToList() ?? [];
         _selected = _stops.FirstOrDefault();
+        if (QueryClientId is > 0)
+        {
+            _selected = _stops.FirstOrDefault(x => x.Id == QueryClientId.Value) ?? _selected;
+        }
+        await SaveStateAsync();
     }
 
     private void LoadDemo()
@@ -433,12 +523,17 @@
     private async Task SetMode(MapMode mode)
     {
         _mode = mode;
+        await SaveStateAsync();
         if (_mode == MapMode.Tour)
             await LoadRecorridosAsync();
         await LoadRouteAsync();
     }
     private string ModeClass(MapMode mode) => _mode == mode ? "btn-primary" : "btn-outline-primary";
-    private void SetFilter(VisitStatus? status) => _statusFilter = status;
+    private async void SetFilter(VisitStatus? status)
+    {
+        _statusFilter = status;
+        await SaveStateAsync();
+    }
     private string FilterClass(VisitStatus? status) => _statusFilter == status ? "active" : "";
     private string SelectedClass(MapStop stop) => _selected?.Id == stop.Id ? "selected" : "";
     private static string StatusClass(VisitStatus status) => status switch { VisitStatus.Done => "done", VisitStatus.Alert => "alert", _ => "pending" };
@@ -464,6 +559,7 @@
         if (index < 0) return;
         _stops[index] = _stops[index] with { Status = status };
         _selected = _stops[index];
+        _ = SaveStateAsync();
     }
 
     private void ZoomIn() => _zoom = Math.Min(2.4m, _zoom + .2m);
@@ -473,6 +569,44 @@
         _zoom = 1m;
         _panX = 0;
         _panY = 0;
+    }
+
+    private async Task RestoreStateAsync()
+    {
+        var json = await JS.InvokeAsync<string?>("AppInterop.localStorageGet", StorageKey);
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return;
+        }
+
+        try
+        {
+            var state = System.Text.Json.JsonSerializer.Deserialize<MonitorMapState>(json);
+            if (state is null)
+            {
+                return;
+            }
+
+            if (QueryRouteId is null or <= 0)
+            {
+                _routeId = state.RouteId;
+            }
+
+            _recorridoId = state.RecorridoId;
+            _search = state.Search;
+            _demoMode = state.DemoMode;
+            _mode = Enum.TryParse<MapMode>(state.Mode, out var mode) ? mode : MapMode.Route;
+            _statusFilter = Enum.TryParse<VisitStatus>(state.Filter, out var filter) ? filter : null;
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task SaveStateAsync()
+    {
+        var payload = new MonitorMapState(_routeId, _recorridoId, _search, _mode.ToString(), _statusFilter?.ToString(), _selected?.Id, _demoMode);
+        await JS.InvokeVoidAsync("AppInterop.localStorageSet", StorageKey, System.Text.Json.JsonSerializer.Serialize(payload));
     }
 
     private static int PositionX(int order)
@@ -504,4 +638,6 @@
         int Y,
         string GeoSource,
         string? ProductTop);
+
+    private sealed record MonitorMapState(int RouteId, long RecorridoId, string? Search, string Mode, string? Filter, int? SelectedClientId, bool DemoMode);
 }

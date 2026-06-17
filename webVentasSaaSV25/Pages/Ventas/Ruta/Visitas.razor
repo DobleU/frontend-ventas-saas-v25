@@ -129,6 +129,8 @@
 </section>
 
 @code {
+    [SupplyParameterFromQuery(Name = "ruta")] public int? QueryRouteId { get; set; }
+
     private readonly CultureInfo _mx = CultureInfo.GetCultureInfo("es-MX");
     private AlertMessage? _alerta;
     private List<MapaRutaOptionResponse> _rutas = [];
@@ -142,6 +144,7 @@
     {
         var (rutas, error) = await MapaSvc.GetRutasAsync();
         if (error is null && rutas is not null) _rutas = rutas.ToList();
+        if (QueryRouteId is > 0) _idRuta = QueryRouteId.Value;
     }
 
     private async Task Cargar()
