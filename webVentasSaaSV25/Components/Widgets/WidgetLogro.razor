@@ -1,0 +1,73 @@
+﻿@* Components/Widgets/WidgetLogro.razor — VentasSaaSDU
+   Card de logro/felicitación: título + subtítulo + valor indigo + label + botón + imagen decorativa.
+   Uso: mejor vendedor del mes, meta alcanzada, vendedor top, sucursal con mejor rendimiento.
+
+   <WidgetLogro Titulo="¡Felicidades"
+                NombreDestacado="Juan Pérez!"
+                Subtitulo="Eres el mejor vendedor del mes"
+                ValorDestacado="$168.5K"
+                LabelValor="58% de la meta de ventas"
+                TextoBoton="Ver detalle"
+                ImagenDecorativa="assets/images/apps/gift-box-3.png"
+                OnAccion="VerDetalle" />
+*@
+
+<div class="card rounded-4 w-100 h-100">
+    <div class="card-body">
+
+        @* Título + emoji/imagen opcional *@
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <h5 class="mb-0">
+                @Titulo <span class="fw-600">@NombreDestacado</span>
+            </h5>
+            @if (!string.IsNullOrEmpty(IconoEmoji))
+            {
+                <img src="@IconoEmoji" width="24" height="24" alt="" />
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(Subtitulo))
+        {
+            <p class="mb-4 text-secondary">@Subtitulo</p>
+        }
+
+        @* Valor + imagen *@
+        <div class="d-flex align-items-center justify-content-between">
+            <div>
+                <h3 class="mb-0 text-indigo">@ValorDestacado</h3>
+                @if (!string.IsNullOrEmpty(LabelValor))
+                {
+                    <p class="mb-3 text-secondary font-text1">@LabelValor</p>
+                }
+                @if (!string.IsNullOrEmpty(TextoBoton))
+                {
+                    <button class="btn btn-grd btn-grd-@ColorBoton rounded-5 border-0 px-4"
+                            @onclick="OnAccion">
+                        @TextoBoton
+                    </button>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(ImagenDecorativa))
+            {
+                <img src="@ImagenDecorativa" width="100" alt="" />
+            }
+        </div>
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Titulo { get; set; } = "¡Felicidades";
+    [Parameter] public string NombreDestacado { get; set; } = string.Empty;
+    [Parameter] public string Subtitulo { get; set; } = string.Empty;
+    [Parameter] public string ValorDestacado { get; set; } = "$0";
+    [Parameter] public string LabelValor { get; set; } = string.Empty;
+    [Parameter] public string TextoBoton { get; set; } = string.Empty;
+    /// <summary>primary | success | danger | warning | info</summary>
+    [Parameter] public string ColorBoton { get; set; } = "primary";
+    /// <summary>Ruta a imagen pequeña (emoji, trofeo, regalo). Ej: assets/images/apps/party-popper.png</summary>
+    [Parameter] public string IconoEmoji { get; set; } = string.Empty;
+    /// <summary>Imagen grande decorativa derecha. Ej: assets/images/apps/gift-box-3.png</summary>
+    [Parameter] public string ImagenDecorativa { get; set; } = string.Empty;
+    [Parameter] public EventCallback OnAccion { get; set; }
+}

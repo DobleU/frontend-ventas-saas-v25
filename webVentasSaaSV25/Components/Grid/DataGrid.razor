@@ -1,5 +1,613 @@
-﻿<h3>DataGrid</h3>
+﻿@* Components/Grid/DataGrid.razor — VentasSaaSDU
+   Grid universal para catálogos y listados.
+   Soporta dos variantes:
+     - ConImagen=false (default): tabla de datos textuales
+     - ConImagen=true: primera columna con thumbnail + título + subtítulo
+   Incluye: búsqueda, exportar, importar, nuevo, paginación, status badge, acciones ⋯
+*@
+@typeparam TItem
+@inject IJSRuntime JS
+
+<!-- ── TOOLBAR ───────────────────────────────────────────────────────────── -->
+<div class="row g-3 align-items-center mb-3">
+
+    @* Buscador *@
+    <div class="col-12 col-sm-auto flex-grow-1">
+        <div class="position-relative">
+            <input class="form-control px-5 search-input"
+                   type="search"
+                   placeholder="@(string.IsNullOrEmpty(SearchPlaceholder) ? $"Buscar {Titulo}..." : SearchPlaceholder)"
+                   value="@_search"
+                   @oninput="OnSearchInput" />
+            <span class="material-icons-outlined position-absolute ms-3 translate-middle-y start-0 top-50 fs-5 text-secondary">
+                search
+            </span>
+            @if (!string.IsNullOrEmpty(_search))
+            {
+                <span class="material-icons-outlined position-absolute me-3 translate-middle-y end-0 top-50 fs-6 text-secondary cursor-pointer"
+                      @onclick="LimpiarBusqueda">
+                    close
+                </span>
+            }
+        </div>
+    </div>
+
+    @* Filtros extra (dropdowns, switches, etc. inyectados por la página) *@
+    @if (FiltrosExtra != null)
+    {
+        <div class="col-12 col-sm-auto">
+            @FiltrosExtra
+        </div>
+    }
+
+    @* Botones derecha *@
+    <div class="col-12 col-sm-auto">
+        <div class="d-flex align-items-center gap-2">
+
+            @* Importar *@
+            @if (MostrarImportar)
+            {
+                <button class="btn btn-filter px-3 d-flex align-items-center gap-1"
+                        @onclick="AbrirImportar"
+                        title="Importar desde Excel">
+                    <i class="bi bi-box-arrow-in-down"></i>
+                    <span class="d-none d-md-inline">Importar</span>
+                </button>
+            }
+
+            @* Exportar *@
+            @if (MostrarExportar)
+            {
+                <button class="btn btn-filter px-3 d-flex align-items-center gap-1"
+                        @onclick="ExportarExcel"
+                        disabled="@_exportando"
+                        title="Exportar a Excel">
+                    @if (_exportando)
+                    {
+                        <span class="spinner-border spinner-border-sm"></span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-box-arrow-right"></i>
+                    }
+                    <span class="d-none d-md-inline">Exportar</span>
+                </button>
+            }
+
+            @* Nuevo *@
+            @if (MostrarNuevo)
+            {
+                <button class="btn btn-primary px-3 d-flex align-items-center gap-1"
+                        @onclick="OnNuevo">
+                    <i class="bi bi-plus-lg"></i>
+                    <span class="d-none d-md-inline">Nuevo</span>
+                </button>
+            }
+
+        </div>
+    </div>
+
+</div>
+
+<!-- ── TABLA ─────────────────────────────────────────────────────────────── -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="product-table">
+            <div class="table-responsive white-space-nowrap">
+
+                @if (Loading)
+                {
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2 text-secondary">Cargando...</p>
+                    </div>
+                }
+                else if (Items == null || !Items.Any())
+                {
+                    <div class="text-center py-5">
+                        <span class="material-icons-outlined fs-1 text-secondary">inbox</span>
+                        <p class="mt-2 text-secondary">No hay registros que mostrar</p>
+                        @if (MostrarNuevo)
+                        {
+                            <button class="btn btn-primary mt-1" @onclick="OnNuevo">
+                                <i class="bi bi-plus-lg me-1"></i>Crear primero
+                            </button>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                @* Columna imagen — solo si ConImagen=true *@
+                                @if (ConImagen)
+                                {
+                                    <th style="width:90px"></th>
+                                }
+
+                                @* Columnas definidas por el padre *@
+                                @HeaderRow
+
+                                @* Columna status — solo si MostrarStatus=true *@
+                                @if (MostrarStatus)
+                                {
+                                    <th>Estado</th>
+                                }
+
+                                @* Columna acciones — siempre *@
+                                <th style="width:60px" class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Items)
+                            {
+                                <tr>
+                                    @* Thumbnail + título si ConImagen *@
+                                    @if (ConImagen)
+                                    {
+                                        <td>
+                                            <div class="product-box">
+                                                @if (ImagenUrl != null)
+                                                {
+                                                    <img src="@ImagenUrl(item)"
+                                                         class="rounded-3 object-fit-cover"
+                                                         style="width:60px;height:60px;"
+                                                         alt="" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="rounded-3 bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center"
+                                                         style="width:60px;height:60px;">
+                                                        <span class="material-icons-outlined text-secondary">image</span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </td>
+                                    }
+
+                                    @* Columnas del padre *@
+                                    @RowTemplate(item)
+
+                                    @* Status badge *@
+                                    @if (MostrarStatus && StatusValue != null)
+                                    {
+                                        <td>
+                                            @{
+                                                var (texto, css) = StatusValue(item);
+                                            }
+                                            <span class="lable-table @css font-text2 fw-bold px-2 py-1 rounded border">
+                                                @texto
+                                            </span>
+                                        </td>
+                                    }
+
+                                    @* Acciones ⋯ *@
+                                    <td class="text-center">
+                                        <div class="dropdown grid-action-dropdown">
+                                            <button class="btn btn-sm btn-filter dropdown-toggle dropdown-toggle-nocaret px-2"
+                                                    type="button"
+                                                    onclick="return GridMenu.toggle(this, event)">
+                                                <i class="bi bi-three-dots"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end grid-action-menu">
+                                                @if (AccionesExtra != null)
+                                                {
+                                                    @AccionesExtra(item)
+                                                }
+                                                else
+                                                {
+                                                    <li>
+                                                        <a class="dropdown-item d-flex align-items-center gap-2"
+                                                           href="javascript:;" @onclick="() => OnEditar.InvokeAsync(item)">
+                                                            <span class="material-icons-outlined fs-6">edit</span>
+                                                            Editar
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item d-flex align-items-center gap-2 text-danger"
+                                                           href="javascript:;" @onclick="() => OnEliminar.InvokeAsync(item)">
+                                                            <span class="material-icons-outlined fs-6">delete</span>
+                                                            Eliminar
+                                                        </a>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+
+            </div>
+        </div>
+    </div>
+
+    @* ── PAGINACIÓN ── *@
+    @if (!Loading && TotalRecords > 0)
+    {
+        <div class="card-footer d-flex align-items-center justify-content-between flex-wrap gap-3 py-2 px-3">
+
+            @* Izquierda: info + selector de registros *@
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <span class="text-secondary font-text1 text-nowrap">
+                    Mostrando @(((Page - 1) * _pageSize) + 1)–@(Math.Min(Page * _pageSize, TotalRecords))
+                    de @TotalRecords registros
+                </span>
+                <div class="d-flex align-items-center gap-2">
+                    <label class="text-secondary font-text1 text-nowrap mb-0">Filas:</label>
+                    <select class="form-select form-select-sm page-size-select"
+                            value="@_pageSize"
+                            @onchange="OnPageSizeChanged">
+                        @foreach (var opt in _pageSizeOpciones)
+                        {
+                            <option value="@opt" selected="@(_pageSize == opt)">@opt</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            @* Derecha: paginación con «» *@
+            <nav aria-label="Paginación">
+                <ul class="pagination pagination-sm mb-0">
+
+                    @* « Primera *@
+                    <li class="page-item @(Page <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="javascript:;" @onclick="() => CambiarPagina(1)"
+                           aria-label="Primera">
+                            <span aria-hidden="true">«</span>
+                        </a>
+                    </li>
+
+                    @* ‹ Anterior *@
+                    <li class="page-item @(Page <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="javascript:;" @onclick="() => CambiarPagina(Page - 1)"
+                           aria-label="Anterior">
+                            <span aria-hidden="true">‹</span>
+                        </a>
+                    </li>
+
+                    @* Páginas numeradas *@
+                    @for (var p = PaginaInicio; p <= PaginaFin; p++)
+                    {
+                        var pg = p;
+                        <li class="page-item @(pg == Page ? "active" : "")">
+                            <a class="page-link" href="javascript:;" @onclick="() => CambiarPagina(pg)">@pg</a>
+                        </li>
+                    }
+
+                    @* › Siguiente *@
+                    <li class="page-item @(Page >= TotalPaginas ? "disabled" : "")">
+                        <a class="page-link" href="javascript:;" @onclick="() => CambiarPagina(Page + 1)"
+                           aria-label="Siguiente">
+                            <span aria-hidden="true">›</span>
+                        </a>
+                    </li>
+
+                    @* » Última *@
+                    <li class="page-item @(Page >= TotalPaginas ? "disabled" : "")">
+                        <a class="page-link" href="javascript:;" @onclick="() => CambiarPagina(TotalPaginas)"
+                           aria-label="Última">
+                            <span aria-hidden="true">»</span>
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
+
+        </div>
+    }
+
+</div>
+
+@* ── OFFCANVAS IMPORTAR ─────────────────────────────────────────────────── *@
+@if (MostrarImportar)
+{
+    <div class="offcanvas offcanvas-end @(_importarAbierto ? "show" : "")"
+         tabindex="-1"
+         style="width:420px; @(_importarAbierto ? "visibility:visible;" : "visibility:hidden;")">
+        <div class="offcanvas-header border-bottom">
+            <h5 class="offcanvas-title d-flex align-items-center gap-2">
+                <span class="material-icons-outlined text-primary">upload_file</span>
+                Importar @Titulo
+            </h5>
+            <button type="button" class="btn-close" @onclick="() => _importarAbierto = false"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column gap-4">
+
+            @* Paso 1 *@
+            <div class="d-flex gap-3">
+                <div class="wh-42 rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0">
+                    <span class="material-icons-outlined">download</span>
+                </div>
+                <div>
+                    <h6 class="mb-1">Paso 1 — Descargar plantilla</h6>
+                    <p class="text-secondary font-text1 mb-2">
+                        Descarga la plantilla Excel con las columnas requeridas y llénala con tus datos.
+                    </p>
+                    <button class="btn btn-filter btn-sm d-flex align-items-center gap-1"
+                            @onclick="DescargarPlantilla">
+                        <i class="bi bi-file-earmark-excel text-success"></i>
+                        Descargar plantilla.xlsx
+                    </button>
+                </div>
+            </div>
+
+            <hr class="my-0" />
+
+            @* Paso 2 *@
+            <div class="d-flex gap-3">
+                <div class="wh-42 rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center flex-shrink-0">
+                    <span class="material-icons-outlined">upload</span>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">Paso 2 — Subir archivo</h6>
+                    <p class="text-secondary font-text1 mb-2">
+                        Selecciona el archivo Excel con tus datos.
+                    </p>
+                    <InputFile class="form-control form-control-sm"
+                               accept=".xlsx,.xls,.csv"
+                               OnChange="OnArchivoSeleccionado" />
+                    @if (_archivoNombre != null)
+                    {
+                        <div class="mt-2 d-flex align-items-center gap-1 text-success font-text1">
+                            <i class="bi bi-check-circle-fill"></i>
+                            @_archivoNombre
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <hr class="my-0" />
+
+            @* Paso 3 — Vista previa *@
+            @if (_previstaImportar != null)
+            {
+                <div>
+                    <h6 class="mb-2 d-flex align-items-center gap-1">
+                        <span class="material-icons-outlined fs-6 text-primary">preview</span>
+                        Vista previa (primeras 5 filas)
+                    </h6>
+                    @_previstaImportar
+                </div>
+                <hr class="my-0" />
+            }
+
+            @* Resultado *@
+            @if (_resultadoImportar != null)
+            {
+                <div class="alert @(_erroresImportar > 0 ? "alert-warning" : "alert-success") d-flex gap-2 align-items-start">
+                    <span class="material-icons-outlined">
+                        @(_erroresImportar > 0 ? "warning" : "check_circle")
+                    </span>
+                    <div class="font-text1">
+                        <strong>@_resultadoImportar</strong>
+                        @if (_erroresImportar > 0)
+                        {
+                            <p class="mb-0 mt-1">Revisa los errores y corrige el archivo.</p>
+                        }
+                    </div>
+                </div>
+            }
+
+            @* Botón confirmar *@
+            <div class="mt-auto">
+                <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2"
+                        disabled="@(_archivoNombre == null || _importando)"
+                        @onclick="ConfirmarImportar">
+                    @if (_importando)
+                    {
+                        <span class="spinner-border spinner-border-sm"></span>
+                        <span>Importando...</span>
+                    }
+                    else
+                    {
+                        <span class="material-icons-outlined fs-6">upload_file</span>
+                        <span>Confirmar importación</span>
+                    }
+                </button>
+            </div>
+
+        </div>
+    </div>
+    @if (_importarAbierto)
+    {
+        <div class="offcanvas-backdrop fade show" @onclick="() => _importarAbierto = false"></div>
+    }
+}
 
 @code {
 
+    // ── Parámetros obligatorios ──────────────────────────────────────────
+
+    [Parameter] public string Titulo { get; set; } = "Registros";
+    [Parameter] public string Modulo { get; set; } = "";
+    [Parameter] public IEnumerable<TItem>? Items { get; set; }
+    [Parameter] public int TotalRecords { get; set; }
+    [Parameter] public int Page { get; set; } = 1;
+    [Parameter] public int PageSize { get; set; } = 20;
+    [Parameter] public bool Loading { get; set; }
+
+    // ── Slots de contenido ───────────────────────────────────────────────
+
+    [Parameter] public RenderFragment? HeaderRow { get; set; }
+    [Parameter] public RenderFragment<TItem> RowTemplate { get; set; } = null!;
+    [Parameter] public RenderFragment<TItem>? AccionesExtra { get; set; }
+    /// <summary>Slot para filtros adicionales (selects, switches) entre el buscador y los botones.</summary>
+    [Parameter] public RenderFragment? FiltrosExtra { get; set; }
+
+    // ── Opciones de variante ─────────────────────────────────────────────
+
+    /// <summary>Texto personalizado para el placeholder del buscador.</summary>
+    [Parameter] public string SearchPlaceholder { get; set; } = string.Empty;
+
+    /// <summary>Activar columna de imagen (para Productos)</summary>
+    [Parameter] public bool ConImagen { get; set; } = false;
+
+    /// <summary>Función que devuelve la URL de imagen dado un item</summary>
+    [Parameter] public Func<TItem, string>? ImagenUrl { get; set; }
+
+    /// <summary>Activar columna Status</summary>
+    [Parameter] public bool MostrarStatus { get; set; } = false;
+
+    /// <summary>Función que devuelve (texto, clases CSS) del status</summary>
+    [Parameter] public Func<TItem, (string texto, string css)>? StatusValue { get; set; }
+
+    // ── Visibilidad de botones ────────────────────────────────────────────
+
+    [Parameter] public bool MostrarNuevo { get; set; } = true;
+    [Parameter] public bool MostrarExportar { get; set; } = true;
+    [Parameter] public bool MostrarImportar { get; set; } = true;
+
+    // ── Callbacks ─────────────────────────────────────────────────────────
+
+    [Parameter] public EventCallback OnNuevo { get; set; }
+    [Parameter] public EventCallback<TItem> OnEditar { get; set; }
+    [Parameter] public EventCallback<TItem> OnEliminar { get; set; }
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+    [Parameter] public EventCallback<string?> OnSearch { get; set; }
+    [Parameter] public EventCallback OnExportar { get; set; }
+    [Parameter] public EventCallback<int> OnPageSizeChange { get; set; }
+    [Parameter] public EventCallback OnDescargarPlantilla { get; set; }
+    [Parameter] public EventCallback<IBrowserFile> OnImportar { get; set; }
+
+    // ── Estado interno ────────────────────────────────────────────────────
+
+    private string? _search;
+    private bool _exportando;
+    private bool _importarAbierto;
+    private bool _importando;
+    private string? _archivoNombre;
+    private IBrowserFile? _archivo;
+    private RenderFragment? _previstaImportar;
+    private string? _resultadoImportar;
+    private int _erroresImportar;
+    private System.Timers.Timer? _debounce;
+
+    // PageSize interno — inicializado desde el parámetro
+    private int _pageSize;
+    private readonly int[] _pageSizeOpciones = [10, 20, 30, 50, 100];
+
+    protected override void OnParametersSet()
+    {
+        if (_pageSize == 0) _pageSize = PageSize;
+    }
+
+    // ── Propiedades de paginación (evitan @{ } dentro de @if en Razor) ────
+
+    private int TotalPaginas => _pageSize > 0
+        ? (int)Math.Ceiling((double)TotalRecords / _pageSize)
+        : 1;
+
+    private int PaginaInicio => Math.Max(1, Page - 2);
+
+    private int PaginaFin => Math.Min(TotalPaginas, PaginaInicio + 4);
+
+    // ── Helpers de status CSS ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Helper estático para construir el CSS de status badge del template.
+    /// Uso: StatusValue="item => DataGrid&lt;T&gt;.StatusActivo(item.IsActive)"
+    /// </summary>
+    public static (string texto, string css) StatusActivo(bool activo) => activo
+        ? ("Activo", "bg-success-subtle text-success border-success-subtle")
+        : ("Inactivo", "bg-danger-subtle text-danger border-danger-subtle");
+
+    public static (string texto, string css) StatusCustom(string texto, string color) => color switch
+    {
+        "success" => (texto, "bg-success-subtle text-success border-success-subtle"),
+        "danger" => (texto, "bg-danger-subtle text-danger border-danger-subtle"),
+        "warning" => (texto, "bg-warning-subtle text-warning border-warning-subtle"),
+        "info" => (texto, "bg-info-subtle text-info border-info-subtle"),
+        _ => (texto, "bg-secondary-subtle text-secondary border-secondary-subtle")
+    };
+
+    // ── Búsqueda con debounce 350ms ───────────────────────────────────────
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString();
+        _debounce?.Stop();
+        _debounce?.Dispose();
+        _debounce = new System.Timers.Timer(350);
+        _debounce.Elapsed += async (_, _) =>
+        {
+            _debounce?.Dispose();
+            await InvokeAsync(async () =>
+            {
+                await OnSearch.InvokeAsync(_search);
+            });
+        };
+        _debounce.AutoReset = false;
+        _debounce.Start();
+    }
+
+    private async Task LimpiarBusqueda()
+    {
+        _search = null;
+        await OnSearch.InvokeAsync(null);
+    }
+
+    private async Task CambiarPagina(int pagina)
+    {
+        if (pagina < 1) return;
+        await OnPageChanged.InvokeAsync(pagina);
+    }
+
+    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var size))
+        {
+            _pageSize = size;
+            await OnPageSizeChange.InvokeAsync(size);
+            await OnPageChanged.InvokeAsync(1);
+        }
+    }
+
+    // ── Exportar ─────────────────────────────────────────────────────────
+
+    private async Task ExportarExcel()
+    {
+        _exportando = true;
+        StateHasChanged();
+        await OnExportar.InvokeAsync();
+        _exportando = false;
+        StateHasChanged();
+    }
+
+    // ── Importar ──────────────────────────────────────────────────────────
+
+    private void AbrirImportar()
+    {
+        _importarAbierto = true;
+        _archivoNombre = null;
+        _archivo = null;
+        _resultadoImportar = null;
+        _erroresImportar = 0;
+    }
+
+    private void OnArchivoSeleccionado(InputFileChangeEventArgs e)
+    {
+        _archivo = e.File;
+        _archivoNombre = e.File.Name;
+        _resultadoImportar = null;
+    }
+
+    private async Task DescargarPlantilla() =>
+        await OnDescargarPlantilla.InvokeAsync();
+
+    private async Task ConfirmarImportar()
+    {
+        if (_archivo == null) return;
+        _importando = true;
+        StateHasChanged();
+        await OnImportar.InvokeAsync(_archivo);
+        _importando = false;
+        _importarAbierto = false;
+        StateHasChanged();
+    }
+
+    public void Dispose() => _debounce?.Dispose();
 }

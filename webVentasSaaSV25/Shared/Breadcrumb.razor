@@ -1,5 +1,41 @@
-﻿<h3>Breadcrumb</h3>
+﻿@* ============================================================
+   [SUSTITUIR COMPLETO]
+   Ruta: WEB/Shared/Breadcrumb.razor
+   
+   Uso: <Breadcrumb Titulo="Zonas" Items="@(new[]{ ("Configuración",""), ("Zonas","") })" />
+   - Tuplas (Nombre, Url). Url vacía = ítem activo (sin link).
+   ============================================================ *@
+
+<div class="page-breadcrumb d-flex align-items-center mb-3">
+    <div class="breadcrumb-title pe-3 fw-medium">@Titulo</div>
+    @if (Items is not null && Items.Length > 0)
+    {
+        <div class="ps-3">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                    <li class="breadcrumb-item">
+                        <a href="/dashboard">
+                            <i class="material-icons-outlined" style="font-size:16px;vertical-align:middle;">home</i>
+                        </a>
+                    </li>
+                    @foreach (var (nombre, url) in Items)
+                    {
+                        @if (string.IsNullOrWhiteSpace(url))
+                        {
+                            <li class="breadcrumb-item active" aria-current="page">@nombre</li>
+                        }
+                        else
+                        {
+                            <li class="breadcrumb-item"><a href="@url">@nombre</a></li>
+                        }
+                    }
+                </ol>
+            </nav>
+        </div>
+    }
+</div>
 
 @code {
-
+    [Parameter] public string Titulo { get; set; } = "";
+    [Parameter] public (string Nombre, string Url)[]? Items { get; set; }
 }

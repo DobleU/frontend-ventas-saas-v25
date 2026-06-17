@@ -1,5 +1,116 @@
-﻿<h3>ConfirmDialog</h3>
+﻿@* Shared/ConfirmDialog.razor — VentasSaaSDU
+   Modal de confirmación para acciones destructivas (eliminar, cancelar, etc.)
+   Uso más común en los DataGrid al eliminar un registro.
+
+   <ConfirmDialog @ref="_confirm"
+       Mensaje="¿Eliminar esta unidad? Esta acción no se puede deshacer."
+       OnConfirmado="EliminarConfirmado" />
+
+   // Abrir:
+   _confirm.Abrir("¿Eliminar al cliente Juan Pérez?");
+*@
+
+<AppModal @ref="_modal"
+          Titulo="@Titulo"
+          Icono="@Icono"
+          GradienteHeader="@GradienteHeader"
+          CerrarAlFondo="false">
+
+    <Cuerpo>
+        <div class="d-flex align-items-start gap-3">
+            <div class="wh-42 rounded-circle bg-@_colorIcono bg-opacity-10 text-@_colorIcono d-flex align-items-center justify-content-center flex-shrink-0">
+                <span class="material-icons-outlined">@Icono</span>
+            </div>
+            <div>
+                <p class="mb-0">@_mensaje</p>
+                @if (!string.IsNullOrEmpty(SubMensaje))
+                {
+                    <p class="mb-0 mt-1 text-secondary font-text1">@SubMensaje</p>
+                }
+            </div>
+        </div>
+    </Cuerpo>
+
+    <Footer>
+        <button class="btn btn-light" @onclick="Cancelar">
+            <i class="material-icons-outlined me-1" style="font-size:16px;vertical-align:middle;">close</i>
+            Cancelar
+        </button>
+        <button class="btn btn-grd-@TipoConfirmar border-0 d-flex align-items-center gap-1"
+                @onclick="Confirmar"
+                disabled="@_procesando">
+            @if (_procesando)
+            {
+                <span class="spinner-border spinner-border-sm"></span>
+            }
+            else
+            {
+                <i class="material-icons-outlined" style="font-size:16px;">@IconoConfirmar</i>
+            }
+            @TextoConfirmar
+        </button>
+    </Footer>
+
+</AppModal>
 
 @code {
 
+    [Parameter] public string Titulo { get; set; } = "Confirmar acción";
+    [Parameter] public string Icono { get; set; } = "warning_amber";
+    [Parameter] public string GradienteHeader { get; set; } = "danger";
+    [Parameter] public string SubMensaje { get; set; } = string.Empty;
+    [Parameter] public string TextoConfirmar { get; set; } = "Eliminar";
+    [Parameter] public string IconoConfirmar { get; set; } = "delete";
+    /// <summary>danger | warning | success | info</summary>
+    [Parameter] public string TipoConfirmar { get; set; } = "danger";
+    [Parameter] public EventCallback OnConfirmado { get; set; }
+
+    private AppModal _modal = null!;
+    private string _mensaje = string.Empty;
+    private bool _procesando = false;
+    private TaskCompletionSource<bool>? _tcs;
+
+    private string _colorIcono => TipoConfirmar switch
+    {
+        "danger" => "danger",
+        "warning" => "warning",
+        "success" => "success",
+        _ => "primary"
+    };
+
+    public void Abrir(string mensaje = "")
+    {
+        _mensaje = string.IsNullOrEmpty(mensaje) ? "¿Estás seguro de realizar esta acción?" : mensaje;
+        _procesando = false;
+        _modal.Abrir();
+    }
+
+    /// <summary>
+    /// Versión async que retorna true/false.
+    /// Uso: if (!await _confirm.ConfirmarEliminarAsync("Juan Pérez")) return;
+    /// </summary>
+    public Task<bool> ConfirmarEliminarAsync(string nombreItem)
+    {
+        _tcs = new TaskCompletionSource<bool>();
+        Abrir($"¿Estás seguro de que deseas eliminar \"{nombreItem}\"? Esta acción no se puede deshacer.");
+        return _tcs.Task;
+    }
+
+    private void Cancelar()
+    {
+        _tcs?.TrySetResult(false);
+        _tcs = null;
+        _modal.Cerrar();
+    }
+
+    private async Task Confirmar()
+    {
+        _procesando = true;
+        StateHasChanged();
+        await OnConfirmado.InvokeAsync();
+        _procesando = false;
+        _tcs?.TrySetResult(true);
+        _tcs = null;
+        _modal.Cerrar();
+    }
 }

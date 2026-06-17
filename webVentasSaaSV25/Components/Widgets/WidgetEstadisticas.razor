@@ -1,0 +1,65 @@
+﻿@* Components/Widgets/WidgetEstadisticas.razor — VentasSaaSDU
+   Widget con chart principal + porcentaje grande + tendencia + label + barras de métricas al pie.
+   Uso: Visitor Growth, Sales Growth, tendencias con desglose de sub-métricas.
+
+   <WidgetEstadisticas Titulo="Crecimiento de Ventas"
+                       IdChart="chart-crecimiento"
+                       PorcentajeGrande="36.7%"
+                       Tendencia="34.5%" TendenciaPositiva="true"
+                       Label="Crecimiento de visitas">
+       <Barras>
+           <WidgetBarraMetrica Nombre="Conversiones" Valor="2,589" Porcentaje="65" ColorBarra="primary" />
+           <WidgetBarraMetrica Nombre="Ventas"        Valor="6,748" Porcentaje="55" ColorBarra="warning" />
+           <WidgetBarraMetrica Nombre="Clientes"      Valor="9,842" Porcentaje="45" ColorBarra="info"    />
+       </Barras>
+   </WidgetEstadisticas>
+*@
+
+<div class="card w-100 rounded-4 h-100">
+    <div class="card-body">
+
+        @* Chart principal *@
+        @if (!string.IsNullOrEmpty(IdChart))
+        {
+            <div id="@IdChart" style="min-height:@AlturaChart;"></div>
+        }
+        @ChartSlot
+
+        @* Porcentaje + tendencia *@
+        <div class="d-flex align-items-center gap-3 mt-4">
+            <h1 class="mb-0">@PorcentajeGrande</h1>
+            <div class="d-flex align-items-center align-self-end gap-2">
+                <span class="material-icons-outlined @(TendenciaPositiva ? "text-success" : "text-danger")">
+                    @(TendenciaPositiva ? "trending_up" : "trending_down")
+                </span>
+                <p class="mb-0 @(TendenciaPositiva ? "text-success" : "text-danger")">@Tendencia</p>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <p class="mb-4 text-secondary font-text1">@Label</p>
+        }
+
+        @* Barras de sub-métricas *@
+        @if (Barras != null)
+        {
+            <div class="d-flex flex-column gap-3">
+                @Barras
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string IdChart { get; set; } = string.Empty;
+    [Parameter] public string AlturaChart { get; set; } = "210px";
+    [Parameter] public string PorcentajeGrande { get; set; } = "0%";
+    [Parameter] public string Tendencia { get; set; } = string.Empty;
+    [Parameter] public bool TendenciaPositiva { get; set; } = true;
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChartSlot { get; set; }
+    [Parameter] public RenderFragment? Barras { get; set; }
+}

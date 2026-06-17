@@ -1,0 +1,77 @@
+﻿@* Components/Widgets/WidgetRadial.razor — VentasSaaSDU
+   Widget con gráfica radial (donut/gauge) ApexCharts + valor + etiqueta + nota al pie.
+   Fila superior, col pequeño. Slot para chart ApexCharts tipo radialBar.
+
+   <WidgetRadial Valor="42.5K" Etiqueta="Usuarios activos"
+                 IdChart="chart-radial-usuarios"
+                 Nota="24K usuarios más que el mes pasado" />
+
+   La configuración del chart (color, porcentaje) se hace en JS después del render.
+*@
+
+<div class="card w-100 rounded-4 h-100">
+    <div class="card-body">
+
+        @* Header: valor + etiqueta + menú *@
+        <div class="d-flex align-items-start justify-content-between mb-1">
+            <div>
+                <h5 class="mb-0">@Valor</h5>
+                <p class="mb-0 text-secondary font-text1">@Etiqueta</p>
+            </div>
+            <div class="dropdown">
+                <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle"
+                   onclick="GridMenu.toggle(this)">
+                    <span class="material-icons-outlined fs-5">more_vert</span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end grid-action-menu">
+                    @if (Opciones != null)
+                    {
+                        @Opciones
+                    }
+                    else
+                    {
+                        <li><a class="dropdown-item" href="javascript:;">Ver detalle</a></li>
+                        <li><a class="dropdown-item" href="javascript:;">Exportar</a></li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        @* Chart radial *@
+        <div class="chart-container2">
+            @if (!string.IsNullOrEmpty(IdChart))
+            {
+                <div id="@IdChart" style="min-height:@AlturaChart;"></div>
+            }
+            @ChartSlot
+        </div>
+
+        @* Nota al pie *@
+        @if (!string.IsNullOrEmpty(Nota))
+        {
+            <div class="text-center">
+                <p class="mb-0 font-12">
+                    @if (!string.IsNullOrEmpty(NotaDestacada))
+                    {
+                        <span class="text-@ColorNota me-1">@NotaDestacada</span>
+                    }
+                    @Nota
+                </p>
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Valor { get; set; } = "0";
+    [Parameter] public string Etiqueta { get; set; } = string.Empty;
+    [Parameter] public string IdChart { get; set; } = string.Empty;
+    [Parameter] public string AlturaChart { get; set; } = "150px";
+    [Parameter] public string Nota { get; set; } = string.Empty;
+    [Parameter] public string NotaDestacada { get; set; } = string.Empty;
+    /// <summary>success | danger | warning | info | primary</summary>
+    [Parameter] public string ColorNota { get; set; } = "success";
+    [Parameter] public RenderFragment? ChartSlot { get; set; }
+    [Parameter] public RenderFragment? Opciones { get; set; }
+}

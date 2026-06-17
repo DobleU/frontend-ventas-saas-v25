@@ -1,0 +1,142 @@
+@* Pages/Catalogos/Impuestos/Index.razor *@
+@page "/catalogos/impuestos"
+@using webVentasSaaSV25.Services.Catalogos
+@inject ImpuestoService Svc
+
+<PageTitle>Impuestos — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Impuestos" Items="@(new[]{ ("Catálogos","/catalogos"), ("Impuestos","") })" />
+<AlertMessage @ref="_alerta" />
+
+<DataGrid TItem="ImpuestoResponse" Titulo="Impuestos" Modulo="catalogos"
+          Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
+          Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
+          OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo">
+    <HeaderRow>
+        <th>Nombre</th>
+        <th style="width:110px" class="text-center">Tasa %</th>
+        <th style="width:120px" class="text-center">Tipo</th>
+        <th style="width:110px" class="text-center">Estado</th>
+        <th style="width:90px"  class="text-center">Acciones</th>
+    </HeaderRow>
+    <RowTemplate>
+        <td class="fw-medium">@context.Nombre</td>
+        <td class="text-center fw-semibold">@((context.Tasa * 100).ToString("N2"))%</td>
+        <td class="text-center">
+            <StatusBadge Texto="@(context.EsRetencion?"Retención":"Traslado")"
+                         Tipo="@(context.EsRetencion?"danger":"success")" />
+        </td>
+        <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
+        <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2" @onclick="()=>AbrirEditar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger py-1 px-2" @onclick="()=>Eliminar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">delete</i>
+            </button>
+        </td>
+    </RowTemplate>
+</DataGrid>
+
+<FormOffcanvas @ref="_panel" Titulo="@(_edit?"Editar Impuesto":"Nuevo Impuesto")"
+               Icono="@(_edit?"edit":"add_circle")" OnGuardar="Guardar">
+    <Body>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Nombre <span class="text-danger">*</span></label>
+            <input class="form-control @(_eNombre?"is-invalid":"")" maxlength="100"
+                   @bind="_nombre" @oninput="()=>_eNombre=false" placeholder="Ej. IVA 16%" />
+            @if (_eNombre) { <div class="invalid-feedback">Requerido.</div> }
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Tasa % <span class="text-danger">*</span></label>
+            <div class="input-group">
+                <input type="number" class="form-control @(_eTasa?"is-invalid":"")"
+                       min="0" max="100" step="0.000001"
+                       value="@(_tasaPct)" @oninput="OnTasaInput" placeholder="16" />
+                <span class="input-group-text">%</span>
+            </div>
+            @if (_eTasa) { <div class="text-danger small mt-1">Ingrese una tasa válida (0–100).</div> }
+            <div class="form-text">El valor se almacena como decimal: 16% → 0.160000</div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Tipo</label>
+            <div class="d-flex gap-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" id="rdTraslado"
+                           checked="@(!_esRetencion)" @onchange="()=>_esRetencion=false" />
+                    <label class="form-check-label" for="rdTraslado">Traslado (ej. IVA)</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" id="rdRetencion"
+                           checked="@_esRetencion" @onchange="()=>_esRetencion=true" />
+                    <label class="form-check-label" for="rdRetencion">Retención (ej. ISR)</label>
+                </div>
+            </div>
+        </div>
+        @if (_edit)
+        {
+            <div class="mb-3">
+                <label class="form-label fw-medium">Estado</label>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_isActive" />
+                    <label class="form-check-label">@(_isActive?"Activo":"Inactivo")</label>
+                </div>
+            </div>
+        }
+    </Body>
+</FormOffcanvas>
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    PagedResult<ImpuestoResponse>? _paged; FiltroImpuestoRequest _f=new(); bool _loading;
+    AlertMessage? _alerta; FormOffcanvas? _panel; ConfirmDialog? _confirm;
+    bool _edit; int _id; string _nombre=""; decimal _tasaDecimal=0.16m;
+    string _tasaPct = "16"; bool _esRetencion; bool _isActive=true; bool _eNombre,_eTasa;
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+    async Task Cargar() { _loading=true; var(d,e)=await Svc.GetPagedAsync(_f); _loading=false; if(e!=null)_alerta?.MostrarError(e); else _paged=d; }
+    async Task OnPage(int p)       { _f.Page=p; await Cargar(); }
+    async Task OnSearch(string? s) { _f.Search=s; _f.Page=1; await Cargar(); }
+
+    void OnTasaInput(ChangeEventArgs e)
+    {
+        _tasaPct = e.Value?.ToString() ?? "0";
+        if (decimal.TryParse(_tasaPct, System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var v))
+        { _tasaDecimal = v / 100m; _eTasa = false; }
+        else _eTasa = true;
+    }
+
+    void AbrirNuevo()  { _edit=false; _nombre=""; _tasaPct="16"; _tasaDecimal=0.16m; _esRetencion=false; _eNombre=_eTasa=false; _panel?.Abrir(); }
+    void AbrirEditar(ImpuestoResponse x)
+    {
+        _edit=true; _id=x.IdImpuesto; _nombre=x.Nombre;
+        _tasaDecimal=x.Tasa; _tasaPct=(x.Tasa*100).ToString("G");
+        _esRetencion=x.EsRetencion; _isActive=x.IsActive; _eNombre=_eTasa=false; _panel?.Abrir();
+    }
+
+    async Task Guardar()
+    {
+        _eNombre=string.IsNullOrWhiteSpace(_nombre);
+        _eTasa=!decimal.TryParse(_tasaPct,System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture,out _);
+        if(_eNombre||_eTasa){_panel?.MostrarError("Corrija los campos marcados.");return;}
+        if(_edit)
+        {
+            var(_,e)=await Svc.ActualizarAsync(_id,new ActualizarImpuestoRequest{IdImpuesto=_id,Nombre=_nombre,Tasa=_tasaDecimal,EsRetencion=_esRetencion,IsActive=_isActive});
+            if(e!=null){_panel?.MostrarError(e);return;}
+        }
+        else
+        {
+            var(_,e)=await Svc.CrearAsync(new CrearImpuestoRequest{Nombre=_nombre,Tasa=_tasaDecimal,EsRetencion=_esRetencion});
+            if(e!=null){_panel?.MostrarError(e);return;}
+        }
+        _panel?.MostrarExitoYCerrar(_edit?"Impuesto actualizado.":"Impuesto creado."); await Cargar();
+    }
+
+    async Task Eliminar(ImpuestoResponse x)
+    {
+        if(!await _confirm!.ConfirmarEliminarAsync("impuesto"))return;
+        var(_,e)=await Svc.EliminarAsync(x.IdImpuesto);
+        if(e!=null)_alerta?.MostrarError(e); else{_alerta?.MostrarExito("Impuesto eliminado.");await Cargar();}
+    }
+}

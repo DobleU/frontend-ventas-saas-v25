@@ -1,0 +1,67 @@
+﻿@* Components/Cards/AppCardImgOverlay.razor — VentasSaaSDU
+   Card con imagen de fondo y contenido superpuesto del template Maxton.
+   Uso típico: banners, Monitor, portadas de sección.
+
+   <AppCardImgOverlay
+       Imagen="assets/images/gallery/15.png"
+       Categoria="TRAVEL"
+       Titulo="Various versions evolved"
+       Texto="It was popularised in the 1960s..."
+       TextoBoton="Leer más"
+       Redondeada="true"
+       OnAccion="..." />
+*@
+
+<div class="card @(Redondeada ? "rounded-4" : "") @Clase" style="@Estilo">
+
+    <img src="@Imagen" class="card-img @(Redondeada ? "rounded-4" : "")" alt="@AltImagen" />
+
+    <div class="card-img-overlay d-flex flex-column justify-content-start">
+
+        @if (!string.IsNullOrEmpty(Categoria))
+        {
+            <p class="mb-2 text-white text-uppercase font-text1 fw-semibold">@Categoria</p>
+        }
+
+        @if (!string.IsNullOrEmpty(Titulo))
+        {
+            <h3 class="card-title text-white">@Titulo</h3>
+        }
+
+        @if (!string.IsNullOrEmpty(Texto))
+        {
+            <p class="mb-0 text-white">@Texto</p>
+        }
+
+        @ContenidoExtra
+
+    </div>
+
+    @* Botón en la parte inferior *@
+    @if (!string.IsNullOrEmpty(TextoBoton))
+    {
+        <div class="bottom-0 position-absolute m-3">
+            <a href="javascript:;"
+               class="btn text-dark px-3 bg-white d-flex gap-2 align-items-center"
+               @onclick="OnAccion">
+                @TextoBoton
+                <span class="material-icons-outlined">east</span>
+            </a>
+        </div>
+    }
+
+</div>
+
+@code {
+    [Parameter] public string Imagen { get; set; } = string.Empty;
+    [Parameter] public string AltImagen { get; set; } = string.Empty;
+    [Parameter] public string Categoria { get; set; } = string.Empty;
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string Texto { get; set; } = string.Empty;
+    [Parameter] public string TextoBoton { get; set; } = string.Empty;
+    [Parameter] public bool Redondeada { get; set; } = false;
+    [Parameter] public string Clase { get; set; } = string.Empty;
+    [Parameter] public string Estilo { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ContenidoExtra { get; set; }
+    [Parameter] public EventCallback OnAccion { get; set; }
+}

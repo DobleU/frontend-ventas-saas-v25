@@ -1,0 +1,38 @@
+@page "/almacen/almacenes/{IdAlmacen:int}/ajuste"
+
+<PageTitle>Ajustes directos inventario - VentasSaaSDU</PageTitle>
+
+<Breadcrumb Titulo="Ajustes directos inventario" Items="@(new[]{ ("Almacen","/almacen/almacenes"), ("Ajustes directos","") })" />
+
+<div class="d-flex align-items-center justify-content-center" style="min-height:55vh;">
+    <section class="text-center" style="max-width:560px;">
+        <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning rounded-circle mb-3"
+             style="width:72px;height:72px;">
+            <span class="material-icons-outlined" style="font-size:34px;">tune</span>
+        </div>
+        <h4 class="mb-2">Ajustes directos — Pronto</h4>
+        <p class="text-muted mb-3">
+            Este es un módulo de salida para eventos críticos. Por la naturaleza del ajuste
+            (modifica existencias sin un conteo de respaldo), su activación generará un
+            <strong>aviso directo al dueño</strong> de la empresa.
+        </p>
+        <div class="alert alert-warning text-start" role="alert">
+            <div class="d-flex gap-2">
+                <span class="material-icons-outlined">info</span>
+                <div>
+                    Para corregir inventario, lo recomendado es usar
+                    <a href="@($"/almacen/almacenes/{IdAlmacen}/conteo")">Proceso de inventario</a>,
+                    que deja trazabilidad de faltantes/sobrantes y montos.
+                </div>
+            </div>
+        </div>
+        <a class="btn btn-outline-secondary" href="/almacen/almacenes">
+            <span class="material-icons-outlined align-middle me-1" style="font-size:18px;">arrow_back</span>
+            Volver a almacenes
+        </a>
+    </section>
+</div>
+
+@code {
+    [Parameter] public int IdAlmacen { get; set; }
+}

@@ -1,0 +1,60 @@
+﻿@* Components/Widgets/WidgetItemProgreso.razor — VentasSaaSDU
+   Ítem individual de progreso para WidgetProyectos.
+   Soporta imagen o ícono en contenedor cuadrado redondeado.
+
+   <WidgetItemProgreso Imagen="assets/images/avatars/01.png"
+                       Titulo="Juan Pérez" Subtitulo="Vendedor ruta norte"
+                       Porcentaje="95" ColorBarra="danger" />
+
+   <WidgetItemProgreso Icono="route" ColorIcono="info"
+                       Titulo="Ruta Norte" Subtitulo="12 visitas pendientes"
+                       Porcentaje="60" ColorBarra="info" />
+*@
+
+<div class="d-flex align-items-center gap-4">
+
+    @* Imagen o ícono cuadrado *@
+    <div class="d-flex align-items-center gap-3 flex-grow-1 flex-shrink-0">
+        @if (!string.IsNullOrEmpty(Imagen))
+        {
+            <div class="wh-48 d-flex align-items-center justify-content-center rounded-3 border overflow-hidden flex-shrink-0">
+                <img src="@Imagen" width="40" alt="@Titulo" class="rounded-3" />
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(Icono))
+        {
+            <div class="wh-48 d-flex align-items-center justify-content-center rounded-3 border
+                            bg-@ColorIcono bg-opacity-10 text-@ColorIcono flex-shrink-0">
+                <span class="material-icons-outlined">@Icono</span>
+            </div>
+        }
+
+        <div>
+            <h6 class="mb-0 fw-bold">@Titulo</h6>
+            @if (!string.IsNullOrEmpty(Subtitulo))
+            {
+                <p class="mb-0 text-secondary font-text1">@Subtitulo</p>
+            }
+        </div>
+    </div>
+
+    @* Barra de progreso *@
+    <div class="progress flex-shrink-0" style="width:100px; height:5px;">
+        <div class="progress-bar bg-grd-@ColorBarra" style="width:@Porcentaje%"></div>
+    </div>
+
+    @* Porcentaje *@
+    <p class="mb-0 fs-6 text-nowrap flex-shrink-0">@Porcentaje%</p>
+
+</div>
+
+@code {
+    [Parameter] public string Imagen { get; set; } = string.Empty;
+    [Parameter] public string Icono { get; set; } = string.Empty;
+    [Parameter] public string ColorIcono { get; set; } = "primary";
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string Subtitulo { get; set; } = string.Empty;
+    [Parameter] public int Porcentaje { get; set; } = 0;
+    /// <summary>danger | success | primary | info | warning | voilet | purple | deep-blue</summary>
+    [Parameter] public string ColorBarra { get; set; } = "primary";
+}

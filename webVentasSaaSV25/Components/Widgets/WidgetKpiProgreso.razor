@@ -1,0 +1,66 @@
+﻿@* Components/Widgets/WidgetKpiProgreso.razor — VentasSaaSDU
+   KPI compacto con ícono gradiente (derecha) + valor + label + barra de progreso + badge tendencia.
+   Distinto a WidgetKpiIcono: ícono va a la derecha, barra al centro, badge al pie izquierda.
+   Uso: mensajes pendientes, órdenes activas, alertas, items por procesar.
+
+   <WidgetKpiProgreso Icono="shopping_cart"  GradienteIcono="danger"
+                      Valor="986"  Etiqueta="Mensajes pendientes"
+                      Porcentaje="60"  ColorBarra="danger"
+                      Tendencia="+34.7%"  TendenciaPositiva="true"
+                      TextoPie="del mes anterior" />
+*@
+
+<div class="card rounded-4 w-100 h-100">
+    <div class="card-body">
+
+        @* Valor + ícono *@
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div>
+                <p class="mb-1 text-secondary font-text1">@Etiqueta</p>
+                <h3 class="mb-0">@Valor</h3>
+            </div>
+            <div class="wh-42 d-flex align-items-center justify-content-center rounded-circle bg-grd-@GradienteIcono">
+                <span class="material-icons-outlined fs-5 text-white">@Icono</span>
+            </div>
+        </div>
+
+        @* Barra de progreso *@
+        <div class="progress mb-0" style="height:6px;">
+            <div class="progress-bar bg-grd-@ColorBarra"
+                 style="width:@Porcentaje%"
+                 role="progressbar"
+                 aria-valuenow="@Porcentaje"
+                 aria-valuemin="0" aria-valuemax="100">
+            </div>
+        </div>
+
+        @* Tendencia al pie *@
+        @if (!string.IsNullOrEmpty(Tendencia))
+        {
+            <div class="d-flex align-items-center mt-3 gap-2">
+                <div class="card-lable @(TendenciaPositiva ? "bg-success" : "bg-danger") bg-opacity-10">
+                    <p class="@(TendenciaPositiva ? "text-success" : "text-danger") mb-0">@Tendencia</p>
+                </div>
+                @if (!string.IsNullOrEmpty(TextoPie))
+                {
+                    <p class="mb-0 font-13 text-secondary">@TextoPie</p>
+                }
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Icono { get; set; } = "bar_chart";
+    /// <summary>Gradiente del ícono: danger | primary | success | warning | info | branding</summary>
+    [Parameter] public string GradienteIcono { get; set; } = "primary";
+    [Parameter] public string Valor { get; set; } = "0";
+    [Parameter] public string Etiqueta { get; set; } = string.Empty;
+    [Parameter] public int Porcentaje { get; set; } = 0;
+    /// <summary>Color de barra: danger | primary | success | warning | info</summary>
+    [Parameter] public string ColorBarra { get; set; } = "primary";
+    [Parameter] public string Tendencia { get; set; } = string.Empty;
+    [Parameter] public bool TendenciaPositiva { get; set; } = true;
+    [Parameter] public string TextoPie { get; set; } = "del mes anterior";
+}

@@ -3,28 +3,35 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sistema Ventas V2.5</title>
+    <title>Integra*System</title>
     <base href="/" />
-
-    <!-- Pace loader (debe ir primero) -->
+    <!-- Pace loader visual. En Blazor no debe interceptar navegación ni XHR. -->
     <link href="assets/css/pace.min.css" rel="stylesheet" />
+    <script>
+        window.paceOptions = {
+            ajax: false,
+            restartOnPushState: false,
+            restartOnRequestAfter: false,
+            eventLag: false,
+            elements: {
+                selectors: ['#app']
+            }
+        };
+    </script>
     <script src="assets/js/pace.min.js"></script>
-
     <!-- Plugins CSS -->
     <link href="assets/plugins/perfect-scrollbar/css/perfect-scrollbar.css" rel="stylesheet" />
     <link href="assets/plugins/metismenu/metisMenu.min.css" rel="stylesheet" />
     <link href="assets/plugins/metismenu/mm-vertical.css" rel="stylesheet" />
     <link href="assets/plugins/simplebar/css/simplebar.css" rel="stylesheet" />
-
     <!-- Bootstrap + Template -->
-    
     <link href="assets/css/bootstrap.min.css" rel="stylesheet" />
     <link href="assets/css/fonts-local.css" rel="stylesheet" />
-    <link href="assets/plugins/bootstrap-icons/bootstrap-icons.css" rel="stylesheet" />  
-    <link href="https://fonts.googleapis.com/css?family=Material+Icons+Outlined" rel="stylesheet" />    
+    <link href="assets/plugins/bootstrap-icons/bootstrap-icons.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Material+Icons+Outlined" rel="stylesheet" />
     <link href="assets/css/bootstrap-extended.css" rel="stylesheet" />
+    <link href="assets/css/extra-icons.css" rel="stylesheet" />
     <link href="assets/css/horizontal-menu.css" rel="stylesheet" />
-
     <!-- Temas del template -->
     <link href="assets/sass/main.css" rel="stylesheet" />
     <link href="assets/sass/blue-theme.css" rel="stylesheet" />
@@ -32,23 +39,21 @@
     <link href="assets/sass/bordered-theme.css" rel="stylesheet" />
     <link href="assets/sass/responsive.css" rel="stylesheet" />
     <link href="assets/sass/semi-dark.css" rel="stylesheet" />
-
+    <link href="assets/css/navmenu-extra.css" rel="stylesheet" />
     <!-- CSS propio -->
     <link href="css/app.css" rel="stylesheet" />
 </head>
 <body>
-
     <div id="app">
         <div class="d-flex align-items-center justify-content-center vh-100 bg-body">
             <div class="text-center">
                 <div class="spinner-border text-primary mb-3" role="status" style="width:3rem;height:3rem;">
                     <span class="visually-hidden">Cargando...</span>
                 </div>
-                <h6 class="text-muted">Iniciando VentasSaaSDU...</h6>
+                <h6 class="text-muted">Iniciando INTEGRA*SYSTEM...</h6>
             </div>
         </div>
     </div>
-
     <div id="blazor-error-ui" class="alert alert-danger position-fixed bottom-0 start-0 end-0 m-3 d-none">
         <strong>Error crítico de la aplicación.</strong>
         <a href="" class="alert-link ms-2">Recargar</a>
@@ -56,13 +61,33 @@
                 onclick="document.getElementById('blazor-error-ui').classList.add('d-none')">
         </button>
     </div>
-
     <script src="assets/js/jquery.min.js"></script>
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js"></script>
     <script src="assets/plugins/metismenu/metisMenu.min.js"></script>
+    <script>
+        // SimpleBar 5.1.0 usa hasAttribute con un selector CSS al remover nodos.
+        // Blazor cambia el DOM con frecuencia y eso puede lanzar InvalidCharacterError.
+        (function () {
+            if (!window.Element || Element.prototype.__ventasSaasSimpleBarPatch) {
+                return;
+            }
+
+            var nativeHasAttribute = Element.prototype.hasAttribute;
+
+            Element.prototype.hasAttribute = function (name) {
+                if (name === '[data-simplebar="init"]' || name === "[data-simplebar='init']") {
+                    return this.getAttribute('data-simplebar') === 'init';
+                }
+
+                return nativeHasAttribute.call(this, name);
+            };
+
+            Element.prototype.__ventasSaasSimpleBarPatch = true;
+        })();
+    </script>
     <script src="assets/plugins/simplebar/js/simplebar.min.js"></script>
-    <script src="js/app-interop.js"></script>
+    <script src="js/app-interop.js?v=20260524-gridmenu-pdf3"></script>
     <script src="assets/js/main.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>

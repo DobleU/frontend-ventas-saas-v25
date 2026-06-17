@@ -1,0 +1,123 @@
+﻿@* ============================================================
+   [SUSTITUIR COMPLETO]
+   Ruta: WEB/Shared/FormOffcanvas.razor
+   
+   Parámetros:
+     Titulo      (string)    — título del panel
+     Icono       (string)    — material icon name
+     Ancho       (string)    — ej: "460px", "580px" (default 480px)
+     OnGuardar   (EventCallback) — acción al guardar
+
+   RenderFragments:
+     <Body> — contenido del formulario
+
+   API pública:
+     _panel?.Abrir()
+     _panel?.Cerrar()
+     _panel?.MostrarError(string mensaje)
+     _panel?.MostrarExitoYCerrar(string mensaje)
+   ============================================================ *@
+
+@if (_abierto)
+{
+    @* Backdrop *@
+    <div class="offcanvas-backdrop fade show" @onclick="Cerrar"></div>
+
+    @* Panel *@
+    <div class="offcanvas offcanvas-end show"
+         style="width:@Ancho; visibility:visible;"
+         tabindex="-1">
+
+        @* Header *@
+        <div class="offcanvas-header border-bottom">
+            <h6 class="offcanvas-title d-flex align-items-center gap-2 mb-0">
+                <i class="material-icons-outlined text-primary">@Icono</i>
+                @Titulo
+            </h6>
+            <button type="button" class="btn-close" @onclick="Cerrar"></button>
+        </div>
+
+        @* Alerta interna (errores de validación del form) *@
+        @if (_alertaVisible)
+        {
+            <div class="alert alert-danger d-flex align-items-center gap-2 m-3 mb-0 py-2" role="alert">
+                <i class="material-icons-outlined" style="font-size:16px;">error</i>
+                <span class="small">@_alertaMensaje</span>
+                <button type="button" class="btn-close btn-close-sm ms-auto"
+                        style="font-size:10px;" @onclick="() => _alertaVisible = false"></button>
+            </div>
+        }
+
+        @* Body con scroll *@
+        <div class="offcanvas-body">
+            @Body
+        </div>
+
+        @* Footer *@
+        <div class="offcanvas-footer border-top p-3 d-flex gap-2 justify-content-end">
+            <button class="btn btn-secondary btn-sm" @onclick="Cerrar" disabled="@_guardando">
+                Cancelar
+            </button>
+            <button class="btn btn-primary btn-sm" @onclick="EjecutarGuardar" disabled="@_guardando">
+                @if (_guardando)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                }
+                <i class="material-icons-outlined me-1" style="font-size:15px;">save</i>Guardar
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string Titulo { get; set; } = "Formulario";
+    [Parameter] public string Icono { get; set; } = "edit";
+    [Parameter] public string Ancho { get; set; } = "480px";
+    [Parameter] public EventCallback OnGuardar { get; set; }
+    [Parameter] public RenderFragment? Body { get; set; }
+
+    bool _abierto;
+    bool _guardando;
+    bool _alertaVisible;
+    string _alertaMensaje = "";
+
+    public void Abrir()
+    {
+        _abierto = true;
+        _alertaVisible = false;
+        _alertaMensaje = "";
+        _guardando = false;
+        StateHasChanged();
+    }
+
+    public void Cerrar()
+    {
+        _abierto = false;
+        _alertaVisible = false;
+        _guardando = false;
+        StateHasChanged();
+    }
+
+    public void MostrarError(string mensaje)
+    {
+        _alertaMensaje = mensaje;
+        _alertaVisible = true;
+        _guardando = false;
+        StateHasChanged();
+    }
+
+    public void MostrarExitoYCerrar(string _mensaje = "")
+    {
+        // El mensaje de éxito lo muestra AlertMessage en la página padre
+        Cerrar();
+    }
+
+    async Task EjecutarGuardar()
+    {
+        _alertaVisible = false;
+        _guardando = true;
+        StateHasChanged();
+        await OnGuardar.InvokeAsync();
+        // _guardando se resetea en MostrarError o Cerrar
+    }
+}

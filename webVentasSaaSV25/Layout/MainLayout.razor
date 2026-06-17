@@ -1,18 +1,15 @@
-﻿@* Layouts/MainLayout.razor — VentasSaaSDU.Web
-   Layout principal para usuarios autenticados.
-   Estructura: TopBar → NavMenu → main-wrapper (@Body) → Footer
-   Gestiona: restauración de sesión al recargar, redirect a login si no autenticado.
-*@
+﻿@* Layouts/MainLayout.razor — VentasSaaSDU.Web *@
 @inherits LayoutComponentBase
-@inject AuthService       AuthSvc
-@inject AppState          Estado
+@inject AuthService AuthSvc
+@inject AppState Estado
 @inject NavigationManager Nav
-@inject IJSRuntime        JS
+@inject IJSRuntime JS
+@implements IDisposable
 
-<PageTitle>Sistema de Ventas V2.5</PageTitle>
+<PageTitle>Integra*System</PageTitle>
+
 @if (_cargando)
 {
-    <!-- Splash mientras se restaura la sesión -->
     <div class="d-flex align-items-center justify-content-center vh-100">
         <div class="text-center">
             <div class="spinner-border text-primary mb-3" role="status"></div>
@@ -22,35 +19,26 @@
 }
 else if (!Estado.EstaAutenticado)
 {
-    <!-- No autenticado: redirigir (el redirect se hace en OnAfterRenderAsync) -->
     <div class="d-flex align-items-center justify-content-center vh-100">
         <p class="text-muted">Redirigiendo al inicio de sesión...</p>
     </div>
 }
 else
 {
-    <!-- Layout completo autenticado -->
-
-    <!-- TOPBAR -->
     <TopBar />
-
-    <!-- MENÚ HORIZONTAL -->
     <NavMenu />
 
-    <!-- CONTENIDO PRINCIPAL -->
     <main class="main-wrapper">
         <div class="main-content container-xxl">
             @Body
         </div>
     </main>
 
-    <!-- OVERLAY para menú móvil -->
     <div class="overlay btn-toggle"></div>
 
-    <!-- FOOTER -->
     <footer class="page-footer">
         <div class="container-xxl px-4 text-center">
-            <p class="mb-0">Copyright &copy; @DateTime.Now.Year VentasSaaSDU. Todos los derechos reservados.</p>
+            <p class="mb-0">Copyright &copy; @DateTime.Now.Year INTEGRA*SYSTEM. Todos los derechos reservados.</p>
         </div>
     </footer>
 }
@@ -62,10 +50,8 @@ else
     {
         if (!firstRender) return;
 
-        // 1. Intentar restaurar sesión desde localStorage
         await AuthSvc.IntentarRestaurarSesionAsync();
 
-        // 2. Si no hay sesión → redirigir al login
         if (!Estado.EstaAutenticado)
         {
             Nav.NavigateTo("/login", forceLoad: false);
@@ -75,7 +61,27 @@ else
         _cargando = false;
         StateHasChanged();
 
-        // 3. Inicializar plugins del template DESPUÉS de que Blazor montó el DOM
+        // Esperar a que Blazor termine de renderizar NavMenu completo
+        await Task.Delay(300);  // ← aumentar de 0 a 300ms
+
         await JS.InvokeVoidAsync("AppInterop.initPlugins");
+
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private async void OnLocationChanged(object? sender,
+    Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        await Task.Delay(300);  // ← aumentar de 100 a 300ms
+        try
+        {
+            await JS.InvokeVoidAsync("AppInterop.reinitDropdowns");
+        }
+        catch { }
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
     }
 }

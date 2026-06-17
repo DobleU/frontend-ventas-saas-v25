@@ -1,0 +1,116 @@
+﻿@* Shared/AppModal.razor — VentasSaaSDU
+   Modal universal del template Maxton — controlado por Blazor (sin data-bs-toggle).
+
+   VARIANTES:
+   ─────────────────────────────────────────────────────
+   1) Básico:
+      <AppModal @ref="_modal" Titulo="Confirmar" GradienteHeader="">
+          <Cuerpo>¿Deseas continuar?</Cuerpo>
+          <Footer>
+              <AppButton Tipo="danger"  Icono="close" Texto="Cancelar" OnClick="_modal.Cerrar" />
+              <AppButton Tipo="success" Icono="check" Texto="Aceptar"  OnClick="Confirmar" />
+          </Footer>
+      </AppModal>
+      _modal.Abrir();
+
+   2) Con gradiente en header:
+      <AppModal @ref="_modal" Titulo="Nuevo registro" GradienteHeader="info">
+
+   3) Scrollable (contenido largo):
+      <AppModal @ref="_modal" Titulo="Resumen" Scrollable="true">
+
+   4) Fullscreen:
+      <AppModal @ref="_modal" Titulo="Vista completa" Fullscreen="true">
+
+   5) Tamaños: Tamanio="sm|lg|xl"  (default = normal)
+   ─────────────────────────────────────────────────────
+*@
+
+@if (_visible)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog"
+         style="background:rgba(0,0,0,0.5);" @onclick="OnBackdropClick">
+
+        <div class="modal-dialog @TamanioClass @(Scrollable ? "modal-dialog-scrollable" : "") modal-dialog-centered @(Fullscreen ? "modal-fullscreen" : "")"
+             role="document" @onclick:stopPropagation>
+
+            <div class="modal-content">
+
+                @* Header *@
+                <div class="modal-header border-bottom-0 py-2 @(!string.IsNullOrEmpty(GradienteHeader) ? $"bg-grd-{GradienteHeader}" : "")">
+                    <h5 class="modal-title @(!string.IsNullOrEmpty(GradienteHeader) ? "text-white" : "")">
+                        @if (!string.IsNullOrEmpty(Icono))
+                        {
+                            <i class="material-icons-outlined me-2" style="vertical-align:middle;font-size:20px;">@Icono</i>
+                        }
+                        @Titulo
+                    </h5>
+                    <a href="javascript:;" class="primaery-menu-close" @onclick="Cerrar">
+                        <i class="material-icons-outlined @(!string.IsNullOrEmpty(GradienteHeader) ? "text-white" : "")">close</i>
+                    </a>
+                </div>
+
+                @* Body *@
+                <div class="modal-body">
+                    @Cuerpo
+                </div>
+
+                @* Footer — solo si hay contenido *@
+                @if (Footer != null)
+                {
+                    <div class="modal-footer border-top-0 d-flex align-items-center gap-2">
+                        @Footer
+                    </div>
+                }
+
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string Icono { get; set; } = string.Empty;
+    /// <summary>Gradiente del header: primary | danger | success | warning | info | voilet | royal</summary>
+    [Parameter] public string GradienteHeader { get; set; } = string.Empty;
+    /// <summary>sm | lg | xl  (vacío = normal)</summary>
+    [Parameter] public string Tamanio { get; set; } = string.Empty;
+    [Parameter] public bool Scrollable { get; set; } = false;
+    [Parameter] public bool Fullscreen { get; set; } = false;
+    [Parameter] public bool CerrarAlFondo { get; set; } = true;
+
+    [Parameter] public RenderFragment? Cuerpo { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    [Parameter] public EventCallback OnCerrado { get; set; }
+
+    private bool _visible = false;
+
+    private string TamanioClass => Tamanio switch
+    {
+        "sm" => "modal-sm",
+        "lg" => "modal-lg",
+        "xl" => "modal-xl",
+        _ => string.Empty
+    };
+
+    public void Abrir()
+    {
+        _visible = true;
+        StateHasChanged();
+    }
+
+    public void Cerrar()
+    {
+        _visible = false;
+        StateHasChanged();
+        if (OnCerrado.HasDelegate)
+            _ = OnCerrado.InvokeAsync();
+    }
+
+    private void OnBackdropClick()
+    {
+        if (CerrarAlFondo) Cerrar();
+    }
+}

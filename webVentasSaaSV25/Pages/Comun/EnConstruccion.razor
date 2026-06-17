@@ -1,0 +1,25 @@
+@page "/en-construccion"
+@page "/en-construccion/{Modulo}"
+
+<PageTitle>En construccion - Integra*System</PageTitle>
+
+<div class="d-flex align-items-center justify-content-center" style="min-height:55vh;">
+    <section class="text-center">
+        <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle mb-3"
+             style="width:72px;height:72px;">
+            <i class="material-icons-outlined" style="font-size:34px;">construction</i>
+        </div>
+        <h4 class="mb-2">Modulo en construccion</h4>
+        <p class="text-muted mb-4">
+            Esta opcion esta reservada para una siguiente etapa.
+        </p>
+        <a class="btn btn-primary" href="/dashboard">
+            <i class="material-icons-outlined align-middle me-1" style="font-size:18px;">arrow_back</i>
+            Volver al inicio
+        </a>
+    </section>
+</div>
+
+@code {
+    [Parameter] public string? Modulo { get; set; }
+}

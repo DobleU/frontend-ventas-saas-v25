@@ -1,13 +1,13 @@
-﻿// Services/Auth/AuthService.cs — VentasSaaSDU.Web
-// Gestiona el ciclo completo de autenticación:
+// Services/Auth/AuthService.cs — VentasSaaSDU.Web
+// Gestiona el ciclo completo de autenticación WEB:
 //   Login → almacena tokens → Refresh silencioso → Logout
+// Contrato WEB definitivo: POST /api/v1/auth/login usa Email + Password.
 
 using Microsoft.JSInterop;
 using System.Net.Http.Json;
 using System.Text.Json;
 using webVentasSaaSV25.Models.Auth;
 using webVentasSaaSV25.State;
-using webVentasSaaSV25.Services.Auth;
 
 namespace webVentasSaaSV25.Services.Auth;
 
@@ -23,7 +23,6 @@ public sealed class AuthService
     private readonly PermisoClienteService _permisos;
     private readonly IJSRuntime _js;
 
-    // Opciones de JSON que coinciden con la API (.NET camelCase o PascalCase)
     private static readonly JsonSerializerOptions _jsonOpts = new()
     {
         PropertyNameCaseInsensitive = true
@@ -41,38 +40,37 @@ public sealed class AuthService
         _js = js;
     }
 
-    // ─── LOGIN ───────────────────────────────────────────────────────────
+    // ─── LOGIN WEB ───────────────────────────────────────────────────────
 
     /// <summary>
-    /// Autentica al usuario contra POST /api/v1/auth/login.
+    /// Autentica al usuario WEB contra POST /api/v1/auth/login.
+    /// La API ya no recibe IdEmpresa ni DeviceId; solo Email + Password.
     /// Si tiene éxito: persiste tokens, carga estado global y permisos.
     /// </summary>
-    /// <returns>(exito, mensajeError)</returns>
     public async Task<(bool Ok, string? Error)> LoginAsync(LoginRequest request)
     {
         try
         {
             var http = _httpFactory.CreateClient("VentasSaaSPublic");
 
+            request.Email = request.Email.Trim().ToLowerInvariant();
+
             var response = await http.PostAsJsonAsync("api/v1/auth/login", request);
 
             if (!response.IsSuccessStatusCode)
             {
-                // 401, 403: credenciales inválidas o empresa suspendida
                 var errBody = await response.Content.ReadAsStringAsync();
-                var errResult = JsonSerializer.Deserialize<ApiResult<object>>(errBody, _jsonOpts);
+                var errResult = SafeDeserialize<ApiResult<object>>(errBody);
                 return (false, errResult?.Error ?? "Credenciales inválidas.");
             }
 
             var body = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<ApiResult<LoginResponse>>(body, _jsonOpts);
+            var result = SafeDeserialize<ApiResult<LoginResponse>>(body);
 
             if (result is null || !result.Success || result.Data is null)
                 return (false, result?.Error ?? "Error desconocido en el servidor.");
 
-            // Persistir tokens y contexto
             await PersistirSesionAsync(result.Data);
-
             return (true, null);
         }
         catch (HttpRequestException)
@@ -91,7 +89,6 @@ public sealed class AuthService
     /// Renueva el access token usando el refresh token almacenado.
     /// Llamado automáticamente por TokenRefreshHandler cuando recibe 401.
     /// </summary>
-    /// <returns>Nuevo access token o null si el refresh falló</returns>
     public async Task<string?> RefreshAsync()
     {
         try
@@ -111,7 +108,7 @@ public sealed class AuthService
             }
 
             var body = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<ApiResult<LoginResponse>>(body, _jsonOpts);
+            var result = SafeDeserialize<ApiResult<LoginResponse>>(body);
 
             if (result is null || !result.Success || result.Data is null)
             {
@@ -144,11 +141,14 @@ public sealed class AuthService
                 var http = _httpFactory.CreateClient("VentasSaaSPublic");
                 http.DefaultRequestHeaders.Authorization =
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-                // POST logout — ignora fallo de red (limpieza local es suficiente)
+
                 await http.PostAsync("api/v1/auth/logout", null);
             }
         }
-        catch { /* Ignorar errores de red en logout */ }
+        catch
+        {
+            // Ignorar errores de red en logout; la limpieza local siempre debe ejecutarse.
+        }
         finally
         {
             await LimpiarSesionLocalAsync();
@@ -168,19 +168,16 @@ public sealed class AuthService
             var userCtxJson = await _js.InvokeAsync<string?>("AppInterop.localStorageGet", KeyUserCtx);
             if (string.IsNullOrEmpty(userCtxJson)) return;
 
-            var loginResponse = JsonSerializer.Deserialize<LoginResponse>(userCtxJson, _jsonOpts);
+            var loginResponse = SafeDeserialize<LoginResponse>(userCtxJson);
             if (loginResponse is null) return;
 
-            // Verificar si el access token aún es válido
             if (loginResponse.AccessTokenExpira > DateTime.UtcNow.AddSeconds(30))
             {
-                // Token aún válido: restaurar estado sin llamar a la API
                 _appState.SetUsuario(loginResponse);
                 _permisos.Cargar(loginResponse.Permisos);
             }
             else
             {
-                // Token expirado: intentar refresh
                 var nuevoToken = await RefreshAsync();
                 if (nuevoToken is null)
                     await LimpiarSesionLocalAsync();
@@ -199,15 +196,12 @@ public sealed class AuthService
 
     private async Task PersistirSesionAsync(LoginResponse data)
     {
-        // Guardar tokens
         await _js.InvokeVoidAsync("AppInterop.localStorageSet", KeyAccess, data.AccessToken);
         await _js.InvokeVoidAsync("AppInterop.localStorageSet", KeyRefresh, data.RefreshToken);
 
-        // Guardar contexto completo (para restaurar al recargar sin hacer login)
-        var json = JsonSerializer.Serialize(data);
+        var json = JsonSerializer.Serialize(data, _jsonOpts);
         await _js.InvokeVoidAsync("AppInterop.localStorageSet", KeyUserCtx, json);
 
-        // Actualizar estado global y permisos
         _appState.SetUsuario(data);
         _permisos.Cargar(data.Permisos);
     }
@@ -219,5 +213,18 @@ public sealed class AuthService
         await _js.InvokeVoidAsync("AppInterop.localStorageRemove", KeyUserCtx);
         _appState.LimpiarSesion();
         _permisos.Limpiar();
+    }
+
+    private static T? SafeDeserialize<T>(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return default;
+        try
+        {
+            return JsonSerializer.Deserialize<T>(json, _jsonOpts);
+        }
+        catch
+        {
+            return default;
+        }
     }
 }

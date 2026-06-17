@@ -1,0 +1,44 @@
+﻿@* Components/Widgets/WidgetItemPeriodo.razor — VentasSaaSDU
+   Ítem de periodo para el panel inferior de WidgetGraficaResumen.
+   Mini-donut (peity o ApexCharts radial) + label + valor + tendencia + sublabel.
+
+   <WidgetItemPeriodo IdChart="chart-mes" Label="Mensual"
+                      Valor="65,127" Tendencia="16.5%"
+                      TendenciaPositiva="true" Sublabel="55.21 USD" />
+*@
+
+<div class="d-flex align-items-center gap-4">
+
+    @* Mini-chart (radial pequeño) *@
+    @if (!string.IsNullOrEmpty(IdChart))
+    {
+        <div id="@IdChart" style="min-height:80px; min-width:80px;"></div>
+    }
+    @MiniChart
+
+    @* Label + valor + tendencia *@
+    <div>
+        <p class="mb-1 fs-6 fw-bold">@Label</p>
+        <h2 class="mb-0">@Valor</h2>
+        <p class="mb-0">
+            <span class="@(TendenciaPositiva ? "text-success" : "text-danger") me-2 fw-medium">
+                @(TendenciaPositiva ? "+" : "")@Tendencia
+            </span>
+            @if (!string.IsNullOrEmpty(Sublabel))
+            {
+                <span class="text-secondary">@Sublabel</span>
+            }
+        </p>
+    </div>
+
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Valor { get; set; } = "0";
+    [Parameter] public string Tendencia { get; set; } = string.Empty;
+    [Parameter] public bool TendenciaPositiva { get; set; } = true;
+    [Parameter] public string Sublabel { get; set; } = string.Empty;
+    [Parameter] public string IdChart { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? MiniChart { get; set; }
+}

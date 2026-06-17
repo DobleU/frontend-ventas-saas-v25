@@ -1,5 +1,76 @@
-﻿<h3>AlertMessage</h3>
+﻿@* Shared/AlertMessage.razor — VentasSaaSDU
+   ACCIÓN: [SUSTITUIR COMPLETO] Shared/AlertMessage.razor
+
+   API pública que todas las páginas ya usan:
+     _alerta.MostrarError("mensaje")
+     _alerta.MostrarExito("mensaje")
+     _alerta.MostrarInfo("mensaje")
+     _alerta.MostrarAdvertencia("mensaje")
+     _alerta.Limpiar()
+
+   Parámetro AutoOcultarMs (default 4000ms). 0 = no auto-ocultar.
+*@
+
+@if (_visible)
+{
+    <div class="alert @_clase alert-dismissible d-flex align-items-center gap-2 mb-3 fade show" role="alert">
+        <i class="material-icons-outlined fs-5">@_icono</i>
+        <div class="flex-grow-1">@_mensaje</div>
+        <button type="button" class="btn-close" @onclick="Limpiar" aria-label="Cerrar"></button>
+    </div>
+}
 
 @code {
+    /// <summary>Milisegundos para auto-ocultar. 0 = no ocultar automáticamente.</summary>
+    [Parameter] public int AutoOcultarMs { get; set; } = 4000;
 
+    private bool _visible = false;
+    private string _mensaje = string.Empty;
+    private string _clase = string.Empty;
+    private string _icono = string.Empty;
+
+    // ── API pública ─────────────────────────────────────────────────────────
+
+    /// <summary>Muestra alerta de error (roja).</summary>
+    public void MostrarError(string mensaje)
+        => MostrarInterno(mensaje, "alert-danger", "error");
+
+    /// <summary>Muestra alerta de éxito (verde).</summary>
+    public void MostrarExito(string mensaje)
+        => MostrarInterno(mensaje, "alert-success", "check_circle");
+
+    /// <summary>Muestra alerta informativa (azul).</summary>
+    public void MostrarInfo(string mensaje)
+        => MostrarInterno(mensaje, "alert-info", "info");
+
+    /// <summary>Muestra alerta de advertencia (amarilla).</summary>
+    public void MostrarAdvertencia(string mensaje)
+        => MostrarInterno(mensaje, "alert-warning", "warning");
+
+    /// <summary>Oculta la alerta de inmediato.</summary>
+    public void Limpiar()
+    {
+        _visible = false;
+        StateHasChanged();
+    }
+
+    // ── Interno ─────────────────────────────────────────────────────────────
+
+    private void MostrarInterno(string mensaje, string clase, string icono)
+    {
+        _mensaje = mensaje;
+        _clase = clase;
+        _icono = icono;
+        _visible = true;
+        StateHasChanged();
+
+        if (AutoOcultarMs > 0)
+            _ = OcultarDespuesAsync(AutoOcultarMs);
+    }
+
+    private async Task OcultarDespuesAsync(int ms)
+    {
+        await Task.Delay(ms);
+        Limpiar();
+    }
 }

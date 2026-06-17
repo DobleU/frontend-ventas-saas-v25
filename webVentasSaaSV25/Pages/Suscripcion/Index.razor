@@ -1,0 +1,160 @@
+﻿@* ============================================================
+   [NUEVO ARCHIVO]
+   Ruta: WEB/Pages/Configuracion/Suscripcion/Index.razor
+   ARCHIVO INDEPENDIENTE — no contiene ninguna otra página.
+   ============================================================ *@
+@page "/configuracion/suscripcion"
+@inject SuscripcionWebService Svc
+
+<PageTitle>Suscripción — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Suscripción"
+            Items="@(new[]{ ("Configuración",""), ("Suscripción","") })" />
+<AlertMessage @ref="_alerta" />
+
+@if (_loading)
+{
+    <LoadingSpinner />
+}
+else if (_suscripcion is null)
+{
+    <div class="alert alert-warning d-flex gap-2 align-items-center">
+        <i class="material-icons-outlined">warning</i>
+        No se encontró suscripción activa para esta empresa.
+    </div>
+}
+else
+{
+    @if (_suscripcion.EnGracePeriod)
+    {
+        <div class="alert alert-warning d-flex gap-2 align-items-center mb-3">
+            <i class="material-icons-outlined">warning</i>
+            <span>Su suscripción ha vencido. Tiene <strong>@_suscripcion.GraceDays días</strong> de gracia para renovar.</span>
+        </div>
+    }
+    else if (_suscripcion.DiasRestantes <= 7 && _suscripcion.DiasRestantes > 0)
+    {
+        <div class="alert alert-info d-flex gap-2 align-items-center mb-3">
+            <i class="material-icons-outlined">info</i>
+            <span>Su suscripción vence en <strong>@_suscripcion.DiasRestantes días</strong>.</span>
+        </div>
+    }
+
+    <div class="row g-4">
+        <div class="col-12 col-lg-5">
+            <div class="card h-100">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="material-icons-outlined text-primary">workspace_premium</i>
+                    <span class="fw-medium">Plan actual</span>
+                </div>
+                <div class="card-body">
+                    <h5 class="fw-bold mb-1">@_suscripcion.NombrePlan</h5>
+                    @if (!string.IsNullOrWhiteSpace(_suscripcion.DescripcionPlan))
+                    {
+                        <p class="text-muted small">@_suscripcion.DescripcionPlan</p>
+                    }
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted small">Estado</span>
+                            <span class="badge @EstadoBadgeClass(_suscripcion.Estado)">@_suscripcion.Estado</span>
+                        </div>
+                        <div class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted small">Vigencia</span>
+                            <span class="small">
+                                @_suscripcion.FechaInicio.ToString("dd/MM/yyyy") → @_suscripcion.FechaFin.ToString("dd/MM/yyyy")
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted small">Días restantes</span>
+                            <span class="fw-medium @(_suscripcion.DiasRestantes <= 7 ? "text-danger" : "")">
+                                @_suscripcion.DiasRestantes días
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between py-2">
+                            <span class="text-muted small">Precio mensual</span>
+                            <span class="fw-medium">$@_suscripcion.PrecioMensual.ToString("N2")</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+            <div class="card h-100">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="material-icons-outlined text-primary">tune</i>
+                    <span class="fw-medium">Límites del plan</span>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0 small">
+                        <dt class="col-7 text-muted">Usuarios</dt>
+                        <dd class="col-5 text-end fw-medium">@_suscripcion.MaxUsuarios</dd>
+                        <dt class="col-7 text-muted">Sucursales</dt>
+                        <dd class="col-5 text-end fw-medium">@_suscripcion.MaxSucursales</dd>
+                        <dt class="col-7 text-muted">Almacenes</dt>
+                        <dd class="col-5 text-end fw-medium">@_suscripcion.MaxAlmacenes</dd>
+                        <dt class="col-7 text-muted">API calls / día</dt>
+                        <dd class="col-5 text-end fw-medium">@_suscripcion.MaxApiCallsDia.ToString("N0")</dd>
+                        <dt class="col-7 text-muted">Almacenamiento</dt>
+                        <dd class="col-5 text-end fw-medium">@_suscripcion.MaxGbStorage GB</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-3">
+            <div class="card h-100">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="material-icons-outlined text-primary">extension</i>
+                    <span class="fw-medium">Módulos activos</span>
+                </div>
+                <div class="card-body">
+                    @if (_suscripcion.Modulos.Any())
+                    {
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var m in _suscripcion.Modulos.Where(x => x.Activo))
+                            {
+                                <li class="d-flex align-items-center gap-2 py-1 border-bottom">
+                                    <i class="material-icons-outlined text-success" style="font-size:16px;">check_circle</i>
+                                    <span class="small">@m.Nombre</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+
+                        <p class="text-muted small mb-0">Sin módulos adicionales</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-info d-flex align-items-start gap-2 mt-4 mb-0">
+        <i class="material-icons-outlined mt-1" style="font-size:18px;">info</i>
+        <div>Para cambiar de plan o renovar su suscripción contacte al administrador del sistema.</div>
+    </div>
+}
+
+@code {
+    SuscripcionResponse? _suscripcion;
+    bool _loading = true;
+    AlertMessage? _alerta;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var (d, e) = await Svc.GetAsync();
+        _loading = false;
+        if (e != null) _alerta?.MostrarError(e); else _suscripcion = d;
+    }
+
+    string EstadoBadgeClass(string estado) => estado switch
+    {
+        "Active" => "bg-success-subtle text-success-emphasis",
+        "Grace" => "bg-warning-subtle text-warning-emphasis",
+        "PastDue" => "bg-danger-subtle text-danger-emphasis",
+        "Suspended" => "bg-secondary-subtle text-secondary-emphasis",
+        "Cancelled" => "bg-dark-subtle text-dark-emphasis",
+        _ => "bg-secondary-subtle text-secondary-emphasis"
+    };
+}

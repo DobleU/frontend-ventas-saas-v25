@@ -1,0 +1,283 @@
+﻿
+@page "/core/parametros"
+@using webVentasSaaSV25.Services.Catalogos
+@inject ParametroEmpresaService  EmpSvc
+@inject ParametroSucursalService SucSvc
+@inject SucursalService          SucListSvc
+
+<PageTitle>Parámetros — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Parámetros del Sistema"
+            Items="@(new[]{ ("Configuración",""), ("Parámetros","") })" />
+<AlertMessage @ref="_alerta" />
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <button class="nav-link @(_tab==0?"active":"")" @onclick='()=>CambiarTab(0)'>
+            <i class="material-icons-outlined me-1" style="font-size:16px;">business</i>Empresa
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link @(_tab==1?"active":"")" @onclick='()=>CambiarTab(1)'>
+            <i class="material-icons-outlined me-1" style="font-size:16px;">store</i>Sucursal
+        </button>
+    </li>
+</ul>
+
+@if (_tab == 0)
+{
+    <DataGrid TItem="ParametroEmpresaResponse" Titulo="Parámetros de Empresa" Modulo="configuracion"
+              Items="_pagedEmp?.Items" TotalRecords="_pagedEmp?.TotalRecords ?? 0"
+              Page="_fEmp.Page" PageSize="_fEmp.PageSize" Loading="_loading"
+              OnPageChanged="OnPageEmp" OnSearch="OnSearchEmp" OnNuevo="AbrirNuevoEmp">
+        <HeaderRow>
+            <th style="width:220px">Clave</th>
+            <th>Valor</th>
+            <th>Descripción</th>
+            <th style="width:60px"  class="text-center">Ver.</th>
+            <th style="width:80px"  class="text-center">Acciones</th>
+        </HeaderRow>
+        <RowTemplate>
+            <td><code class="small">@context.Clave</code></td>
+            <td class="text-break" style="max-width:280px">@context.Valor</td>
+            <td class="text-muted small">@(context.Descripcion ?? "—")</td>
+            <td class="text-center text-muted small">@context.Version</td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2"
+                        @onclick="()=>AbrirEditarEmp(context)">
+                    <i class="material-icons-outlined" style="font-size:15px;">edit</i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger py-1 px-2"
+                        @onclick="()=>EliminarEmp(context)">
+                    <i class="material-icons-outlined" style="font-size:15px;">delete</i>
+                </button>
+            </td>
+        </RowTemplate>
+    </DataGrid>
+}
+
+@if (_tab == 1)
+{
+    <div class="mb-3">
+        <select class="form-select" style="max-width:250px" @onchange="OnFiltroSucursal">
+            <option value="">Todas las sucursales</option>
+            @foreach (var s in _sucursales)
+            { <option value="@s.IdSucursal">@s.Nombre</option> }
+        </select>
+    </div>
+
+    <DataGrid TItem="ParametroSucursalResponse" Titulo="Parámetros de Sucursal" Modulo="configuracion"
+              Items="_pagedSuc?.Items" TotalRecords="_pagedSuc?.TotalRecords ?? 0"
+              Page="_fSuc.Page" PageSize="_fSuc.PageSize" Loading="_loading"
+              OnPageChanged="OnPageSuc" OnSearch="OnSearchSuc" OnNuevo="AbrirNuevoSuc">
+        <HeaderRow>
+            <th style="width:140px">Sucursal</th>
+            <th style="width:200px">Clave</th>
+            <th>Valor</th>
+            <th style="width:80px" class="text-center">Acciones</th>
+        </HeaderRow>
+        <RowTemplate>
+            <td class="small fw-medium">@context.NombreSucursal</td>
+            <td><code class="small">@context.Clave</code></td>
+            <td class="text-break" style="max-width:280px">@context.Valor</td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2"
+                        @onclick="()=>AbrirEditarSuc(context)">
+                    <i class="material-icons-outlined" style="font-size:15px;">edit</i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger py-1 px-2"
+                        @onclick="()=>EliminarSuc(context)">
+                    <i class="material-icons-outlined" style="font-size:15px;">delete</i>
+                </button>
+            </td>
+        </RowTemplate>
+    </DataGrid>
+}
+
+<FormOffcanvas @ref="_panel" Titulo="@_panelTitulo" Icono="tune"
+               Ancho="500px" OnGuardar="Guardar">
+    <Body>
+        @if (_tab == 1)
+        {
+            <div class="mb-3">
+                <label class="form-label fw-medium">Sucursal <span class="text-danger">*</span></label>
+                <select class="form-select @(_eSucursal?"is-invalid":"")"
+                        @bind="_idSucursalForm" disabled="@_editParam">
+                    <option value="0">Seleccione sucursal...</option>
+                    @foreach (var s in _sucursales)
+                    { <option value="@s.IdSucursal">@s.Nombre</option> }
+                </select>
+                @if (_eSucursal) { <div class="invalid-feedback">Requerido.</div> }
+            </div>
+        }
+        <div class="mb-3">
+            <label class="form-label fw-medium">Clave <span class="text-danger">*</span></label>
+            <input class="form-control text-uppercase @(_eClave?"is-invalid":"")"
+                   maxlength="120" @bind="_claveParam" @oninput="()=>_eClave=false"
+                   placeholder="Ej. MONEDA_DEFAULT, IVA_TASA"
+                   disabled="@_editParam" />
+            @if (_eClave) { <div class="invalid-feedback">Requerido.</div> }
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Valor <span class="text-danger">*</span></label>
+            <textarea class="form-control @(_eValor?"is-invalid":"")" rows="3"
+                      maxlength="1000" @bind="_valorParam"
+                      @oninput="()=>_eValor=false"></textarea>
+            @if (_eValor) { <div class="invalid-feedback">Requerido.</div> }
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Descripción</label>
+            <input class="form-control" maxlength="300" @bind="_descripcionParam" />
+        </div>
+    </Body>
+</FormOffcanvas>
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    int            _tab = 0;
+    AlertMessage?  _alerta;
+    FormOffcanvas? _panel;
+    ConfirmDialog? _confirm;
+    bool           _loading;
+    string         _panelTitulo = "Nuevo Parámetro";
+
+    PagedResult<ParametroEmpresaResponse>?  _pagedEmp;
+    FiltroParametroRequest                  _fEmp = new();
+
+    PagedResult<ParametroSucursalResponse>? _pagedSuc;
+    FiltroParametroSucursalRequest          _fSuc = new();
+
+    List<SucursalResponse> _sucursales = [];
+
+    bool   _editParam;
+    string _claveParam       = "";
+    string _valorParam       = "";
+    string _descripcionParam = "";
+    int    _idSucursalForm   = 0;
+    bool   _eClave, _eValor, _eSucursal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var (s, _) = await SucListSvc.GetAllActivasAsync();
+        _sucursales = s?.Items ?? [];
+        await CargarEmp();
+    }
+
+    async Task CambiarTab(int t)
+    {
+        _tab = t;
+        if (t == 0) await CargarEmp(); else await CargarSuc();
+    }
+
+    async Task CargarEmp()
+    {
+        _loading = true;
+        var (d, e) = await EmpSvc.GetPagedAsync(_fEmp);
+        _loading = false;
+        if (e != null) _alerta?.MostrarError(e); else _pagedEmp = d;
+    }
+
+    async Task CargarSuc()
+    {
+        _loading = true;
+        var (d, e) = await SucSvc.GetPagedAsync(_fSuc);
+        _loading = false;
+        if (e != null) _alerta?.MostrarError(e); else _pagedSuc = d;
+    }
+
+    async Task OnPageEmp(int p)       { _fEmp.Page = p;  await CargarEmp(); }
+    async Task OnSearchEmp(string? s) { _fEmp.Search = s; _fEmp.Page = 1; await CargarEmp(); }
+    async Task OnPageSuc(int p)       { _fSuc.Page = p;  await CargarSuc(); }
+    async Task OnSearchSuc(string? s) { _fSuc.Search = s; _fSuc.Page = 1; await CargarSuc(); }
+
+    async Task OnFiltroSucursal(ChangeEventArgs e)
+    {
+        _fSuc.IdSucursal = int.TryParse(e.Value?.ToString(), out var id) && id > 0 ? id : null;
+        _fSuc.Page = 1;
+        await CargarSuc();
+    }
+
+    void AbrirNuevoEmp()
+    {
+        _editParam = false; _claveParam = ""; _valorParam = ""; _descripcionParam = "";
+        _panelTitulo = "Nuevo Parámetro de Empresa";
+        _eClave = _eValor = false;
+        _panel?.Abrir();
+    }
+
+    void AbrirEditarEmp(ParametroEmpresaResponse x)
+    {
+        _editParam = true; _claveParam = x.Clave; _valorParam = x.Valor;
+        _descripcionParam = x.Descripcion ?? "";
+        _panelTitulo = "Editar Parámetro";
+        _eClave = _eValor = false;
+        _panel?.Abrir();
+    }
+
+    void AbrirNuevoSuc()
+    {
+        _editParam = false; _claveParam = ""; _valorParam = ""; _descripcionParam = "";
+        _idSucursalForm = 0; _panelTitulo = "Nuevo Parámetro de Sucursal";
+        _eClave = _eValor = _eSucursal = false;
+        _panel?.Abrir();
+    }
+
+    void AbrirEditarSuc(ParametroSucursalResponse x)
+    {
+        _editParam = true; _claveParam = x.Clave; _valorParam = x.Valor;
+        _descripcionParam = x.Descripcion ?? ""; _idSucursalForm = x.IdSucursal;
+        _panelTitulo = "Editar Parámetro de Sucursal";
+        _eClave = _eValor = _eSucursal = false;
+        _panel?.Abrir();
+    }
+
+    async Task Guardar()
+    {
+        _eClave    = string.IsNullOrWhiteSpace(_claveParam);
+        _eValor    = string.IsNullOrWhiteSpace(_valorParam);
+        _eSucursal = _tab == 1 && _idSucursalForm == 0;
+        if (_eClave || _eValor || _eSucursal)
+        { _panel?.MostrarError("Corrija los campos marcados."); return; }
+
+        if (_tab == 0)
+        {
+            var (_, e) = await EmpSvc.UpsertAsync(new UpsertParametroEmpresaRequest
+            {
+                Clave       = _claveParam.ToUpper(),
+                Valor       = _valorParam.Trim(),
+                Descripcion = _descripcionParam
+            });
+            if (e != null) { _panel?.MostrarError(e); return; }
+            _panel?.MostrarExitoYCerrar("Parámetro guardado.");
+            await CargarEmp();
+        }
+        else
+        {
+            var (_, e) = await SucSvc.UpsertAsync(new UpsertParametroSucursalRequest
+            {
+                IdSucursal  = _idSucursalForm,
+                Clave       = _claveParam.ToUpper(),
+                Valor       = _valorParam.Trim(),
+                Descripcion = _descripcionParam
+            });
+            if (e != null) { _panel?.MostrarError(e); return; }
+            _panel?.MostrarExitoYCerrar("Parámetro guardado.");
+            await CargarSuc();
+        }
+    }
+
+    async Task EliminarEmp(ParametroEmpresaResponse x)
+    {
+        if (!await _confirm!.ConfirmarEliminarAsync("parámetro")) return;
+        var (_, e) = await EmpSvc.EliminarAsync(x.Clave);
+        if (e != null) _alerta?.MostrarError(e);
+        else { _alerta?.MostrarExito("Parámetro eliminado."); await CargarEmp(); }
+    }
+
+    async Task EliminarSuc(ParametroSucursalResponse x)
+    {
+        if (!await _confirm!.ConfirmarEliminarAsync("parámetro")) return;
+        var (_, e) = await SucSvc.EliminarAsync(x.IdSucursal, x.Clave);
+        if (e != null) _alerta?.MostrarError(e);
+        else { _alerta?.MostrarExito("Parámetro eliminado."); await CargarSuc(); }
+    }
+}

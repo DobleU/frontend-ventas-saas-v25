@@ -1,0 +1,75 @@
+﻿@* Shared/AppButton.razor — VentasSaaSDU
+   Botones con ícono del template Maxton.
+
+   VARIANTES:
+   ─────────────────────────────────────────────────────
+   1) Botón con ícono + texto (default):
+      <AppButton Tipo="primary"   Icono="search"         Texto="Buscar"   OnClick="..." />
+      <AppButton Tipo="danger"    Icono="delete"         Texto="Eliminar" OnClick="..." />
+      <AppButton Tipo="success"   Icono="save"           Texto="Guardar"  OnClick="..." />
+      <AppButton Tipo="warning"   Icono="cloud_upload"   Texto="Subir"    OnClick="..." />
+      <AppButton Tipo="info"      Icono="cloud_download" Texto="Exportar" OnClick="..." />
+      <AppButton Tipo="secondary" Icono="close"          Texto="Cancelar" OnClick="..." />
+      <AppButton Tipo="dark"      Icono="delete"         Texto="Eliminar" OnClick="..." />
+      <AppButton Tipo="light"     Icono="question_answer" Texto="Ver"     OnClick="..." />
+
+   2) Solo ícono (cuadrado):
+      <AppButton Tipo="primary" Icono="edit"   SoloIcono="true" OnClick="..." />
+
+   3) Solo ícono circular:
+      <AppButton Tipo="primary" Icono="lock_open" Circular="true" OnClick="..." />
+
+   4) Deshabilitado:
+      <AppButton Tipo="primary" Icono="save" Texto="Guardar" Disabled="true" />
+
+   5) Loading:
+      <AppButton Tipo="primary" Icono="save" Texto="Guardando..." Loading="true" />
+   ─────────────────────────────────────────────────────
+*@
+
+<button type="button"
+        class="btn btn-@Tipo raised @(Circular ? "btn-circle rounded-circle wh-48" : "") @(SoloIcono || Circular ? "" : "px-4") d-flex align-items-center justify-content-center gap-2 @Clase"
+        disabled="@(Disabled || Loading)"
+        @onclick="OnClick">
+
+    @if (Loading)
+    {
+        <span class="spinner-border spinner-border-sm" role="status"></span>
+    }
+    else
+    {
+        <i class="material-icons-outlined">@Icono</i>
+    }
+
+    @if (!SoloIcono && !Circular && !string.IsNullOrEmpty(Texto))
+    {
+        <span>@Texto</span>
+    }
+
+</button>
+
+@code {
+
+    /// <summary>primary | secondary | success | danger | warning | info | dark | light</summary>
+    [Parameter] public string Tipo { get; set; } = "primary";
+
+    /// <summary>Nombre del ícono Material Icons Outlined</summary>
+    [Parameter] public string Icono { get; set; } = "check";
+
+    /// <summary>Texto del botón (ignorado en SoloIcono y Circular)</summary>
+    [Parameter] public string Texto { get; set; } = string.Empty;
+
+    /// <summary>Solo ícono cuadrado — sin texto</summary>
+    [Parameter] public bool SoloIcono { get; set; } = false;
+
+    /// <summary>Solo ícono circular (clase btn-circle + rounded-circle + wh-48)</summary>
+    [Parameter] public bool Circular { get; set; } = false;
+
+    [Parameter] public bool Disabled { get; set; } = false;
+    [Parameter] public bool Loading { get; set; } = false;
+
+    /// <summary>Clases CSS adicionales opcionales</summary>
+    [Parameter] public string Clase { get; set; } = string.Empty;
+
+    [Parameter] public EventCallback OnClick { get; set; }
+}

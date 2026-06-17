@@ -1,0 +1,211 @@
+﻿@page "/core/series-documento"
+@using webVentasSaaSV25.Services.Catalogos
+@inject SerieDocumentoService Svc
+
+<PageTitle>Series de Documento — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Series de Documento"
+            Items="@(new[]{ ("Configuración",""), ("Series de Documento","") })" />
+<AlertMessage @ref="_alerta" />
+
+<DataGrid TItem="SerieDocumentoResponse" Titulo="Series de Documento" Modulo="configuracion"
+          Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
+          Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
+          OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo">
+    <FiltrosExtra>
+        <select class="form-select form-select-sm" style="width:150px" @onchange="OnFiltroModulo">
+            <option value="">Todos los módulos</option>
+            <option value="VTA">VTA — Ventas</option>
+            <option value="CMP">CMP — Compras</option>
+            <option value="INV">INV — Inventario</option>
+            <option value="POS">POS — Punto de venta</option>
+        </select>
+    </FiltrosExtra>
+    <HeaderRow>
+        <th style="width:100px">Módulo</th>
+        <th style="width:130px">Tipo doc.</th>
+        <th style="width:80px">Serie</th>
+        <th style="width:140px">Folio actual</th>
+        <th style="width:110px" class="text-center">Estado</th>
+        <th style="width:90px" class="text-center">Acciones</th>
+    </HeaderRow>
+    <RowTemplate>
+        <td><span class="badge bg-secondary-subtle text-secondary-emphasis">@context.Modulo</span></td>
+        <td class="small">@context.TipoDoc</td>
+        <td><code>@context.Serie</code></td>
+        <td><code class="text-primary">@context.FolioDisplay</code></td>
+        <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
+        <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2"
+                    @onclick="() => AbrirEditar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger py-1 px-2"
+                    @onclick="() => Eliminar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">delete</i>
+            </button>
+        </td>
+    </RowTemplate>
+</DataGrid>
+
+<FormOffcanvas @ref="_panel" Titulo="@(_edit ? "Editar Serie" : "Nueva Serie")"
+               Icono="@(_edit?"edit":"receipt_long")" Ancho="460px" OnGuardar="Guardar">
+    <Body>
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <label class="form-label fw-medium">Módulo <span class="text-danger">*</span></label>
+                <select class="form-select @(_eModulo ? "is-invalid" : "")"
+                        @bind="_modulo" disabled="@_edit">
+                    <option value="">Seleccione...</option>
+                    <option value="VTA">VTA — Ventas</option>
+                    <option value="CMP">CMP — Compras</option>
+                    <option value="INV">INV — Inventario</option>
+                    <option value="POS">POS — Punto de venta</option>
+                </select>
+                @if (_eModulo)
+                {
+                    <div class="invalid-feedback">Requerido.</div>
+                }
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-medium">Tipo documento <span class="text-danger">*</span></label>
+                <input class="form-control text-uppercase @(_eTipoDoc ? "is-invalid" : "")"
+                       maxlength="30" @bind="_tipoDoc" @oninput="() => _eTipoDoc = false"
+                       placeholder="Ej. FACTURA, TICKET" disabled="@_edit" />
+                @if (_eTipoDoc)
+                {
+                    <div class="invalid-feedback">Requerido.</div>
+                }
+            </div>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <label class="form-label fw-medium">Serie <span class="text-danger">*</span></label>
+                <input class="form-control text-uppercase @(_eSerie ? "is-invalid" : "")"
+                       maxlength="10" @bind="_serie" @oninput="() => _eSerie = false"
+                       placeholder="Ej. A, B, F1" disabled="@_edit" />
+                @if (_eSerie)
+                {
+                    <div class="invalid-feedback">Requerido.</div>
+                }
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-medium">Folio @(_edit ? "actual" : "inicial")</label>
+                <input type="number" class="form-control" min="0" @bind="_folioActual" />
+                @if (_edit)
+                {
+                    <div class="form-text text-warning">⚠ Modificar el folio afecta la secuencia.</div>
+                }
+            </div>
+        </div>
+        @if (_edit)
+        {
+            <div class="mb-3">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_isActive" />
+                    <label class="form-check-label">@(_isActive ? "Activa" : "Inactiva")</label>
+                </div>
+            </div>
+        }
+    </Body>
+</FormOffcanvas>
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    PagedResult<SerieDocumentoResponse>? _paged;
+    FiltroSerieDocumentoRequest _f = new();
+    bool _loading;
+    AlertMessage? _alerta;
+    FormOffcanvas? _panel;
+    ConfirmDialog? _confirm;
+
+    bool _edit;
+    int _id;
+    string _modulo = "";
+    string _tipoDoc = "";
+    string _serie = "";
+    long _folioActual = 0;
+    bool _isActive = true;
+    bool _eModulo, _eTipoDoc, _eSerie;
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    async Task Cargar()
+    {
+        _loading = true;
+        var (d, e) = await Svc.GetPagedAsync(_f);
+        _loading = false;
+        if (e != null) _alerta?.MostrarError(e); else _paged = d;
+    }
+
+    // OnSearch recibe string? del DataGrid — ignoramos el texto porque
+    // la búsqueda en series se hace por filtro de módulo, no por texto libre.
+    // Si en el futuro se necesita búsqueda de texto, aquí se aplica.
+    async Task OnSearch(string? s) { _f.Page = 1; await Cargar(); }
+
+    async Task OnPage(int p) { _f.Page = p; await Cargar(); }
+
+    async Task OnFiltroModulo(ChangeEventArgs e)
+    {
+        _f.Modulo = e.Value?.ToString();
+        _f.Page = 1;
+        await Cargar();
+    }
+
+    void AbrirNuevo()
+    {
+        _edit = false; _id = 0; _modulo = ""; _tipoDoc = ""; _serie = ""; _folioActual = 0;
+        _eModulo = _eTipoDoc = _eSerie = false;
+        _panel?.Abrir();
+    }
+
+    void AbrirEditar(SerieDocumentoResponse x)
+    {
+        _edit = true; _id = x.IdSerie; _modulo = x.Modulo; _tipoDoc = x.TipoDoc;
+        _serie = x.Serie; _folioActual = x.FolioActual; _isActive = x.IsActive;
+        _eModulo = _eTipoDoc = _eSerie = false;
+        _panel?.Abrir();
+    }
+
+    async Task Guardar()
+    {
+        _eModulo = string.IsNullOrWhiteSpace(_modulo);
+        _eTipoDoc = string.IsNullOrWhiteSpace(_tipoDoc);
+        _eSerie = string.IsNullOrWhiteSpace(_serie);
+        if (_eModulo || _eTipoDoc || _eSerie)
+        { _panel?.MostrarError("Corrija los campos marcados."); return; }
+
+        if (_edit)
+        {
+            var (_, e) = await Svc.ActualizarAsync(_id,
+                new ActualizarSerieDocumentoRequest
+                {
+                    IdSerie = _id,
+                    FolioActual = _folioActual,
+                    IsActive = _isActive
+                });
+            if (e != null) { _panel?.MostrarError(e); return; }
+        }
+        else
+        {
+            var (_, e) = await Svc.CrearAsync(
+                new CrearSerieDocumentoRequest
+                {
+                    Modulo = _modulo,
+                    TipoDoc = _tipoDoc.ToUpper(),
+                    Serie = _serie.ToUpper(),
+                    FolioInicial = _folioActual
+                });
+            if (e != null) { _panel?.MostrarError(e); return; }
+        }
+        _panel?.MostrarExitoYCerrar(_edit ? "Serie actualizada." : "Serie creada.");
+        await Cargar();
+    }
+
+    async Task Eliminar(SerieDocumentoResponse x)
+    {
+        if (!await _confirm!.ConfirmarEliminarAsync("serie de documento")) return;
+        var (_, e) = await Svc.EliminarAsync(x.IdSerie);
+        if (e != null) _alerta?.MostrarError(e);
+        else { _alerta?.MostrarExito("Serie eliminada."); await Cargar(); }
+    }
+}

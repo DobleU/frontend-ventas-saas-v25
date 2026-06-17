@@ -1,0 +1,53 @@
+﻿@* Components/Widgets/WidgetContador.razor — VentasSaaSDU
+   Widget compacto: ícono circular con color + tendencia + valor + etiqueta.
+   4 por fila en el dashboard. No requiere charts.
+
+   <WidgetContador Icono="people"        ColorIcono="success" Tendencia="10.6%"
+                   Valor="25.3K" Etiqueta="Clientes activos" />
+   <WidgetContador Icono="shopping_cart" ColorIcono="primary" Tendencia="8.4%"
+                   Valor="1,248" Etiqueta="Pedidos hoy" />
+   <WidgetContador Icono="inventory"     ColorIcono="info"    Tendencia="5.2%"
+                   Valor="3,892" Etiqueta="Productos"  TendenciaPositiva="false" />
+
+   ColorIcono: success | danger | primary | info | warning | secondary
+*@
+
+<div class="card rounded-4 h-100">
+    <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between gap-3">
+
+            @* Ícono circular *@
+            <div class="wh-48 d-flex bg-@ColorIcono text-@ColorIcono bg-opacity-10
+                        align-items-center justify-content-center rounded-circle flex-shrink-0">
+                <span class="material-icons-outlined">@Icono</span>
+            </div>
+
+            @* Valor + etiqueta + tendencia *@
+            <div class="text-end">
+                @if (!string.IsNullOrEmpty(Tendencia))
+                {
+                    <div class="d-flex align-items-center align-self-end justify-content-end
+                                    @(TendenciaPositiva ? "text-success" : "text-danger") mb-1">
+                        <p class="mb-0 font-text1">@Tendencia</p>
+                        <span class="material-icons-outlined" style="font-size:18px;">
+                            @(TendenciaPositiva ? "arrow_drop_up" : "arrow_drop_down")
+                        </span>
+                    </div>
+                }
+                <h4 class="mb-0">@Valor</h4>
+                <p class="mb-0 text-secondary font-text1">@Etiqueta</p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Icono { get; set; } = "bar_chart";
+    /// <summary>success | danger | primary | info | warning | secondary</summary>
+    [Parameter] public string ColorIcono { get; set; } = "primary";
+    [Parameter] public string Valor { get; set; } = "0";
+    [Parameter] public string Etiqueta { get; set; } = string.Empty;
+    [Parameter] public string Tendencia { get; set; } = string.Empty;
+    [Parameter] public bool TendenciaPositiva { get; set; } = true;
+}

@@ -1,0 +1,75 @@
+﻿@* Components/Widgets/WidgetGrafica.razor — VentasSaaSDU
+   Widget grande con título + menú opciones + chart principal + stats al pie.
+   Para gráficas de barras/área principales del dashboard (ventas & views, monthly revenue, etc).
+
+   <WidgetGrafica Titulo="Ventas y Visitas"
+                  IdChart="chart-ventas-views"
+                  Descripcion="Promedio mensual de ventas">
+       <StatsAlPie>
+           <div class="d-flex align-items-center gap-4">
+               <h2 class="mb-0 text-primary">68.9%</h2>
+               <p class="mb-0 text-success">+34.5% <span class="material-icons-outlined text-success">expand_less</span></p>
+           </div>
+       </StatsAlPie>
+       <Opciones>
+           <li><a class="dropdown-item" href="#">Ver todo</a></li>
+       </Opciones>
+   </WidgetGrafica>
+*@
+
+<div class="card w-100 rounded-4 h-100">
+    <div class="card-body">
+
+        @* Header: título + menú *@
+        <div class="d-flex align-items-start justify-content-between mb-3">
+            <h5 class="mb-0">@Titulo</h5>
+            <div class="dropdown">
+                <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle"
+                   onclick="GridMenu.toggle(this)">
+                    <span class="material-icons-outlined fs-5">more_vert</span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end grid-action-menu">
+                    @if (Opciones != null)
+                    {
+                        @Opciones
+                    }
+                    else
+                    {
+                        <li><a class="dropdown-item" href="javascript:;">Ver detalle</a></li>
+                        <li><a class="dropdown-item" href="javascript:;">Exportar</a></li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        @* Chart principal *@
+        @if (!string.IsNullOrEmpty(IdChart))
+        {
+            <div id="@IdChart" style="min-height:@AlturaChart;"></div>
+        }
+        @GraficaSlot
+
+        @* Descripción opcional *@
+        @if (!string.IsNullOrEmpty(Descripcion))
+        {
+            <p class="font-text1 text-secondary mt-2">@Descripcion</p>
+        }
+
+        @* Stats al pie *@
+        @if (StatsAlPie != null)
+        {
+            <div class="mt-3">@StatsAlPie</div>
+        }
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string IdChart { get; set; } = string.Empty;
+    [Parameter] public string AlturaChart { get; set; } = "250px";
+    [Parameter] public string Descripcion { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? GraficaSlot { get; set; }
+    [Parameter] public RenderFragment? StatsAlPie { get; set; }
+    [Parameter] public RenderFragment? Opciones { get; set; }
+}

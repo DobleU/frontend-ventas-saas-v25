@@ -1,0 +1,120 @@
+﻿@* Components/Cards/AppCardHorizontal.razor — VentasSaaSDU
+   Card horizontal con imagen lateral del template Maxton.
+   Uso típico: producto, proveedor, artículo con detalle lateral.
+
+   <AppCardHorizontal
+       Imagen="assets/images/..."
+       Titulo="Nombre del producto"
+       Texto="Descripción breve..."
+       Precio="$599"
+       Estrellas="5"
+       TipoBoton="primary"
+       TextoBoton="Agregar"
+       Redondeada="true"
+       OnAccion="..." />
+*@
+
+<div class="card @(Redondeada ? "rounded-4" : "") @Clase">
+    <div class="row g-0 align-items-center">
+
+        @* Columna imagen *@
+        @if (!string.IsNullOrEmpty(Imagen))
+        {
+            <div class="col-md-4 border-end">
+                <div class="p-3">
+                    <img src="@Imagen" class="w-100 @(Redondeada ? "rounded-start" : "rounded") h-100"
+                         alt="@AltImagen" />
+                </div>
+            </div>
+        }
+
+        @* Columna contenido *@
+        <div class="@(!string.IsNullOrEmpty(Imagen) ? "col-md-8" : "col-12")">
+            <div class="card-body">
+
+                @if (!string.IsNullOrEmpty(Titulo))
+                {
+                    <h5 class="card-title @(string.IsNullOrEmpty(Precio) ? "" : "mb-3")">@Titulo</h5>
+                }
+
+                @if (!string.IsNullOrEmpty(Texto))
+                {
+                    <p class="card-text">@Texto</p>
+                }
+
+                @if (!string.IsNullOrEmpty(Precio))
+                {
+                    <h5>@Precio</h5>
+                }
+
+                @* Estrellas de rating *@
+                @if (Estrellas > 0)
+                {
+                    <div class="ratings text-warning mt-3">
+                        @for (int i = 0; i < Math.Min(Estrellas, 5); i++)
+                        {
+                            <i class="material-icons-outlined">star</i>
+                        }
+                        @for (int i = Estrellas; i < 5; i++)
+                        {
+                            <i class="material-icons-outlined">star_border</i>
+                        }
+                    </div>
+                }
+
+                @* Contenido extra *@
+                @ContenidoExtra
+
+                @* Footer con botón + acciones *@
+                @if (!string.IsNullOrEmpty(TextoBoton) || MostrarAcciones)
+                {
+                    <div class="mt-3 d-flex align-items-center justify-content-between">
+
+                        @if (!string.IsNullOrEmpty(TextoBoton))
+                        {
+                            <button class="btn btn-grd btn-grd-@TipoBoton border-0 d-flex gap-2 px-3 raised"
+                                    @onclick="OnAccion">
+                                <i class="material-icons-outlined">@IconoBoton</i>
+                                @TextoBoton
+                            </button>
+                        }
+
+                        @if (MostrarAcciones)
+                        {
+                            <div class="d-flex gap-1">
+                                <a href="javascript:;" class="sharelink" @onclick="OnFavorito"
+                                   title="Favorito">
+                                    <i class="material-icons-outlined">favorite_border</i>
+                                </a>
+                                @AccionesExtra
+                            </div>
+                        }
+
+                    </div>
+                }
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Imagen { get; set; } = string.Empty;
+    [Parameter] public string AltImagen { get; set; } = string.Empty;
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string Texto { get; set; } = string.Empty;
+    [Parameter] public string Precio { get; set; } = string.Empty;
+    [Parameter] public int Estrellas { get; set; } = 0;
+    [Parameter] public string TextoBoton { get; set; } = string.Empty;
+    [Parameter] public string IconoBoton { get; set; } = "shopping_cart";
+    /// <summary>primary | danger | success | warning | info</summary>
+    [Parameter] public string TipoBoton { get; set; } = "primary";
+    [Parameter] public bool Redondeada { get; set; } = false;
+    [Parameter] public bool MostrarAcciones { get; set; } = false;
+    [Parameter] public string Clase { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ContenidoExtra { get; set; }
+    [Parameter] public RenderFragment? AccionesExtra { get; set; }
+    [Parameter] public EventCallback OnAccion { get; set; }
+    [Parameter] public EventCallback OnFavorito { get; set; }
+}

@@ -1,0 +1,62 @@
+﻿@* Components/Widgets/WidgetKpiIcono.razor — VentasSaaSDU
+   KPI compacto: ícono circular (color sutil) + tendencia + valor + etiqueta + slot mini-chart al pie.
+   Fila de 4-5 KPIs. Diferente a WidgetContador: la tendencia va ARRIBA junto al ícono, chart al pie.
+
+   <WidgetKpiIcono Icono="shopping_cart" ColorIcono="primary"
+                   Tendencia="+24%" TendenciaPositiva="true"
+                   Valor="248k" Etiqueta="Total Pedidos"
+                   IdChart="chart-kpi-pedidos" />
+
+   <WidgetKpiIcono Icono="visibility" ColorIcono="info"
+                   Tendencia="-35%" TendenciaPositiva="false"
+                   Valor="189K" Etiqueta="Total Visitas"
+                   IdChart="chart-kpi-visitas" />
+*@
+
+<div class="card rounded-4 w-100 h-100">
+    <div class="card-body">
+
+        @* Ícono + tendencia *@
+        <div class="mb-3 d-flex align-items-center justify-content-between">
+            <div class="wh-42 d-flex align-items-center justify-content-center rounded-circle
+                        bg-@ColorIcono bg-opacity-10 text-@ColorIcono">
+                <span class="material-icons-outlined fs-5">@Icono</span>
+            </div>
+            @if (!string.IsNullOrEmpty(Tendencia))
+            {
+                <span class="@(TendenciaPositiva ? "text-success" : "text-danger") d-flex align-items-center">
+                    @Tendencia
+                    <i class="material-icons-outlined">
+                        @(TendenciaPositiva ? "expand_less" : "expand_more")
+                    </i>
+                </span>
+            }
+        </div>
+
+        @* Valor + etiqueta + chart *@
+        <div>
+            <h4 class="mb-0">@Valor</h4>
+            <p class="mb-3 text-secondary font-text1">@Etiqueta</p>
+
+            @if (!string.IsNullOrEmpty(IdChart))
+            {
+                <div id="@IdChart" style="min-height:@AlturaChart;"></div>
+            }
+            @MiniChart
+        </div>
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Icono { get; set; } = "bar_chart";
+    /// <summary>primary | success | info | warning | danger | secondary</summary>
+    [Parameter] public string ColorIcono { get; set; } = "primary";
+    [Parameter] public string Tendencia { get; set; } = string.Empty;
+    [Parameter] public bool TendenciaPositiva { get; set; } = true;
+    [Parameter] public string Valor { get; set; } = "0";
+    [Parameter] public string Etiqueta { get; set; } = string.Empty;
+    [Parameter] public string IdChart { get; set; } = string.Empty;
+    [Parameter] public string AlturaChart { get; set; } = "80px";
+    [Parameter] public RenderFragment? MiniChart { get; set; }
+}

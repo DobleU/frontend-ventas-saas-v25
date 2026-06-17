@@ -1,0 +1,380 @@
+@page "/almacen/almacenes/{IdAlmacen:int}/ingreso-produccion"
+@using System.Globalization
+@inject InventarioAlmacenWebService Svc
+@inject IJSRuntime JS
+
+<PageTitle>Ingreso - Produccion - VentasSaaSDU</PageTitle>
+
+<Breadcrumb Titulo="Ingreso - Produccion" Items="@(new[]{ ("Almacen","/almacen/almacenes"), ("Ingreso - Produccion","") })" />
+<AlertMessage @ref="_alerta" />
+
+<section class="production-shell">
+    <div class="production-header">
+        <div>
+            <span class="production-kicker"><span class="material-icons-outlined">upload_file</span> Almacen @IdAlmacen</span>
+            <h3>Carga de produccion por Excel</h3>
+            <p>Importa lotes en cajas; el sistema convierte a piezas usando la configuracion del producto.</p>
+        </div>
+        <button class="btn btn-light d-flex align-items-center gap-2" @onclick="DescargarPlantilla">
+            <span class="material-icons-outlined">download</span>
+            Plantilla CSV
+        </button>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body">
+                    <h5 class="mb-3">Datos de produccion</h5>
+                    <div class="mb-3">
+                        <label class="form-label">Fecha produccion</label>
+                        <input class="form-control" type="date" @bind="_fechaProduccion" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Referencia</label>
+                        <input class="form-control" maxlength="80" @bind="_referenciaProduccion" placeholder="Orden, turno o folio interno" />
+                    </div>
+                    <div>
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" rows="3" maxlength="500" @bind="_observaciones"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="mb-3">Archivo</h5>
+                    <InputFile class="form-control" accept=".csv,.txt,.xlsx" OnChange="LeerArchivo" />
+                    <div class="small text-secondary mt-3">
+                        Columnas requeridas: id_producto, num_lote, fecha_caducidad, cantidad_cajas.
+                        Opcionales: id_compra, id_compra_ref, se_factura, num_serie, observaciones, costo_unitario.
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(_archivoNombre))
+                    {
+                        <div class="alert alert-info mt-3 mb-0">
+                            <strong>@_archivoNombre</strong><br />
+                            @_filas.Count fila(s) listas para revisar.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>Vista previa</strong>
+                        <div class="small text-secondary">Valida antes de importar.</div>
+                    </div>
+                    <button class="btn btn-primary d-flex align-items-center gap-2"
+                            disabled="@(_filas.Count == 0 || _importando)"
+                            @onclick="Importar">
+                        @if (_importando)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        else
+                        {
+                            <span class="material-icons-outlined">publish</span>
+                        }
+                        Importar
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Producto</th>
+                                <th>Lote</th>
+                                <th>Caducidad</th>
+                                <th class="text-end">Cajas</th>
+                                <th>Compra</th>
+                                <th>Factura</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (_filas.Count == 0)
+                            {
+                                <tr><td colspan="7" class="text-center text-secondary py-4">Selecciona un archivo para previsualizar.</td></tr>
+                            }
+                            @foreach (var f in _filas.Take(100))
+                            {
+                                <tr>
+                                    <td>@f.RowNum</td>
+                                    <td>@f.IdProducto</td>
+                                    <td><span class="badge bg-primary-subtle text-primary-emphasis">@f.NumLote</span></td>
+                                    <td>@(f.FechaCaducidad?.ToString("dd/MM/yyyy") ?? "-")</td>
+                                    <td class="text-end">@f.CantidadCajas.ToString("N2", _mx)</td>
+                                    <td>@(f.IdCompra?.ToString() ?? f.IdCompraRef ?? "-")</td>
+                                    <td>@(f.SeFactura ? "Si" : "No")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mt-3">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <div>
+                <strong>Producciones registradas</strong>
+                <div class="small text-secondary">Historial de procesos de ingreso por producción de este almacén.</div>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2" @onclick="ToggleHistorial">
+                <span class="material-icons-outlined fs-6">@(_verHistorial ? "expand_less" : "history")</span>
+                @(_verHistorial ? "Ocultar" : "Ver historial")
+            </button>
+        </div>
+        @if (_verHistorial)
+        {
+            <div class="card-body">
+                <div class="row g-2 align-items-center mb-3">
+                    <div class="col-12 col-md-6">
+                        <input class="form-control" placeholder="Buscar folio o referencia..." @bind="_searchHist" @bind:event="oninput" />
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-primary btn-sm" @onclick="CargarHistorial" disabled="@_cargandoHist">Buscar</button>
+                    </div>
+                </div>
+
+                @if (_cargandoHist)
+                {
+                    <LoadingSpinner Solo="true" Texto="Cargando historial..." />
+                }
+                else if (_historial.Count == 0)
+                {
+                    <div class="text-center text-secondary py-4">Sin producciones registradas.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Folio</th>
+                                    <th>Fecha producción</th>
+                                    <th>Referencia</th>
+                                    <th class="text-end">Líneas</th>
+                                    <th class="text-end">Piezas</th>
+                                    <th class="text-end">Costo</th>
+                                    <th>Registró</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var h in _historial)
+                                {
+                                    <tr>
+                                        <td><span class="badge bg-primary-subtle text-primary-emphasis">@h.Folio</span></td>
+                                        <td>@h.FechaProduccion.ToString("dd/MM/yyyy")</td>
+                                        <td>@(h.Referencia ?? "-")</td>
+                                        <td class="text-end">@h.TotalLineas.ToString("N0", _mx)</td>
+                                        <td class="text-end">@h.TotalPiezas.ToString("N0", _mx)</td>
+                                        <td class="text-end">@h.TotalCosto.ToString("C2", _mx)</td>
+                                        <td class="small text-secondary">@(h.UsuarioRegistro ?? "-")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+<style>
+    .production-shell { display: grid; gap: 1rem; }
+    .production-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.25rem;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #234b6d, #147d73);
+        color: #fff;
+        box-shadow: 0 14px 30px rgba(20, 125, 115, .18);
+    }
+    .production-header h3 { color: #fff; margin: .25rem 0; font-weight: 800; }
+    .production-header p { margin: 0; color: rgba(255,255,255,.82); }
+    .production-kicker { display: inline-flex; align-items: center; gap: .4rem; font-weight: 700; color: #dffcf4; }
+    @@media (max-width: 768px) { .production-header { flex-direction: column; } }
+</style>
+
+@code {
+    [Parameter] public int IdAlmacen { get; set; }
+
+    private readonly CultureInfo _mx = CultureInfo.GetCultureInfo("es-MX");
+    private AlertMessage? _alerta;
+    private string? _archivoNombre;
+    private DateTime _fechaProduccion = DateTime.Today;
+    private string? _referenciaProduccion;
+    private string? _observaciones;
+    private bool _importando;
+    private readonly List<IngresoProduccionImportRowRequest> _filas = [];
+
+    // Historial de producciones registradas
+    private bool _verHistorial;
+    private bool _cargandoHist;
+    private string? _searchHist;
+    private readonly List<IngresoProduccionListItemResponse> _historial = [];
+
+    private async Task ToggleHistorial()
+    {
+        _verHistorial = !_verHistorial;
+        if (_verHistorial && _historial.Count == 0)
+            await CargarHistorial();
+    }
+
+    private async Task CargarHistorial()
+    {
+        _cargandoHist = true;
+        var (data, error) = await Svc.GetIngresoProduccionListAsync(IdAlmacen, _searchHist, 1, 50);
+        _cargandoHist = false;
+
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return;
+        }
+
+        _historial.Clear();
+        if (data?.Items is not null)
+            _historial.AddRange(data.Items);
+    }
+
+    private async Task LeerArchivo(InputFileChangeEventArgs e)
+    {
+        _filas.Clear();
+        var file = e.File;
+        _archivoNombre = file.Name;
+
+        if (file.Name.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            _alerta?.MostrarAdvertencia("Por ahora guarda el Excel como CSV y subelo aqui. El importador del servidor ya recibe las filas estructuradas.");
+            return;
+        }
+
+        using var stream = file.OpenReadStream(20 * 1024 * 1024);
+        using var reader = new StreamReader(stream);
+        var text = await reader.ReadToEndAsync();
+        ParseCsv(text);
+    }
+
+    private void ParseCsv(string text)
+    {
+        var lines = text.Replace("\r\n", "\n").Replace('\r', '\n')
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length < 2)
+        {
+            _alerta?.MostrarError("El archivo no contiene datos.");
+            return;
+        }
+
+        var headers = SplitCsvLine(lines[0]).Select(x => x.Trim().ToLowerInvariant()).ToList();
+        int Col(string name) => headers.IndexOf(name);
+
+        for (var i = 1; i < lines.Length; i++)
+        {
+            var cols = SplitCsvLine(lines[i]);
+            string V(string name)
+            {
+                var idx = Col(name);
+                return idx >= 0 && idx < cols.Count ? cols[idx].Trim() : string.Empty;
+            }
+
+            if (!int.TryParse(V("id_producto"), out var idProducto)) continue;
+            if (!decimal.TryParse(V("cantidad_cajas"), NumberStyles.Any, CultureInfo.InvariantCulture, out var cajas))
+                decimal.TryParse(V("cantidad_cajas"), NumberStyles.Any, _mx, out cajas);
+
+            _filas.Add(new IngresoProduccionImportRowRequest
+            {
+                RowNum = i + 1,
+                IdProducto = idProducto,
+                NumLote = V("num_lote"),
+                FechaCaducidad = DateTime.TryParse(V("fecha_caducidad"), out var fc) ? fc : null,
+                CantidadCajas = cajas,
+                IdCompra = long.TryParse(V("id_compra"), out var idCompra) ? idCompra : null,
+                IdCompraRef = NullIfEmpty(V("id_compra_ref")),
+                SeFactura = !string.Equals(V("se_factura"), "false", StringComparison.OrdinalIgnoreCase)
+                    && V("se_factura") != "0",
+                NumSerie = NullIfEmpty(V("num_serie")),
+                Observaciones = NullIfEmpty(V("observaciones")),
+                CostoUnitario = decimal.TryParse(V("costo_unitario"), NumberStyles.Any, CultureInfo.InvariantCulture, out var costo) ? costo : null
+            });
+        }
+    }
+
+    private async Task Importar()
+    {
+        _importando = true;
+        var (_, error) = await Svc.ImportarIngresoProduccionAsync(IdAlmacen, new IngresoProduccionImportRequest
+        {
+            FechaProduccion = _fechaProduccion,
+            ReferenciaProduccion = _referenciaProduccion,
+            Observaciones = _observaciones,
+            Filas = _filas
+        });
+        _importando = false;
+
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return;
+        }
+
+        _alerta?.MostrarExito("Ingreso de produccion importado correctamente.");
+        _filas.Clear();
+        _archivoNombre = null;
+
+        // Refrescar historial si está visible
+        if (_verHistorial)
+            await CargarHistorial();
+    }
+
+    private async Task DescargarPlantilla()
+    {
+        var csv = "id_producto,num_lote,fecha_caducidad,cantidad_cajas,id_compra,id_compra_ref,se_factura,num_serie,observaciones,costo_unitario\n";
+        var serialized = System.Text.Json.JsonSerializer.Serialize(csv);
+        var script =
+            "(() => {" +
+            $"const blob = new Blob([{serialized}], {{ type: 'text/csv;charset=utf-8;' }});" +
+            "const url = URL.createObjectURL(blob);" +
+            "const a = document.createElement('a');" +
+            "a.href = url;" +
+            "a.download = 'plantilla-ingreso-produccion.csv';" +
+            "document.body.appendChild(a);" +
+            "a.click();" +
+            "a.remove();" +
+            "URL.revokeObjectURL(url);" +
+            "})();";
+        await JS.InvokeVoidAsync("eval", script);
+    }
+
+    private static string? NullIfEmpty(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    private static List<string> SplitCsvLine(string line)
+    {
+        var result = new List<string>();
+        var sb = new System.Text.StringBuilder();
+        var quoted = false;
+
+        foreach (var c in line)
+        {
+            if (c == '"') { quoted = !quoted; continue; }
+            if (c == ',' && !quoted)
+            {
+                result.Add(sb.ToString());
+                sb.Clear();
+                continue;
+            }
+            sb.Append(c);
+        }
+        result.Add(sb.ToString());
+        return result;
+    }
+}

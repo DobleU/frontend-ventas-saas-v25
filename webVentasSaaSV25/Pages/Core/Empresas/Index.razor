@@ -1,5 +1,100 @@
-﻿<h3>Index</h3>
+﻿@* ============================================================
+   [SUSTITUIR COMPLETO]
+   Ruta: WEB/Pages/Core/Empresas/Index.razor
+   ============================================================ *@
+@page "/core/empresas"
+@using webVentasSaaSV25.Services.Catalogos
+@using webVentasSaaSV25.State
+@inject EmpresaService Svc
+@inject AppState       Estado
+
+<PageTitle>Mi Empresa — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Mi Empresa" Items="@(new[]{ ("Configuración",""), ("Empresa","") })" />
+<AlertMessage @ref="_alerta" />
+
+@if (_loading) { <LoadingSpinner /> }
+else if (_empresa is null)
+{
+    <div class="alert alert-warning d-flex align-items-center gap-2">
+        <i class="material-icons-outlined">warning</i>
+        No se pudo cargar la información de la empresa.
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="material-icons-outlined text-primary">business</i>
+                    <span class="fw-medium">Datos generales</span>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-5 text-muted small">ID empresa</dt>
+                        <dd class="col-7"><code>@_empresa.IdEmpresa</code></dd>
+                        <dt class="col-5 text-muted small">Código</dt>
+                        <dd class="col-7"><code>@_empresa.Codigo</code></dd>
+                        <dt class="col-5 text-muted small">Nombre</dt>
+                        <dd class="col-7 fw-medium">@_empresa.Nombre</dd>
+                        <dt class="col-5 text-muted small">RFC</dt>
+                        <dd class="col-7">@(_empresa.Rfc ?? "—")</dd>
+                        <dt class="col-5 text-muted small">Zona horaria</dt>
+                        <dd class="col-7">@(_empresa.ZonaHoraria ?? "—")</dd>
+                        <dt class="col-5 text-muted small">Estado</dt>
+                        <dd class="col-7"><StatusBadge Value="@_empresa.IsActive" /></dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="material-icons-outlined text-primary">schedule</i>
+                    <span class="fw-medium">Auditoría</span>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-5 text-muted small">Creado</dt>
+                        <dd class="col-7">@MxTime.DateTime(_empresa.CreatedUtc)</dd>
+                        <dt class="col-5 text-muted small">Última actualización</dt>
+                        <dd class="col-7">
+                            @(_empresa.UpdatedUtc.HasValue
+                                ? MxTime.DateTime(_empresa.UpdatedUtc.Value)
+                                : "—")
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="alert alert-info d-flex align-items-start gap-2 mb-0">
+                <i class="material-icons-outlined mt-1" style="font-size:18px;">info</i>
+                <div>
+                    <strong>Vista de solo lectura.</strong>
+                    Para modificar los datos contacte al administrador del sistema.
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
+    EmpresaResponse? _empresa;
+    bool             _loading = true;
+    AlertMessage?    _alerta;
 
+    protected override async Task OnInitializedAsync()
+    {
+        var id = Estado.IdEmpresa;
+        if (id <= 0)
+        {
+            _alerta?.MostrarError("No se pudo determinar la empresa activa.");
+            _loading = false;
+            return;
+        }
+        var (d, e) = await Svc.GetByIdAsync(id);
+        _loading = false;
+        if (e != null) _alerta?.MostrarError(e); else _empresa = d;
+    }
 }

@@ -1,0 +1,184 @@
+﻿@* Shared/ToastNotification.razor — VentasSaaSDU
+   Notificaciones toast del template Maxton.
+   Con imagen o con ícono, posición configurable.
+
+   USO:
+   ─────────────────────────────────────────────────────
+   Registrar en MainLayout o App.razor (una sola instancia global):
+   <ToastNotification @ref="Toast" />
+
+   Inyectar como cascading o desde AppState, luego llamar:
+
+   Con ícono:
+   Toast.Mostrar("Guardado correctamente.", "success");
+   Toast.Mostrar("Error al procesar.", "danger");
+   Toast.Mostrar("Revisa los campos.", "warning");
+   Toast.Mostrar("Nueva actualización disponible.", "info");
+
+   Con imagen:
+   Toast.Mostrar("Juan inició sesión.", "default", imagen: "assets/images/avatars/01.png", titulo: "Juan Pérez");
+
+   Posición (default = top-end):
+   Toast.Mostrar("Mensaje", "success", posicion: "bottom-start");
+
+   Posiciones: top-start | top-center | top-end | bottom-start | bottom-center | bottom-end
+   Tipos: default | info | warning | danger | success
+   ─────────────────────────────────────────────────────
+*@
+
+@foreach (var toast in _toasts)
+{
+    var t = toast;
+    <div class="toast-container position-fixed @t.PosicionCss p-3" style="z-index:99999;">
+        <div class="toast show align-items-center border-0 @t.GradienteCss text-white"
+             role="alert" aria-live="assertive">
+            <div class="d-flex align-items-center gap-2 p-2">
+
+                @* Imagen o ícono *@
+                @if (!string.IsNullOrEmpty(t.Imagen))
+                {
+                    <img src="@t.Imagen" width="40" height="40"
+                         class="rounded-circle flex-shrink-0" alt="@t.Titulo" />
+                }
+                else
+                {
+                    <div class="flex-shrink-0">
+                        <i class="material-icons-outlined fs-5">@t.Icono</i>
+                    </div>
+                }
+
+                @* Contenido *@
+                <div class="flex-grow-1">
+                    @if (!string.IsNullOrEmpty(t.Titulo))
+                    {
+                        <strong class="d-block">@t.Titulo</strong>
+                    }
+                    <small>@t.Mensaje</small>
+                </div>
+
+                @* Cerrar *@
+                <button type="button" class="btn-close btn-close-white flex-shrink-0 ms-1"
+                        @onclick="() => Cerrar(t.Id)">
+                </button>
+
+            </div>
+
+            @* Barra de progreso *@
+            <div class="toast-progress bg-white bg-opacity-25"
+                 style="height:3px; width:@t.Progreso%; transition:width 0.1s linear;">
+            </div>
+
+        </div>
+    </div>
+}
+
+@implements IDisposable
+
+@code {
+
+    private readonly List<ToastItem> _toasts = new();
+
+    public void Mostrar(
+        string mensaje,
+        string tipo = "default",
+        string titulo = "",
+        string imagen = "",
+        string posicion = "top-end",
+        int duracionMs = 4000)
+    {
+        var item = new ToastItem
+        {
+            Id = Guid.NewGuid().ToString("N")[..8],
+            Mensaje = mensaje,
+            Titulo = !string.IsNullOrEmpty(titulo) ? titulo : TituloDefault(tipo),
+            Imagen = imagen,
+            Icono = IconoDefault(tipo),
+            GradienteCss = GradienteDefault(tipo),
+            PosicionCss = PosicionDefault(posicion),
+            Progreso = 100
+        };
+
+        _toasts.Add(item);
+        StateHasChanged();
+
+        // Temporizador para cerrar + barra de progreso
+        var timer = new System.Timers.Timer(100);
+        var elapsed = 0;
+        timer.Elapsed += async (_, _) =>
+        {
+            elapsed += 100;
+            item.Progreso = Math.Max(0, 100 - (elapsed * 100 / duracionMs));
+
+            if (elapsed >= duracionMs)
+            {
+                timer.Stop();
+                timer.Dispose();
+                await InvokeAsync(() => { Cerrar(item.Id); });
+            }
+            else
+            {
+                await InvokeAsync(StateHasChanged);
+            }
+        };
+        timer.Start();
+    }
+
+    private void Cerrar(string id)
+    {
+        var item = _toasts.FirstOrDefault(t => t.Id == id);
+        if (item != null) _toasts.Remove(item);
+        StateHasChanged();
+    }
+
+    private static string TituloDefault(string tipo) => tipo switch
+    {
+        "success" => "Éxito",
+        "danger" => "Error",
+        "warning" => "Advertencia",
+        "info" => "Información",
+        _ => "Notificación"
+    };
+
+    private static string IconoDefault(string tipo) => tipo switch
+    {
+        "success" => "check_circle",
+        "danger" => "dangerous",
+        "warning" => "warning_amber",
+        "info" => "info",
+        _ => "notifications"
+    };
+
+    private static string GradienteDefault(string tipo) => tipo switch
+    {
+        "success" => "bg-grd-success",
+        "danger" => "bg-grd-danger",
+        "warning" => "bg-grd-warning",
+        "info" => "bg-grd-info",
+        _ => "bg-grd-primary"
+    };
+
+    private static string PosicionDefault(string pos) => pos switch
+    {
+        "top-start" => "top-0 start-0",
+        "top-center" => "top-0 start-50 translate-middle-x",
+        "top-end" => "top-0 end-0",
+        "bottom-start" => "bottom-0 start-0",
+        "bottom-center" => "bottom-0 start-50 translate-middle-x",
+        "bottom-end" => "bottom-0 end-0",
+        _ => "top-0 end-0"
+    };
+
+    public void Dispose() { }
+
+    private class ToastItem
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Mensaje { get; set; } = string.Empty;
+        public string Titulo { get; set; } = string.Empty;
+        public string Imagen { get; set; } = string.Empty;
+        public string Icono { get; set; } = string.Empty;
+        public string GradienteCss { get; set; } = string.Empty;
+        public string PosicionCss { get; set; } = string.Empty;
+        public int Progreso { get; set; } = 100;
+    }
+}

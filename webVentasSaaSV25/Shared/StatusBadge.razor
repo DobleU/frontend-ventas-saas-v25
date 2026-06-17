@@ -1,0 +1,162 @@
+﻿@* Shared/StatusBadge.razor — VentasSaaSDU
+   Componente unificado de badges del template Maxton.
+
+   VARIANTES:
+   ─────────────────────────────────────────────────────
+   1) Badge básico (pill opcional):
+      <StatusBadge Tipo="success" Texto="Activo" />
+      <StatusBadge Tipo="danger"  Texto="Inactivo" Pill="true" />
+
+   2) Badge en botón:
+      <StatusBadge Variante="boton" Tipo="primary" Texto="Notificaciones" Contador="8" />
+
+   3) Badge flotante en botón con ícono:
+      <StatusBadge Variante="boton-icono" Tipo="success" Texto="Evento"
+                   Icono="event" Contador="10" />
+
+   4) Ícono circular con contador:
+      <StatusBadge Variante="icono" Tipo="branding" Icono="notifications" Contador="7" />
+
+   5) Badge de estado activo/inactivo (shortcut):
+      <StatusBadge Value="true" />   → Activo (success)
+      <StatusBadge Value="false" />  → Inactivo (danger)
+   ─────────────────────────────────────────────────────
+*@
+
+@* ── Variante: estado activo/inactivo (shortcut) ── *@
+@if (Value.HasValue)
+{
+    <span class="badge rounded-pill @(Value.Value ? "bg-grd-success" : "bg-grd-danger")">
+        @(Value.Value ? "Activo" : "Inactivo")
+    </span>
+}
+
+@* ── Variante: ícono circular con contador ── *@
+else if (Variante == "icono")
+{
+    <a class="badge-icon position-relative p-3 rounded-circle @ColorTexto @Gradiente"
+       href="javascript:;" @onclick="OnClick">
+        @if (Contador.HasValue)
+        {
+            <span class="badge-number position-absolute top-0 end-0">@Contador</span>
+        }
+        <i class="material-icons-outlined">@Icono</i>
+    </a>
+}
+
+@* ── Variante: botón con ícono y badge flotante ── *@
+else if (Variante == "boton-icono")
+{
+    <button type="button"
+            class="btn @BtnCss position-relative d-flex align-items-center gap-2"
+            @onclick="OnClick">
+        @if (!string.IsNullOrEmpty(Icono))
+        {
+            <i class="material-icons-outlined">@Icono</i>
+        }
+        @Texto
+        @if (Contador.HasValue)
+        {
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill @BadgeFlotanteCss">
+                @Contador
+                <span class="visually-hidden">notificaciones</span>
+            </span>
+        }
+        else if (SoloPunto)
+        {
+            <span class="position-absolute top-0 start-100 translate-middle badge border border-light rounded-circle bg-danger p-2">
+                <span class="visually-hidden">notificaciones</span>
+            </span>
+        }
+    </button>
+}
+
+@* ── Variante: botón con contador inline ── *@
+else if (Variante == "boton")
+{
+    <button type="button"
+            class="btn @Gradiente"
+            @onclick="OnClick">
+        @Texto
+        @if (Contador.HasValue)
+        {
+            <span class="badge bg-dark ms-1">@Contador</span>
+        }
+    </button>
+}
+
+@* ── Variante: badge básico (default) ── *@
+else
+{
+    <span class="badge @(Pill ? "rounded-pill" : "") @Gradiente @ColorTexto">
+        @Texto
+    </span>
+}
+
+@code {
+
+    // ── Shortcut activo/inactivo ──────────────────────────────────────────
+    [Parameter] public bool? Value { get; set; }
+
+    // ── Variante del badge ────────────────────────────────────────────────
+    /// <summary>basico | boton | boton-icono | icono</summary>
+    [Parameter] public string Variante { get; set; } = "basico";
+
+    // ── Apariencia ────────────────────────────────────────────────────────
+    /// <summary>primary | secondary | success | danger | warning | info | dark | branding | royal</summary>
+    [Parameter] public string Tipo { get; set; } = "primary";
+
+    [Parameter] public string Texto { get; set; } = string.Empty;
+    [Parameter] public string Icono { get; set; } = string.Empty;
+    [Parameter] public int? Contador { get; set; }
+    [Parameter] public bool Pill { get; set; } = false;
+    [Parameter] public bool SoloPunto { get; set; } = false;
+
+    // ── Eventos ───────────────────────────────────────────────────────────
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    // ── CSS calculado ─────────────────────────────────────────────────────
+
+    private string Gradiente => Tipo switch
+    {
+        "primary" => "bg-grd-primary",
+        "secondary" => "bg-grd-voilet",
+        "success" => "bg-grd-success",
+        "danger" => "bg-grd-danger",
+        "warning" => "bg-grd-warning",
+        "info" => "bg-grd-info",
+        "dark" => "bg-grd-royal",
+        "branding" => "bg-grd-branding",
+        "royal" => "bg-grd-royal",
+        "light" => "bg-light",
+        _ => "bg-grd-primary"
+    };
+
+    private string ColorTexto => Tipo switch
+    {
+        "warning" => "text-dark",
+        "light" => "text-white",
+        _ => "text-white"
+    };
+
+    private string BtnCss => Tipo switch
+    {
+        "primary" => "btn-primary",
+        "secondary" => "btn-secondary",
+        "success" => "btn-success",
+        "danger" => "btn-danger",
+        "warning" => "btn-warning",
+        "info" => "btn-info",
+        "dark" => "btn-dark",
+        _ => "btn-primary"
+    };
+
+    private string BadgeFlotanteCss => Tipo switch
+    {
+        "dark" => "bg-dark",
+        "warning" => "bg-dark",
+        "info" => "bg-dark",
+        "secondary" => "bg-dark",
+        _ => "bg-danger"
+    };
+}

@@ -1,0 +1,116 @@
+@page "/almacen/vehiculos/{IdAsignacion:long}/cambiar-ruta"
+@using webVentasSaaSV25.Services.Almacen
+@inject InventarioAlmacenWebService Svc
+@inject NavigationManager Nav
+
+<PageTitle>Cambiar ruta - VentasSaaSDU</PageTitle>
+
+<Breadcrumb Titulo="Cambiar ruta" Items="@(new[]{ ("Almacén","/almacen/vehiculos"), ("Cambiar ruta","") })" />
+<AlertMessage @ref="_alerta" />
+
+<div class="card rounded-4">
+    <div class="card-body">
+        @if (_loading)
+        {
+            <LoadingSpinner Solo="true" Texto="Cargando rutas..." />
+        }
+        else if (_vehiculo is null)
+        {
+            <div class="text-center py-5">
+                <span class="material-icons-outlined fs-1 text-secondary">alt_route</span>
+                <h5 class="mt-2">Asignación no encontrada</h5>
+            </div>
+        }
+        else
+        {
+            <div class="vehicle-action-head">
+                <span class="material-icons-outlined">alt_route</span>
+                <div>
+                    <h5 class="mb-1">@(_vehiculo.Placa ?? "SIN PLACAS")</h5>
+                    <div class="text-secondary">Ruta actual: @_vehiculo.NombreRuta</div>
+                </div>
+            </div>
+
+            <div class="row g-3 mt-2">
+                <div class="col-12 col-lg-7">
+                    <label class="form-label">Nueva ruta</label>
+                    <select class="form-select" @bind="_idRuta">
+                        <option value="0">Selecciona...</option>
+                        @foreach (var r in _rutas)
+                        {
+                            <option value="@r.IdRuta" disabled="@(!r.Disponible && r.IdAsignacionActual != IdAsignacion)">
+                                @r.Nombre @(r.Disponible || r.IdAsignacionActual == IdAsignacion ? "" : " - OCUPADA")
+                            </option>
+                        }
+                    </select>
+                    <div class="form-text">Si la ruta ya está asignada a otro vehículo activo, no se permite guardar.</div>
+                </div>
+                <div class="col-12 d-flex gap-2">
+                    <button class="btn btn-primary" disabled="@_saving" @onclick="Guardar">
+                        <span class="material-icons-outlined fs-6 align-middle">save</span>
+                        Guardar cambio
+                    </button>
+                    <button class="btn btn-light" disabled="@_saving" @onclick="Volver">Cancelar</button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .vehicle-action-head{display:flex;gap:12px;align-items:center;padding:14px;border-radius:12px;background:#edf7fb;border:1px solid #cfe6f3}
+    .vehicle-action-head>.material-icons-outlined{font-size:34px;color:#0d6efd}
+</style>
+
+@code {
+    [Parameter] public long IdAsignacion { get; set; }
+
+    private AlertMessage? _alerta;
+    private SubalmacenVehiculoCardResponse? _vehiculo;
+    private readonly List<RutaDisponibleSubalmacenResponse> _rutas = [];
+    private bool _loading;
+    private bool _saving;
+    private int _idRuta;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        var (vehiculo, errVehiculo) = await Svc.GetSubalmacenVehiculoByIdAsync(IdAsignacion);
+        _vehiculo = vehiculo;
+
+        if (errVehiculo is not null)
+        {
+            _loading = false;
+            _alerta?.MostrarError(errVehiculo);
+            return;
+        }
+
+        var (rutas, errRutas) = await Svc.GetRutasDisponiblesAsync(_vehiculo?.IdSucursal, IdAsignacion);
+        _loading = false;
+
+        if (errRutas is not null) { _alerta?.MostrarError(errRutas); return; }
+        if (rutas is not null) _rutas.AddRange(rutas);
+        _idRuta = _vehiculo?.IdRuta ?? 0;
+    }
+
+    private async Task Guardar()
+    {
+        if (_idRuta <= 0) { _alerta?.MostrarError("Selecciona una ruta."); return; }
+
+        var ruta = _rutas.FirstOrDefault(x => x.IdRuta == _idRuta);
+        if (ruta is not null && !ruta.Disponible && ruta.IdAsignacionActual != IdAsignacion)
+        {
+            _alerta?.MostrarError("La ruta ya está asignada a otro vehículo activo.");
+            return;
+        }
+
+        _saving = true;
+        var (_, error) = await Svc.CambiarRutaVehiculoAsync(IdAsignacion, new CambiarRutaVehiculoRequest { IdRuta = _idRuta });
+        _saving = false;
+        if (error is not null) { _alerta?.MostrarError(error); return; }
+        _alerta?.MostrarExito("Ruta actualizada.");
+        Volver();
+    }
+
+    private void Volver() => Nav.NavigateTo("/almacen/vehiculos");
+}

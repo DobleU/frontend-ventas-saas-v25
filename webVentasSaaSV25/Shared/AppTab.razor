@@ -1,0 +1,28 @@
+﻿@* Shared/AppTab.razor — VentasSaaSDU
+   Tab hijo de AppTabs. Se registra automáticamente en el padre.
+   No renderiza HTML propio — el padre maneja el contenido.
+
+   Uso siempre dentro de <AppTabs>:
+   <AppTabs Color="success">
+       <AppTab Icono="bi bi-house-door" Titulo="General">
+           <p>Contenido...</p>
+       </AppTab>
+   </AppTabs>
+*@
+
+@code {
+    [CascadingParameter] private AppTabs? Padre { get; set; }
+
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    /// <summary>Clase Bootstrap Icons: bi bi-house-door | bi bi-person | etc.</summary>
+    [Parameter] public string Icono { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    internal string Id { get; } = Guid.NewGuid().ToString("N")[..8];
+    internal RenderFragment? Contenido => ChildContent;
+
+    protected override void OnInitialized()
+    {
+        Padre?.Registrar(this);
+    }
+}

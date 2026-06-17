@@ -1,0 +1,76 @@
+﻿@* Shared/AppTabs.razor — VentasSaaSDU
+   Nav Pills con tabs controlados por Blazor (sin data-bs-toggle).
+
+   USO:
+   <AppTabs Color="primary">
+       <AppTab Icono="bi bi-house-door" Titulo="Inicio">
+           <p>Contenido de inicio...</p>
+       </AppTab>
+       <AppTab Icono="bi bi-person" Titulo="Perfil">
+           <p>Contenido de perfil...</p>
+       </AppTab>
+   </AppTabs>
+
+   Color: primary | danger | success | warning | info
+*@
+
+<CascadingValue Value="this">
+    @* Renderizar hijos ocultos para que se registren *@
+    <div style="display:none">@ChildContent</div>
+</CascadingValue>
+
+@* Pills — navegación *@
+<ul class="nav nav-pills @(Color == "primary" ? "" : $"nav-pills-{Color}") mb-3" role="tablist">
+    @foreach (var tab in _tabs)
+    {
+        var t = tab;
+        <li class="nav-item" role="presentation">
+            <a class="nav-link @(_activo == t.Id ? "active" : "")"
+               href="javascript:;"
+               role="tab"
+               @onclick="() => Activar(t.Id)">
+                <div class="d-flex align-items-center">
+                    @if (!string.IsNullOrEmpty(t.Icono))
+                    {
+                        <div class="tab-icon">
+                            <i class="@t.Icono me-1 fs-6"></i>
+                        </div>
+                    }
+                    <div class="tab-title">@t.Titulo</div>
+                </div>
+            </a>
+        </li>
+    }
+</ul>
+
+@* Contenido activo *@
+<div class="tab-content">
+    @foreach (var tab in _tabs)
+    {
+        <div class="tab-pane fade @(_activo == tab.Id ? "show active" : "")" role="tabpanel">
+            @tab.Contenido
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>primary | danger | success | warning | info</summary>
+    [Parameter] public string Color { get; set; } = "primary";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private readonly List<AppTab> _tabs = new();
+    private string _activo = string.Empty;
+
+    internal void Registrar(AppTab tab)
+    {
+        if (_tabs.Any(t => t.Id == tab.Id)) return;
+        _tabs.Add(tab);
+        if (_tabs.Count == 1) _activo = tab.Id;
+        StateHasChanged();
+    }
+
+    private void Activar(string id)
+    {
+        _activo = id;
+    }
+}

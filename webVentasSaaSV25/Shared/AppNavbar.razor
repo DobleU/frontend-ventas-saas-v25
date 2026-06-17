@@ -1,0 +1,60 @@
+﻿@* Shared/AppNavbar.razor — VentasSaaSDU
+   Navbar secundaria con gradiente del template Maxton.
+   Uso: navegación interna de módulos, sub-secciones, wizards.
+
+   USO:
+   ─────────────────────────────────────────────────────
+   <AppNavbar Marca="Ventas" Gradiente="info">
+       <Items>
+           <AppNavItem Href="/ventas"         Icono="home"           Texto="Inicio" Activo="true" />
+           <AppNavItem Href="/ventas/tienda"  Icono="point_of_sale"  Texto="Tienda" />
+           <AppNavItem Href="/ventas/ruta"    Icono="directions_car" Texto="Ruta" />
+       </Items>
+   </AppNavbar>
+
+   Gradiente: info | success | danger | primary | warning | voilet | royal | orange
+   ─────────────────────────────────────────────────────
+*@
+
+<nav class="navbar navbar-expand-lg navbar-dark @GradienteCss rounded">
+    <div class="container-fluid">
+
+        @* Marca *@
+        @if (!string.IsNullOrEmpty(Marca))
+        {
+            <a class="navbar-brand" href="javascript:;">@Marca</a>
+        }
+
+        @* Toggler móvil *@
+        <button class="navbar-toggler" type="button"
+                onclick="AppNavbar.toggle(this)">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        @* Menú colapsable *@
+        <div class="navbar-collapse collapse" id="navbar-@_id">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-2">
+                @Items
+            </ul>
+        </div>
+
+    </div>
+</nav>
+
+@code {
+    /// <summary>Texto de la marca/título del navbar</summary>
+    [Parameter] public string Marca { get; set; } = string.Empty;
+
+    /// <summary>info | success | danger | primary | warning | voilet | royal | orange</summary>
+    [Parameter] public string Gradiente { get; set; } = "info";
+
+    [Parameter] public RenderFragment? Items { get; set; }
+
+    private readonly string _id = Guid.NewGuid().ToString("N")[..6];
+
+    private string GradienteCss => Gradiente switch
+    {
+        "orange" => "bg-orange",
+        _ => $"bg-grd-{Gradiente}"
+    };
+}

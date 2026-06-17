@@ -1,0 +1,280 @@
+﻿@* ============================================================
+   [NUEVO ARCHIVO — crear carpeta Pages/Seguridad/Usuarios/]
+   Ruta: WEB/Pages/Seguridad/Usuarios/Index.razor
+   ============================================================ *@
+@page "/seguridad/usuarios"
+@inject UsuarioService Svc
+@inject RolService RolSvc
+@inject SucursalService SucSvc
+
+<PageTitle>Usuarios — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Usuarios" Items="@(new[] { ("Seguridad", "/seguridad"), ("Usuarios", "") })" />
+<AlertMessage @ref="_alerta" />
+
+<DataGrid TItem="UsuarioResponse" Titulo="Usuarios" Modulo="seguridad"
+          Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
+          Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
+          OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo"
+          SearchPlaceholder="Username o correo...">
+    <FiltrosExtra>
+        <select class="form-select form-select-sm" style="width:140px" @onchange="OnFiltroBloqueado">
+            <option value="">Todos</option>
+            <option value="false">Activos</option>
+            <option value="true">Bloqueados</option>
+        </select>
+    </FiltrosExtra>
+    <HeaderRow>
+        <th>Username</th>
+        <th style="width:180px">Correo</th>
+        <th style="width:130px">Rol</th>
+        <th style="width:80px" class="text-center">Sucursales</th>
+        <th style="width:160px">Último acceso</th>
+        <th style="width:110px" class="text-center">Estado</th>
+        <th style="width:90px" class="text-center">Acciones</th>
+    </HeaderRow>
+    <RowTemplate>
+        <td>
+            <div class="fw-medium">@context.Username</div>
+            @if (context.RequiereCambio)
+            {
+                <span class="badge bg-warning-subtle text-warning-emphasis small">Cambio pass requerido</span>
+            }
+        </td>
+        <td class="text-muted small">@context.Email</td>
+        <td>
+            @if (!string.IsNullOrWhiteSpace(context.NombreRol))
+            {
+                <span class="badge bg-primary-subtle text-primary-emphasis small">@context.NombreRol</span>
+            }
+            else
+            {
+
+                <span class="text-muted small">Sin rol</span>
+            }
+        </td>
+        <td class="text-center text-muted small">@context.TotalSucursales</td>
+        <td class="text-muted small">
+            @(context.UltimoLoginUtc.HasValue
+                        ? MxTime.DateTimeShort(context.UltimoLoginUtc.Value)
+                        : "—")
+        </td>
+        <td class="text-center">
+            @if (context.Bloqueado)
+            {
+                <span class="badge bg-danger-subtle text-danger-emphasis small">Bloqueado</span>
+            }
+            else
+            {
+
+                <StatusBadge Value="@context.IsActive" />
+            }
+        </td>
+        <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2"
+                    title="Editar" @onclick="() => AbrirEditar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger py-1 px-2"
+                    title="Eliminar" @onclick="() => Eliminar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">delete</i>
+            </button>
+        </td>
+    </RowTemplate>
+</DataGrid>
+
+<FormOffcanvas @ref="_panel" Titulo="@(_edit ? "Editar Usuario" : "Nuevo Usuario")"
+               Icono="@(_edit?"edit":"person_add")" Ancho="520px" OnGuardar="Guardar">
+    <Body>
+        @* Username *@
+        <div class="mb-3">
+            <label class="form-label fw-medium">Username <span class="text-danger">*</span></label>
+            <input class="form-control @(_eUsername ? "is-invalid" : "")" maxlength="60"
+                   @bind="_username" @oninput="() => _eUsername = false"
+                   placeholder="Ej. jperez" disabled="@_edit" />
+            @if (_eUsername)
+            {
+                <div class="invalid-feedback">Requerido.</div>
+            }
+        </div>
+
+        @* Contraseña solo en creación *@
+        @if (!_edit)
+        {
+            <div class="mb-3">
+                <label class="form-label fw-medium">Contraseña <span class="text-danger">*</span></label>
+                <input type="password" class="form-control @(_ePassword ? "is-invalid" : "")"
+                       @bind="_password" @oninput="() => _ePassword = false"
+                       placeholder="Mínimo 8 caracteres" />
+                @if (_ePassword)
+                {
+                    <div class="invalid-feedback">Mínimo 8 caracteres.</div>
+                }
+                <div class="form-text">El usuario deberá cambiarla en su primer acceso.</div>
+            </div>
+        }
+
+        @* Email + Teléfono *@
+        <div class="row g-3 mb-3">
+            <div class="col-7">
+                <label class="form-label fw-medium">Correo <span class="text-danger">*</span></label>
+                <input type="email" class="form-control @(_eEmail ? "is-invalid" : "")"
+                       maxlength="150" @bind="_email" @oninput="() => _eEmail = false"
+                       placeholder="usuario@empresa.com" />
+                @if (_eEmail)
+                {
+                    <div class="invalid-feedback">Requerido.</div>
+                }
+            </div>
+            <div class="col-5">
+                <label class="form-label fw-medium">Teléfono</label>
+                <input class="form-control" maxlength="20" @bind="_telefono" />
+            </div>
+        </div>
+
+        @* Rol *@
+        <div class="mb-3">
+            <label class="form-label fw-medium">Rol <span class="text-danger">*</span></label>
+            <select class="form-select @(_eRol ? "is-invalid" : "")" @bind="_idRol">
+                <option value="0">Seleccione un rol...</option>
+                @foreach (var r in _roles)
+                {
+                    <option value="@r.IdRol">@r.Nombre</option>
+                }
+            </select>
+            @if (_eRol)
+            {
+                <div class="invalid-feedback">Requerido.</div>
+            }
+        </div>
+
+        @* Estado (solo edición) *@
+        @if (_edit)
+        {
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <label class="form-label fw-medium">Estado</label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" @bind="_isActive" />
+                        <label class="form-check-label">@(_isActive ? "Activo" : "Inactivo")</label>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label fw-medium">Bloqueado</label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" @bind="_bloqueado" />
+                        <label class="form-check-label @(_bloqueado ? "text-danger" : "")">
+                            @(_bloqueado ? "Sí" : "No")
+                        </label>
+                    </div>
+                </div>
+            </div>
+        }
+    </Body>
+</FormOffcanvas>
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    PagedResult<UsuarioResponse>? _paged;
+    FiltroUsuarioRequest _f = new();
+    bool _loading;
+    AlertMessage? _alerta;
+    FormOffcanvas? _panel;
+    ConfirmDialog? _confirm;
+    List<RolResponse> _roles = [];
+
+    bool _edit;
+    int _id;
+    string _username = ""; string _password = ""; string _email = ""; string _telefono = "";
+    int _idRol = 0;
+    bool _isActive = true; bool _bloqueado = false;
+    bool _eUsername, _ePassword, _eEmail, _eRol;
+
+    protected override async Task OnInitializedAsync()
+        => await Task.WhenAll(Cargar(), CargarRoles());
+
+    async Task Cargar()
+    {
+        _loading = true;
+        var (d, e) = await Svc.GetPagedAsync(_f);
+        _loading = false;
+        if (e != null) _alerta?.MostrarError(e); else _paged = d;
+    }
+
+    async Task CargarRoles()
+    {
+        var (d, _) = await RolSvc.GetPagedAsync(new FiltroRolRequest { IsActive = true, Page = 1, PageSize = 200 });
+        _roles = d?.Items?.ToList() ?? [];
+    }
+
+    async Task OnPage(int p) { _f.Page = p; await Cargar(); }
+    async Task OnSearch(string? s) { _f.Search = s; _f.Page = 1; await Cargar(); }
+    async Task OnFiltroBloqueado(ChangeEventArgs e)
+    {
+        _f.Bloqueado = string.IsNullOrEmpty(e.Value?.ToString()) ? null : bool.Parse(e.Value.ToString()!);
+        _f.Page = 1;
+        await Cargar();
+    }
+
+    void AbrirNuevo()
+    {
+        _edit = false; _id = 0;
+        _username = ""; _password = ""; _email = ""; _telefono = ""; _idRol = 0;
+        _eUsername = _ePassword = _eEmail = _eRol = false;
+        _panel?.Abrir();
+    }
+
+    void AbrirEditar(UsuarioResponse x)
+    {
+        _edit = true; _id = x.IdUsuario;
+        _username = x.Username; _email = x.Email; _telefono = x.Telefono ?? "";
+        _idRol = x.IdRol ?? 0; _isActive = x.IsActive; _bloqueado = x.Bloqueado;
+        _eUsername = _ePassword = _eEmail = _eRol = false;
+        _panel?.Abrir();
+    }
+
+    async Task Guardar()
+    {
+        _eUsername = string.IsNullOrWhiteSpace(_username);
+        _eEmail = string.IsNullOrWhiteSpace(_email);
+        _eRol = _idRol == 0;
+        _ePassword = !_edit && (_password.Length < 8);
+        if (_eUsername || _eEmail || _eRol || _ePassword)
+        { _panel?.MostrarError("Corrija los campos marcados."); return; }
+
+        if (_edit)
+        {
+            var (_, e) = await Svc.ActualizarAsync(_id, new ActualizarUsuarioRequest
+            {
+                IdUsuario = _id,
+                Email = _email.Trim(),
+                Telefono = _telefono,
+                IdRol = _idRol,
+                IsActive = _isActive,
+                Bloqueado = _bloqueado
+            });
+            if (e != null) { _panel?.MostrarError(e); return; }
+        }
+        else
+        {
+            var (_, e) = await Svc.CrearAsync(new CrearUsuarioRequest
+            {
+                Username = _username.ToLower().Trim(),
+                Password = _password,
+                Email = _email.Trim(),
+                Telefono = _telefono,
+                IdRol = _idRol
+            });
+            if (e != null) { _panel?.MostrarError(e); return; }
+        }
+        _panel?.MostrarExitoYCerrar(_edit ? "Usuario actualizado." : "Usuario creado.");
+        await Cargar();
+    }
+
+    async Task Eliminar(UsuarioResponse x)
+    {
+        if (!await _confirm!.ConfirmarEliminarAsync("usuario")) return;
+        var (_, e) = await Svc.EliminarAsync(x.IdUsuario);
+        if (e != null) _alerta?.MostrarError(e);
+        else { _alerta?.MostrarExito("Usuario eliminado."); await Cargar(); }
+    }
+}

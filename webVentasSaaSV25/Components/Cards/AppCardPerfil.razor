@@ -1,0 +1,149 @@
+﻿@* Components/Cards/AppCardPerfil.razor — VentasSaaSDU
+   Card de perfil de usuario/contacto del template Maxton.
+   Uso típico: perfil de usuario, vendedor, cliente, empleado.
+
+   VARIANTE GRANDE (con portada):
+   <AppCardPerfil
+       ImagenPortada="assets/images/gallery/14.png"
+       Avatar="assets/images/avatars/05.png"
+       ColorAvatar="primary"
+       Nombre="Juan Pérez"
+       Cargo="Administrador"
+       Stat1Valor="120" Stat1Label="Ventas"
+       Stat2Valor="48"  Stat2Label="Clientes"
+       Stat3Valor="5"   Stat3Label="Rutas"
+       OnMensaje="..." OnAccion="..." TextoAccion="Ver perfil" />
+
+   VARIANTE COMPACTA (sin portada, con redes sociales):
+   <AppCardPerfil
+       Compacta="true"
+       Avatar="assets/images/avatars/07.png"
+       Nombre="María López"
+       Cargo="Vendedor"
+       Gradiente="primary"
+       ... />
+*@
+
+@if (Compacta)
+{
+    @* ── Variante compacta ── *@
+    <div class="card shadow-none border mb-0 @(!string.IsNullOrEmpty(Gradiente) ? $"bg-grd-{Gradiente}" : "") @Clase">
+        <div class="card-body">
+            <div class="text-center">
+                <img src="@Avatar" width="100" height="100"
+                     class="rounded-circle raised @(!string.IsNullOrEmpty(Gradiente) ? "bg-white p-1" : "bg-white")"
+                     alt="@Nombre" />
+            </div>
+            <div class="text-center mt-4">
+                <h5 class="mb-2 @(!string.IsNullOrEmpty(Gradiente) ? "text-white" : "")">@Nombre</h5>
+                <p class="mb-0 @(!string.IsNullOrEmpty(Gradiente) ? "text-white" : "")">@Cargo</p>
+            </div>
+            <div class="d-flex align-items-center justify-content-around mt-4">
+                <div class="d-flex flex-column gap-1 text-center">
+                    <h5 class="mb-0 @(!string.IsNullOrEmpty(Gradiente) ? "text-white" : "")">@Stat1Valor</h5>
+                    <p class="mb-0 @(!string.IsNullOrEmpty(Gradiente) ? "text-white" : "")">@Stat1Label</p>
+                </div>
+                <div class="d-flex flex-column gap-1 text-center">
+                    <h5 class="mb-0 @(!string.IsNullOrEmpty(Gradiente) ? "text-white" : "")">@Stat2Valor</h5>
+                    <p class="mb-0 @(!string.IsNullOrEmpty(Gradiente) ? "text-white" : "")">@Stat2Label</p>
+                </div>
+                <div class="d-flex flex-column gap-1 text-center">
+                    <h5 class="mb-0 @(!string.IsNullOrEmpty(Gradiente) ? "text-white" : "")">@Stat3Valor</h5>
+                    <p class="mb-0 @(!string.IsNullOrEmpty(Gradiente) ? "text-white" : "")">@Stat3Label</p>
+                </div>
+            </div>
+            @if (AccionesRedes != null)
+            {
+                <hr class="@(!string.IsNullOrEmpty(Gradiente) ? "border-light" : "")" />
+                <div class="d-flex align-items-center justify-content-center gap-3">
+                    @AccionesRedes
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    @* ── Variante grande con portada ── *@
+    <div class="card mb-0 @Clase">
+        <div class="card-body">
+
+            @* Portada + Avatar superpuesto *@
+            <div class="position-relative">
+                @if (!string.IsNullOrEmpty(ImagenPortada))
+                {
+                    <img src="@ImagenPortada" class="img-fluid rounded w-100" alt="" style="max-height:160px;object-fit:cover;" />
+                }
+                <div class="position-absolute top-100 start-50 translate-middle">
+                    <img src="@Avatar" width="100" height="100"
+                         class="rounded-circle raised p-1 bg-@ColorAvatar"
+                         alt="@Nombre" />
+                </div>
+            </div>
+
+            @* Nombre y cargo *@
+            <div class="text-center mt-5 pt-4">
+                <h5 class="mb-2">@Nombre</h5>
+                <p class="mb-0 text-secondary">@Cargo</p>
+            </div>
+
+            @* Estadísticas *@
+            <div class="d-flex align-items-center justify-content-around mt-5">
+                <div class="d-flex flex-column gap-2 text-center">
+                    <h4 class="mb-0">@Stat1Valor</h4>
+                    <p class="mb-0 text-secondary font-text1">@Stat1Label</p>
+                </div>
+                <div class="d-flex flex-column gap-2 text-center">
+                    <h4 class="mb-0">@Stat2Valor</h4>
+                    <p class="mb-0 text-secondary font-text1">@Stat2Label</p>
+                </div>
+                <div class="d-flex flex-column gap-2 text-center">
+                    <h4 class="mb-0">@Stat3Valor</h4>
+                    <p class="mb-0 text-secondary font-text1">@Stat3Label</p>
+                </div>
+            </div>
+
+            <hr />
+
+            @* Botones de acción *@
+            <div class="d-flex align-items-center justify-content-between gap-2">
+                @if (OnMensaje.HasDelegate)
+                {
+                    <button class="btn btn-light flex-fill" @onclick="OnMensaje">
+                        <i class="material-icons-outlined me-1" style="font-size:16px;vertical-align:middle;">chat</i>
+                        Mensaje
+                    </button>
+                }
+                @if (!string.IsNullOrEmpty(TextoAccion))
+                {
+                    <button class="btn btn-primary flex-fill" @onclick="OnAccion">
+                        @TextoAccion
+                    </button>
+                }
+            </div>
+
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Compacta { get; set; } = false;
+    [Parameter] public string ImagenPortada { get; set; } = string.Empty;
+    [Parameter] public string Avatar { get; set; } = string.Empty;
+    [Parameter] public string ColorAvatar { get; set; } = "primary";
+    /// <summary>Gradiente para variante compacta: primary | info | success | danger | voilet</summary>
+    [Parameter] public string Gradiente { get; set; } = string.Empty;
+    [Parameter] public string Nombre { get; set; } = string.Empty;
+    [Parameter] public string Cargo { get; set; } = string.Empty;
+    [Parameter] public string Stat1Valor { get; set; } = "0";
+    [Parameter] public string Stat1Label { get; set; } = "Total";
+    [Parameter] public string Stat2Valor { get; set; } = "0";
+    [Parameter] public string Stat2Label { get; set; } = "Total";
+    [Parameter] public string Stat3Valor { get; set; } = "0";
+    [Parameter] public string Stat3Label { get; set; } = "Total";
+    [Parameter] public string TextoAccion { get; set; } = "Ver perfil";
+    [Parameter] public string Clase { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? AccionesRedes { get; set; }
+    [Parameter] public EventCallback OnMensaje { get; set; }
+    [Parameter] public EventCallback OnAccion { get; set; }
+}

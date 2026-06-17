@@ -1,0 +1,222 @@
+@page "/ventas/ruta/eventos"
+@using System.Globalization
+@inject MonitorMapaService MapaSvc
+
+<PageTitle>Eventos - VentasSaaSDU</PageTitle>
+
+<Breadcrumb Titulo="Eventos" Items="@(new[] { ("Ventas", "/ventas"), ("Ruta", ""), ("Eventos", "") })" />
+<AlertMessage @ref="_alerta" />
+
+<section class="report-shell">
+    <div class="report-header">
+        <div>
+            <span class="report-kicker"><span class="material-icons-outlined">notifications</span> Control operativo</span>
+            <h3>Eventos y alertas</h3>
+            <p>Bitacora de eventos importantes generados por ruta, inventario y procesos administrativos.</p>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Desde</label>
+                    <input class="form-control" type="date" @bind="_fechaInicio" />
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Hasta</label>
+                    <input class="form-control" type="date" @bind="_fechaFin" />
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Severidad</label>
+                    <select class="form-select" @bind="_severidad">
+                        <option value="">Todas</option>
+                        <option value="CRITICO">Critico</option>
+                        <option value="BLOQUEANTE">Bloqueante</option>
+                        <option value="ALERTA">Alerta</option>
+                        <option value="INFORMATIVO">Informativo</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Modulo</label>
+                    <input class="form-control" @bind="_modulo" placeholder="INVENTARIO" />
+                </div>
+                <div class="col-12 col-md-2">
+                    <label class="form-label">Buscar</label>
+                    <input class="form-control" @bind="_search" placeholder="Referencia, accion..." />
+                </div>
+                <div class="col-6 col-md-1">
+                    <label class="form-label">Abiertos</label>
+                    <div class="form-check form-switch pt-2">
+                        <input class="form-check-input" type="checkbox" role="switch" @bind="_soloAbiertos" />
+                    </div>
+                </div>
+                <div class="col-6 col-md-1">
+                    <button class="btn btn-primary w-100" disabled="@_loading" @onclick="Cargar">
+                        <span class="material-icons-outlined fs-6">search</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-xl">@Kpi("Eventos", _data.Kpi.TotalEventos.ToString("N0", _mx), "event_note")</div>
+        <div class="col-6 col-xl">@Kpi("Abiertos", _data.Kpi.Abiertos.ToString("N0", _mx), "pending_actions")</div>
+        <div class="col-6 col-xl">@Kpi("Criticos", _data.Kpi.Criticos.ToString("N0", _mx), "priority_high", _data.Kpi.Criticos > 0 ? "kpi-danger" : null)</div>
+        <div class="col-6 col-xl">@Kpi("Requieren WS", _data.Kpi.RequierenWs.ToString("N0", _mx), "send")</div>
+        <div class="col-6 col-xl">@Kpi("WS procesados", _data.Kpi.ProcesadosWs.ToString("N0", _mx), "done_all")</div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Severidad</th>
+                        <th>Modulo</th>
+                        <th>Usuario</th>
+                        <th>Evento</th>
+                        <th>Referencia</th>
+                        <th>WS</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_loading)
+                    {
+                        <tr><td colspan="9" class="text-center py-4 text-secondary">Cargando...</td></tr>
+                    }
+                    else if (!_items.Any())
+                    {
+                        <tr><td colspan="9" class="text-center py-4 text-secondary">Sin eventos para el filtro.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var e in _items)
+                        {
+                            <tr>
+                                <td class="text-nowrap">@e.CreatedUtc.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td><span class="@SeveridadCss(e.Severidad)">@e.Severidad</span></td>
+                                <td>@e.ModuloOrigen</td>
+                                <td>@(e.Usuario ?? "-")</td>
+                                <td>
+                                    <div class="fw-semibold">@e.AccionAplicada</div>
+                                    <div class="text-secondary small">@e.Descripcion</div>
+                                </td>
+                                <td>
+                                    <div>@e.Referencia</div>
+                                    <div class="text-secondary small">@e.TablaOrigen @e.IdRegistroOrigen</div>
+                                </td>
+                                <td>
+                                    @if (e.RequiereWs)
+                                    {
+                                        <span class="badge @(e.ProcesadoWs ? "bg-success" : "bg-warning text-dark")">@(e.ProcesadoWs ? "Procesado" : "Pendiente")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-secondary">No</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @(e.EstaCerrado ? "bg-secondary" : "bg-primary")">@(e.EstaCerrado ? "Cerrado" : "Abierto")</span>
+                                    @if (!string.IsNullOrWhiteSpace(e.UltimaAccion))
+                                    {
+                                        <div class="text-secondary small">@e.UltimaAccion</div>
+                                    }
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    <button class="btn btn-sm btn-outline-secondary me-1" disabled="@_saving" @onclick="@(() => RegistrarAccion(e.IdEvento, "REVISADO"))">Revisar</button>
+                                    <button class="btn btn-sm btn-outline-primary" disabled="@(_saving || e.EstaCerrado)" @onclick="@(() => RegistrarAccion(e.IdEvento, "CERRADO"))">Cerrar</button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+@code {
+    private readonly CultureInfo _mx = CultureInfo.GetCultureInfo("es-MX");
+    private AlertMessage? _alerta;
+    private ReporteEventosResponse _data = new();
+    private IReadOnlyList<ReporteEventoRowResponse> _items => _data.Eventos;
+    private bool _loading;
+    private bool _saving;
+    private DateTime _fechaInicio = DateTime.Today.AddDays(-7);
+    private DateTime _fechaFin = DateTime.Today;
+    private string? _severidad;
+    private string? _modulo;
+    private string? _search;
+    private bool _soloAbiertos = true;
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    private async Task Cargar()
+    {
+        _loading = true;
+        var (data, error) = await MapaSvc.GetReporteEventosAsync(_fechaInicio, _fechaFin, _severidad, _modulo, _search, _soloAbiertos);
+        _loading = false;
+
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return;
+        }
+
+        _data = data ?? new();
+    }
+
+    private async Task RegistrarAccion(long idEvento, string accion)
+    {
+        _saving = true;
+        var (_, error) = await MapaSvc.RegistrarEventoAccionAsync(idEvento, new EventoAccionRequest
+        {
+            Accion = accion,
+            Comentario = accion == "CERRADO" ? "Cerrado desde reporte web." : "Revisado desde reporte web."
+        });
+        _saving = false;
+
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return;
+        }
+
+        _alerta?.MostrarExito(accion == "CERRADO" ? "Evento cerrado." : "Evento revisado.");
+        await Cargar();
+    }
+
+    private static string SeveridadCss(string? severidad)
+        => severidad?.ToUpperInvariant() switch
+        {
+            "CRITICO" or "BLOQUEANTE" => "badge bg-danger",
+            "ALERTA" => "badge bg-warning text-dark",
+            "INFORMATIVO" => "badge bg-light text-dark",
+            _ => "badge bg-secondary"
+        };
+
+    private RenderFragment Kpi(string titulo, string valor, string icono, string? css = null) => @<div class="card border-0 shadow-sm h-100 kpi-card @css">
+        <div class="card-body d-flex align-items-center justify-content-between">
+            <div>
+                <div class="text-secondary small">@titulo</div>
+                <div class="fs-5 fw-bold">@valor</div>
+            </div>
+            <span class="material-icons-outlined text-primary">@icono</span>
+        </div>
+    </div>;
+}
+
+<style>
+    .report-shell { padding-bottom: 2rem; }
+    .report-header { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:1rem; }
+    .report-header h3 { margin:0; font-weight:800; }
+    .report-header p { margin:.25rem 0 0; color:#6c757d; }
+    .report-kicker { display:flex; align-items:center; gap:.35rem; color:#f05a1a; font-weight:700; font-size:.78rem; text-transform:uppercase; }
+    .kpi-card.kpi-danger { border-left:4px solid #dc3545 !important; }
+    @@media (max-width: 768px) { .report-header { flex-direction:column; } }
+</style>

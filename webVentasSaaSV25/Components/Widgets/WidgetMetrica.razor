@@ -1,0 +1,45 @@
+﻿@* Components/Widgets/WidgetMetrica.razor — VentasSaaSDU
+   Widget de métrica con valor grande + badge tendencia + slot para mini-chart de área.
+   Fila superior del dashboard. Usa ApexCharts externamente via slot.
+
+   <WidgetMetrica Valor="$9,568" Etiqueta="Total Ventas"
+                  Tendencia="8.6%" TendenciaPositiva="false"
+                  IdChart="chart-ventas" />
+*@
+
+<div class="card rounded-4 h-100">
+    <div class="card-body">
+
+        @* Valor + badge tendencia *@
+        <div class="d-flex align-items-center gap-3 mb-2">
+            <h3 class="mb-0">@Valor</h3>
+            <p class="dash-lable d-flex align-items-center gap-1 rounded mb-0
+               @(TendenciaPositiva ? "bg-success text-success" : "bg-danger text-danger") bg-opacity-10">
+                <span class="material-icons-outlined fs-6">
+                    @(TendenciaPositiva ? "arrow_upward" : "arrow_downward")
+                </span>
+                @Tendencia
+            </p>
+        </div>
+
+        @* Etiqueta *@
+        <p class="mb-0 text-secondary font-text1">@Etiqueta</p>
+
+        @* Slot para mini-chart (ApexCharts área) *@
+        @if (!string.IsNullOrEmpty(IdChart))
+        {
+            <div id="@IdChart" style="min-height:105px;"></div>
+        }
+        @MiniChart
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Valor { get; set; } = "0";
+    [Parameter] public string Etiqueta { get; set; } = string.Empty;
+    [Parameter] public string Tendencia { get; set; } = string.Empty;
+    [Parameter] public bool TendenciaPositiva { get; set; } = true;
+    [Parameter] public string IdChart { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? MiniChart { get; set; }
+}

@@ -1,0 +1,30 @@
+﻿@* Components/Widgets/WidgetBarraMetrica.razor — VentasSaaSDU
+   Ítem de barra de progreso: nombre (izq) + valor (der) + barra de progreso.
+   Siempre va dentro del slot <Barras> de WidgetEstadisticas.
+
+   <WidgetBarraMetrica Nombre="Conversiones" Valor="2,589" Porcentaje="65" ColorBarra="primary" />
+   <WidgetBarraMetrica Nombre="Ventas"        Valor="6,748" Porcentaje="55" ColorBarra="warning" />
+   <WidgetBarraMetrica Nombre="Clientes"      Valor="9,842" Porcentaje="45" ColorBarra="info"    />
+*@
+
+<div>
+    <p class="mb-1 d-flex justify-content-between">
+        <span>@Nombre</span>
+        <span>@Valor</span>
+    </p>
+    <div class="progress" style="height:5px;">
+        <div class="progress-bar bg-grd-@ColorBarra" style="width:@Porcentaje%"
+             role="progressbar"
+             aria-valuenow="@Porcentaje"
+             aria-valuemin="0" aria-valuemax="100">
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Nombre { get; set; } = string.Empty;
+    [Parameter] public string Valor { get; set; } = string.Empty;
+    [Parameter] public int Porcentaje { get; set; } = 0;
+    /// <summary>primary | success | danger | warning | info | voilet | deep-blue</summary>
+    [Parameter] public string ColorBarra { get; set; } = "primary";
+}

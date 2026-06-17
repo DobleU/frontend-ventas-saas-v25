@@ -1,47 +1,38 @@
-﻿// Program.cs — VentasSaaSDU.Web
-// CORRECCIÓN v2:
-//   - Microsoft.Extensions.Http requerido para AddHttpClient (agregar al .csproj)
-//   - AuthService y PermisoClienteService como Scoped (IJSRuntime es Scoped en WASM)
-//   - AppState como Singleton (no depende de IJSRuntime directamente)
+﻿
 
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using webVentasSaaSV25;
 using webVentasSaaSV25.Services.Auth;
+using webVentasSaaSV25.Services.Catalogos;
 using webVentasSaaSV25.Services.Http;
 using webVentasSaaSV25.State;
-using webVentasSaaSV25;
-using webVentasSaaSV25.Services.Auth;
-using webVentasSaaSV25.Services.Http;
-using webVentasSaaSV25.State;
+using webVentasSaaSV25.Services.Almacen;
+using webVentasSaaSV25.Services.Monitor;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// URL de la API — viene de wwwroot/appsettings.json
+// ─── CONFIGURACIÓN ────────────────────────────────────────────────────────────
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
     ?? throw new InvalidOperationException("ApiBaseUrl no configurado en wwwroot/appsettings.json");
 
 // ─── ESTADO GLOBAL ────────────────────────────────────────────────────────────
-// Singleton: no depende de IJSRuntime, vive toda la sesión de la pestaña.
+// Singleton: vive toda la sesión de la pestaña, no depende de IJSRuntime.
 builder.Services.AddSingleton<AppState>();
 
-// ─── SERVICIOS DE AUTENTICACIÓN ───────────────────────────────────────────────
-// Scoped (NO Singleton) porque dependen de IJSRuntime que en WASM es Scoped.
-// En Blazor WASM hay un solo Scope por sesión de pestaña, por lo que el
-// comportamiento es equivalente a Singleton en la práctica.
+// ─── AUTENTICACIÓN ────────────────────────────────────────────────────────────
+// Scoped porque dependen de IJSRuntime (Scoped en WASM).
+// En Blazor WASM hay un solo Scope por pestaña — equivale a Singleton en práctica.
 builder.Services.AddScoped<PermisoClienteService>();
 builder.Services.AddScoped<AuthService>();
 
 // ─── HTTP CLIENTS ─────────────────────────────────────────────────────────────
-// REQUIERE paquete NuGet: Microsoft.Extensions.Http
-// Agregar al VentasSaaSDU.Web.csproj:
-//   <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
-
+// Requiere NuGet: Microsoft.Extensions.Http 8.0.0
+// Cliente autenticado: Bearer token + refresh automático vía TokenRefreshHandler
 builder.Services.AddScoped<TokenRefreshHandler>();
 
-// Cliente autenticado (con Bearer + refresh automático)
 builder.Services.AddHttpClient("VentasSaaSAPI", client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
@@ -50,7 +41,7 @@ builder.Services.AddHttpClient("VentasSaaSAPI", client =>
 })
 .AddHttpMessageHandler<TokenRefreshHandler>();
 
-// Cliente público (solo para Login y Refresh — sin token todavía)
+// Cliente público: solo para Login y Refresh (sin token todavía)
 builder.Services.AddHttpClient("VentasSaaSPublic", client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
@@ -67,5 +58,42 @@ builder.Services.AddScoped<ApiClient>(sp =>
     var http = factory.CreateClient("VentasSaaSAPI");
     return new ApiClient(http, authService, appState);
 });
+
+// ─── CATÁLOGOS GENERALES ──────────────────────────────────────────────────────
+builder.Services.AddScoped<ZonaService>();
+builder.Services.AddScoped<RutaService>();
+builder.Services.AddScoped<UnidadService>();
+builder.Services.AddScoped<ClasificacionService>();
+builder.Services.AddScoped<CatalogoTipoService>();
+builder.Services.AddScoped<CatalogoItemService>();
+builder.Services.AddScoped<ImpuestoService>();
+builder.Services.AddScoped<ProveedorService>();
+
+// ─── CATÁLOGOS FASE 1 ─────────────────────────────────────────────────────────
+builder.Services.AddScoped<ClienteService>();
+builder.Services.AddScoped<ProductoService>();
+
+// ─── CORE / ESTRUCTURA EMPRESA ────────────────────────────────────────────────
+builder.Services.AddScoped<SucursalService>();
+builder.Services.AddScoped<EmpresaService>();
+builder.Services.AddScoped<MonedaService>();
+builder.Services.AddScoped<SerieDocumentoService>();
+builder.Services.AddScoped<ParametroEmpresaService>();
+builder.Services.AddScoped<ParametroSucursalService>();
+
+// ─── REPORTES / DASHBOARD ─────────────────────────────────────────────────────
+builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<MonitorMapaService>();
+
+// ─── INVENTARIO / ALMACENES ───────────────────────────────────────────────────
+builder.Services.AddScoped<InventarioAlmacenWebService>();
+
+
+// ── Seguridad /  ────────────────────────────────────────────────────
+builder.Services.AddScoped<UsuarioService>();
+builder.Services.AddScoped<RolService>();
+builder.Services.AddScoped<SesionWebService>();
+builder.Services.AddScoped<SuscripcionWebService>();
+
 
 await builder.Build().RunAsync();

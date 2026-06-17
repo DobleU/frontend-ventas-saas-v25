@@ -1,0 +1,25 @@
+﻿@* Components/Widgets/WidgetAccesosRapidos.razor — VentasSaaSDU
+   Barra horizontal de accesos rápidos con íconos circulares y separadores.
+   Uso: shortcuts del dashboard, acciones frecuentes.
+
+   <WidgetAccesosRapidos>
+       <WidgetAcceso Icono="point_of_sale"  Texto="Nueva venta"   Gradiente="primary"  OnClick="..." />
+       <WidgetAcceso Icono="receipt_long"   Texto="Facturar"      Gradiente="success"  OnClick="..." />
+       <WidgetAcceso Icono="inventory"      Texto="Inventario"    Gradiente="info"     OnClick="..." />
+       <WidgetAcceso Icono="people"         Texto="Clientes"      Gradiente="danger"   OnClick="..." />
+       <WidgetAcceso Icono="bar_chart"      Texto="Reportes"      Gradiente="warning"  OnClick="..." />
+       <WidgetAcceso Icono="settings"       Texto="Config."       Gradiente="branding" OnClick="..." />
+   </WidgetAccesosRapidos>
+*@
+
+<div class="card rounded-4">
+    <div class="card-body">
+        <div class="d-flex align-items-center justify-content-around flex-wrap gap-4 p-2">
+            @ChildContent
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

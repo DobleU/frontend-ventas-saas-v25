@@ -1,4 +1,4 @@
-﻿// Services/Auth/PermisoClienteService.cs — VentasSaaSDU.Web
+﻿    // Services/Auth/PermisoClienteService.cs — VentasSaaSDU.Web
 // Servicio singleton que expone los permisos del usuario autenticado
 // para controlar visibilidad en UI. La validación REAL está siempre en el backend.
 

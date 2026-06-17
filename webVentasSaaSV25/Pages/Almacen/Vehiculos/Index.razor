@@ -1,0 +1,250 @@
+@page "/almacen/vehiculos"
+@page "/almacen/{IdAlmacen:int}/vehiculos"
+@using System.Globalization
+@using webVentasSaaSV25.Services.Almacen
+@inject InventarioAlmacenWebService Svc
+@inject NavigationManager Nav
+
+<PageTitle>Vehículos — VentasSaaSDU</PageTitle>
+
+<Breadcrumb Titulo="Vehículos" Items="@(new[]{ ("Almacén", ""), ("Vehículos", "") })" />
+<AlertMessage @ref="_alerta" AutoOcultarMs="6000" />
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-4 col-xl-3">
+        <WidgetKpiIcono Icono="local_shipping" ColorIcono="primary" Valor="@TotalVehiculos" Etiqueta="Vehículos asignados" />
+    </div>
+    <div class="col-12 col-md-4 col-xl-3">
+        <WidgetKpiIcono Icono="payments" ColorIcono="success" Valor="@MontoTotal" Etiqueta="Inventario actual" />
+    </div>
+    <div class="col-12 col-md-4 col-xl-3">
+        <WidgetKpiIcono Icono="inventory_2" ColorIcono="info" Valor="@ProductosTotal" Etiqueta="Productos activos" />
+    </div>
+    <div class="col-12 col-xl-3">
+        <div class="card rounded-4 h-100">
+            <div class="card-body d-flex align-items-center justify-content-between gap-3">
+                <div>
+                    <p class="mb-1 text-secondary small">Almacén padre</p>
+                    <h6 class="mb-0 text-truncate" title="@NombreAlmacenSeleccionado">@NombreAlmacenSeleccionado</h6>
+                </div>
+                <span class="material-icons-outlined text-primary fs-2">warehouse</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card rounded-4 mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-12 col-lg-4">
+                <label class="form-label small text-secondary mb-1">Almacén principal</label>
+                <select class="form-select" value="@(_idAlmacenSeleccionado?.ToString() ?? string.Empty)" @onchange="OnAlmacenChanged" disabled="@_almacenBloqueado">
+                    @if (_almacenes.Count == 0)
+                    {
+                        <option value="">Sin almacenes disponibles</option>
+                    }
+                    else
+                    {
+                        @foreach (var a in _almacenes)
+                        {
+                            <option value="@a.IdAlmacen">@a.Nombre</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-lg-4">
+                <label class="form-label small text-secondary mb-1">Buscar</label>
+                <div class="position-relative">
+                    <input class="form-control ps-5" placeholder="Buscar ruta, vehículo, placa o subalmacén..." @bind="_search" />
+                    <span class="material-icons-outlined position-absolute ms-3 translate-middle-y start-0 top-50 fs-5 text-secondary">search</span>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-auto">
+                <label class="form-label small text-secondary mb-1">Estado</label>
+                <select class="form-select" @bind="_isActiveText">
+                    <option value="true">Activos</option>
+                    <option value="false">Inactivos</option>
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-auto align-self-end">
+                <div class="d-flex gap-2">
+                    <AppButton Tipo="primary" Icono="search" Texto="Buscar" OnClick="CargarVehiculos" Loading="_loadingVehiculos" Disabled="@(!_idAlmacenSeleccionado.HasValue)" />
+                    <AppButton Tipo="light" Icono="restart_alt" Texto="Limpiar" OnClick="Limpiar" Disabled="_loadingVehiculos" />
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (_loadingInicial || _loadingVehiculos)
+{
+    <LoadingSpinner Solo="true" Texto="Cargando vehículos..." />
+}
+else if (!_idAlmacenSeleccionado.HasValue)
+{
+    <div class="card rounded-4">
+        <div class="card-body text-center py-5">
+            <span class="material-icons-outlined fs-1 text-secondary">warehouse</span>
+            <h5 class="mt-2 mb-1">No hay almacén principal seleccionado</h5>
+            <p class="text-secondary mb-0">Primero crea o selecciona un almacén de la empresa.</p>
+        </div>
+    </div>
+}
+else if (_items.Count == 0)
+{
+    <div class="card rounded-4">
+        <div class="card-body text-center py-5">
+            <span class="material-icons-outlined fs-1 text-secondary">local_shipping</span>
+            <h5 class="mt-2 mb-1">No hay vehículos asignados</h5>
+            <p class="text-secondary mb-0">Este almacén todavía no tiene subalmacenes de ruta/vehículo.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 row-cols-xxl-4 g-3">
+        @foreach (var v in _items)
+        {
+            <div class="col">
+                <InventarioCard Icono="@v.Icono"
+                                ColorIcono="info"
+                                TipoCard="@v.TipoCard"
+                                Nombre="@TituloVehiculo(v)"
+                                Subtitulo="@null"
+                                MostrarSubtitulo="false"
+                                EtiquetaValor="@v.EtiquetaValor"
+                                IconoValor="@v.IconoValor"
+                                MontoInventario="@v.MontoInventario"
+                                MontoInventarioCosto="@v.MontoInventarioCosto"
+                                ProductosActivos="@v.ProductosActivos"
+                                ExistenciaTotal="@v.ExistenciaTotal"
+                                InventarioActualizadoUtc="@v.InventarioActualizadoUtc"
+                                NombreEncargado="@v.NombreEncargado"
+                                IsActive="@v.IsActive"
+                                EtiquetaExtra="Ruta"
+                                ValorExtra="@v.NombreRuta"
+                                IconoExtra="route">
+                    <Opciones>
+                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="@($"/almacen/vehiculos/{v.IdAsignacion}/inventario")"><span class="material-icons-outlined fs-6">inventory_2</span>Ver inventario</a></li>
+                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="@($"/almacen/vehiculos/{v.IdAsignacion}/ventas-historicas")"><span class="material-icons-outlined fs-6">bar_chart</span>Ver ventas históricas</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="@($"/almacen/vehiculos/{v.IdAsignacion}/editar")"><span class="material-icons-outlined fs-6">edit</span>Editar vehículo</a></li>
+                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="@($"/almacen/vehiculos/{v.IdAsignacion}/cambiar-chofer")"><span class="material-icons-outlined fs-6">person</span>Cambiar de chofer</a></li>
+                        <li><a class="dropdown-item d-flex align-items-center gap-2" href="@($"/almacen/vehiculos/{v.IdAsignacion}/cambiar-ruta")"><span class="material-icons-outlined fs-6">alt_route</span>Cambiar de ruta</a></li>
+                    </Opciones>
+                </InventarioCard>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private static readonly CultureInfo CulturaMx = CultureInfo.GetCultureInfo("es-MX");
+
+    [Parameter] public int? IdAlmacen { get; set; }
+
+    private readonly List<AlmacenEmpresaCardResponse> _almacenes = [];
+    private readonly List<SubalmacenVehiculoCardResponse> _items = [];
+    private AlertMessage? _alerta;
+    private bool _loadingInicial;
+    private bool _loadingVehiculos;
+    private bool _almacenBloqueado;
+    private int? _idAlmacenSeleccionado;
+    private int? _ultimoParametro;
+    private string? _search;
+    private string _isActiveText = "true";
+
+    private string TotalVehiculos => _items.Count(x => x.IsActive).ToString("N0", CulturaMx);
+    private string ProductosTotal => _items.Sum(x => x.ProductosActivos).ToString("N0", CulturaMx);
+    private string MontoTotal => _items.Sum(x => x.MontoInventario).ToString("C2", CulturaMx);
+
+    private string NombreAlmacenSeleccionado
+        => _almacenes.FirstOrDefault(x => x.IdAlmacen == _idAlmacenSeleccionado)?.Nombre
+           ?? (_idAlmacenSeleccionado.HasValue ? $"Almacén {_idAlmacenSeleccionado}" : "Sin seleccionar");
+
+    private static string TituloVehiculo(SubalmacenVehiculoCardResponse v)
+    {
+        var placa = string.IsNullOrWhiteSpace(v.Placa) ? "SIN PLACAS" : v.Placa.Trim();
+        return $"PLACAS: {placa}";
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_ultimoParametro == IdAlmacen && _almacenes.Count > 0)
+            return;
+
+        _ultimoParametro = IdAlmacen;
+        await CargarInicial();
+    }
+
+    private bool? IsActiveFiltro => _isActiveText switch
+    {
+        "true" => true,
+        "false" => false,
+        _ => null
+    };
+
+    private async Task CargarInicial()
+    {
+        _loadingInicial = true;
+
+        var (almacenes, errorAlmacenes) = await Svc.GetAlmacenesCardsAsync(isActive: true);
+        if (errorAlmacenes is not null)
+        {
+            _loadingInicial = false;
+            _alerta?.MostrarError(errorAlmacenes);
+            return;
+        }
+
+        _almacenes.Clear();
+        if (almacenes is not null)
+            _almacenes.AddRange(almacenes);
+
+        _almacenBloqueado = IdAlmacen.HasValue;
+        _idAlmacenSeleccionado = IdAlmacen ?? _almacenes.FirstOrDefault()?.IdAlmacen;
+
+        _loadingInicial = false;
+        await CargarVehiculos();
+    }
+
+    private async Task OnAlmacenChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var id))
+            _idAlmacenSeleccionado = id;
+        else
+            _idAlmacenSeleccionado = null;
+
+        await CargarVehiculos();
+    }
+
+    private async Task CargarVehiculos()
+    {
+        if (!_idAlmacenSeleccionado.HasValue)
+        {
+            _items.Clear();
+            return;
+        }
+
+        _loadingVehiculos = true;
+        var (data, error) = await Svc.GetSubalmacenesVehiculosCardsAsync(_idAlmacenSeleccionado.Value, _search, IsActiveFiltro);
+        _loadingVehiculos = false;
+
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return;
+        }
+
+        _items.Clear();
+        if (data is not null)
+            _items.AddRange(data);
+    }
+
+    private async Task Limpiar()
+    {
+        _search = null;
+        _isActiveText = "true";
+        await CargarVehiculos();
+    }
+}

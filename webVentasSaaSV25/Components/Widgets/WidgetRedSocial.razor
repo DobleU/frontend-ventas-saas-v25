@@ -1,0 +1,82 @@
+﻿@* Components/Widgets/WidgetRedSocial.razor — VentasSaaSDU
+   Widget mini para métricas de fuente/canal: logo + menú + valor + etiqueta + tendencia.
+   Uso: seguidores, alcance por canal, métricas de marketing.
+
+   <WidgetRedSocial Logo="assets/images/apps/05.png"
+                    Valor="45.2K" Etiqueta="Seguidores"
+                    Tendencia="45.7%" TendenciaPositiva="false" />
+
+   O para métricas de ventas por canal:
+   <WidgetRedSocial Icono="point_of_sale" ColorIcono="primary"
+                    Valor="$12,450" Etiqueta="Ventas tienda"
+                    Tendencia="12.4%" TendenciaPositiva="true" />
+*@
+
+<div class="card rounded-4 mb-0 border h-100">
+    <div class="card-body">
+
+        @* Header: logo/ícono + menú *@
+        <div class="d-flex align-items-center justify-content-between">
+            @if (!string.IsNullOrEmpty(Logo))
+            {
+                <img src="@Logo" width="35" alt="@Etiqueta" />
+            }
+            else if (!string.IsNullOrEmpty(Icono))
+            {
+                <div class="wh-42 d-flex align-items-center justify-content-center rounded-circle
+                                bg-@ColorIcono bg-opacity-10 text-@ColorIcono">
+                    <span class="material-icons-outlined fs-5">@Icono</span>
+                </div>
+            }
+
+            <div class="dropdown">
+                <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle"
+                   onclick="GridMenu.toggle(this)">
+                    <span class="material-icons-outlined fs-5">more_vert</span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end grid-action-menu">
+                    @if (Opciones != null)
+                    {
+                        @Opciones
+                    }
+                    else
+                    {
+                        <li><a class="dropdown-item" href="javascript:;">Ver detalle</a></li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        @* Valor + etiqueta *@
+        <div class="mt-4">
+            <h4 class="mb-0 fw-light">@Valor</h4>
+            <p class="mb-0 text-secondary font-text1">@Etiqueta</p>
+        </div>
+
+        @* Tendencia *@
+        @if (!string.IsNullOrEmpty(Tendencia))
+        {
+            <div class="d-flex align-items-center justify-content-end gap-1 mt-3">
+                <p class="dash-lable d-flex align-items-center gap-1 rounded mb-0
+                       @(TendenciaPositiva ? "bg-success text-success" : "bg-danger text-danger") bg-opacity-10">
+                    <span class="material-icons-outlined fs-6">
+                        @(TendenciaPositiva ? "north" : "arrow_downward")
+                    </span>
+                    @Tendencia
+                </p>
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Logo { get; set; } = string.Empty;
+    [Parameter] public string Icono { get; set; } = string.Empty;
+    [Parameter] public string ColorIcono { get; set; } = "primary";
+    [Parameter] public string Valor { get; set; } = "0";
+    [Parameter] public string Etiqueta { get; set; } = string.Empty;
+    [Parameter] public string Tendencia { get; set; } = string.Empty;
+    [Parameter] public bool TendenciaPositiva { get; set; } = true;
+    [Parameter] public RenderFragment? Opciones { get; set; }
+}

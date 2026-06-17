@@ -1,0 +1,112 @@
+﻿@* Components/Widgets/WidgetBienvenida.razor — VentasSaaSDU
+   Card de bienvenida con avatar + nombre + métricas del día + imagen decorativa.
+   Fila superior del dashboard. Ocupa col-xxl-8.
+
+   <WidgetBienvenida NombreUsuario="Juan Pérez"
+                     AvatarUrl="assets/images/avatars/01.png"
+                     ImagenDecorativa="assets/images/gallery/welcome-back-3.png"
+                     MetricaUnoValor="$65.4K" MetricaUnoEtiqueta="Ventas hoy"   MetricaUnoPorcentaje="60" ColorBarraUno="success"
+                     MetricaDosValor="78.4%"  MetricaDosEtiqueta="Crecimiento"  MetricaDosPorcentaje="60" ColorBarraDos="danger" />
+*@
+
+<div class="card w-100 overflow-hidden rounded-4">
+    <div class="card-body position-relative p-4">
+        <div class="row">
+
+            @* Columna izquierda: avatar + nombre + métricas *@
+            <div class="col-12 col-sm-7">
+
+                @* Avatar + saludo *@
+                <div class="d-flex align-items-center gap-3 mb-5">
+                    @if (!string.IsNullOrEmpty(AvatarUrl))
+                    {
+                        <img src="@AvatarUrl" class="rounded-circle bg-grd-info p-1"
+                             width="60" height="60" alt="@NombreUsuario" />
+                    }
+                    else
+                    {
+                        <div class="wh-60 d-flex align-items-center justify-content-center rounded-circle bg-grd-info text-white">
+                            <span class="material-icons-outlined fs-3">person</span>
+                        </div>
+                    }
+                    <div>
+                        <p class="mb-0 fw-semibold text-secondary">@Saludo</p>
+                        <h4 class="fw-semibold mb-0">@NombreUsuario</h4>
+                    </div>
+                </div>
+
+                @* Métricas del día *@
+                <div class="d-flex align-items-center gap-5">
+
+                    @* Métrica 1 *@
+                    <div>
+                        <h4 class="mb-1 fw-semibold d-flex align-content-center">
+                            @MetricaUnoValor
+                            <i class="ti ti-arrow-up-right fs-5 lh-base text-success ms-1"></i>
+                        </h4>
+                        <p class="mb-3">@MetricaUnoEtiqueta</p>
+                        <div class="progress mb-0" style="height:5px;">
+                            <div class="progress-bar bg-grd-@ColorBarraUno"
+                                 style="width:@MetricaUnoPorcentaje%"
+                                 role="progressbar"
+                                 aria-valuenow="@MetricaUnoPorcentaje"
+                                 aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vr"></div>
+
+                    @* Métrica 2 *@
+                    <div>
+                        <h4 class="mb-1 fw-semibold d-flex align-content-center">
+                            @MetricaDosValor
+                            <i class="ti ti-arrow-up-right fs-5 lh-base text-success ms-1"></i>
+                        </h4>
+                        <p class="mb-3">@MetricaDosEtiqueta</p>
+                        <div class="progress mb-0" style="height:5px;">
+                            <div class="progress-bar bg-grd-@ColorBarraDos"
+                                 style="width:@MetricaDosPorcentaje%"
+                                 role="progressbar"
+                                 aria-valuenow="@MetricaDosPorcentaje"
+                                 aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            @* Columna derecha: imagen decorativa *@
+            @if (!string.IsNullOrEmpty(ImagenDecorativa))
+            {
+                <div class="col-12 col-sm-5">
+                    <div class="welcome-back-img pt-4 text-end">
+                        <img src="@ImagenDecorativa" height="180" alt="" />
+                    </div>
+                </div>
+            }
+
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string NombreUsuario { get; set; } = "Usuario";
+    [Parameter] public string Saludo { get; set; } = "Bienvenido de vuelta";
+    [Parameter] public string AvatarUrl { get; set; } = string.Empty;
+    [Parameter] public string ImagenDecorativa { get; set; } = string.Empty;
+
+    [Parameter] public string MetricaUnoValor { get; set; } = "$0";
+    [Parameter] public string MetricaUnoEtiqueta { get; set; } = "Ventas hoy";
+    [Parameter] public int MetricaUnoPorcentaje { get; set; } = 0;
+    /// <summary>success | danger | primary | info | warning</summary>
+    [Parameter] public string ColorBarraUno { get; set; } = "success";
+
+    [Parameter] public string MetricaDosValor { get; set; } = "0%";
+    [Parameter] public string MetricaDosEtiqueta { get; set; } = "Crecimiento";
+    [Parameter] public int MetricaDosPorcentaje { get; set; } = 0;
+    /// <summary>success | danger | primary | info | warning</summary>
+    [Parameter] public string ColorBarraDos { get; set; } = "danger";
+}

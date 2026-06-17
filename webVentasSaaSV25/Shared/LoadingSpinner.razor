@@ -1,5 +1,56 @@
-﻿<h3>LoadingSpinner</h3>
+﻿@* Shared/LoadingSpinner.razor — VentasSaaSDU
+   Spinner de carga del template Maxton.
+   Dos variantes: border (circular) | grow (pulso)
+
+   USO:
+   ─────────────────────────────────────────────────────
+   1) Botón con spinner (reemplaza al AppButton cuando Loading=true):
+      <LoadingSpinner Tipo="primary" Texto="Guardando..." />
+      <LoadingSpinner Tipo="danger"  Variante="grow" />
+
+   2) Spinner standalone (overlay de página o sección):
+      <LoadingSpinner Solo="true" />
+      <LoadingSpinner Solo="true" Tipo="success" Texto="Cargando datos..." />
+
+   Tipo: primary | danger | success | dark | warning | info | secondary
+   Variante: border | grow
+   ─────────────────────────────────────────────────────
+*@
+
+@if (Solo)
+{
+    @* ── Spinner standalone centrado ── *@
+    <div class="d-flex align-items-center justify-content-center py-4 gap-3">
+        <div class="spinner-@Variante spinner-@Variante-sm text-@Tipo" role="status" aria-hidden="true"></div>
+        @if (!string.IsNullOrEmpty(Texto))
+        {
+            <span class="text-secondary font-text1">@Texto</span>
+        }
+    </div>
+}
+else
+{
+    @* ── Botón deshabilitado con spinner ── *@
+    <button class="btn btn-@Tipo @Clase" type="button" disabled>
+        <span class="spinner-@Variante spinner-@Variante-sm" role="status" aria-hidden="true"></span>
+        @if (!string.IsNullOrEmpty(Texto))
+        {
+            <span class="ms-1">@Texto</span>
+        }
+        else
+        {
+            <span class="visually-hidden">Cargando...</span>
+        }
+    </button>
+}
 
 @code {
-
+    /// <summary>primary | danger | success | dark | warning | info | secondary</summary>
+    [Parameter] public string Tipo { get; set; } = "primary";
+    /// <summary>border | grow</summary>
+    [Parameter] public string Variante { get; set; } = "border";
+    [Parameter] public string Texto { get; set; } = string.Empty;
+    /// <summary>true = spinner standalone sin botón</summary>
+    [Parameter] public bool Solo { get; set; } = false;
+    [Parameter] public string Clase { get; set; } = string.Empty;
 }

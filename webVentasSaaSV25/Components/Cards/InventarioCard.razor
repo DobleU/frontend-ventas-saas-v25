@@ -1,0 +1,170 @@
+@* Components/Cards/InventarioCard.razor
+   V6: card visualmente mejorada, sin botón de tres puntos y con panel de acciones nativo.
+*@
+@using System.Globalization
+
+<div class="inventory-card-shell card rounded-4 mb-0 h-100" style="background:#dbe8f4 !important;border:1px solid #9fb9d3 !important;box-shadow:0 16px 36px rgba(15,35,58,.20) !important;overflow:hidden !important;">
+    <div class="inventory-card-header" style="background:#173f67 !important;color:#fff !important;border-bottom:1px solid rgba(255,255,255,.20) !important;padding:14px 16px !important;">
+        <div class="d-flex align-items-center gap-3 min-w-0">
+            <div class="inventory-card-icon flex-shrink-0" style="background:rgba(255,255,255,.18) !important;color:#fff !important;border:1px solid rgba(255,255,255,.35) !important;">
+                <span class="material-icons-outlined fs-4">@Icono</span>
+            </div>
+            <div class="min-w-0">
+                <div class="inventory-card-type" style="color:rgba(255,255,255,.78) !important;">@TipoCard</div>
+                <h5 class="inventory-card-title text-truncate" style="color:#fff !important;" title="@Nombre">@Nombre</h5>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-body d-flex flex-column inventory-card-body" style="background:#eef5fb !important;">
+        @if (Opciones is not null)
+        {
+            <details class="inventory-card-actions" style="background:#d3e2ef !important;border:1px solid #9fb9d3 !important;border-radius:12px !important;overflow:hidden !important;">
+                <summary class="inventory-card-actions-summary" style="background:#2f668f !important;color:#fff !important;">
+                    <span class="d-flex align-items-center gap-2">
+                        <span class="material-icons-outlined fs-6">apps</span>
+                        Acciones
+                    </span>
+                    <span class="material-icons-outlined fs-6 inventory-card-actions-chevron">expand_more</span>
+                </summary>
+
+                <ul class="inventory-card-actions-list" style="list-style:none;margin:0;padding:0;">
+                    @Opciones
+                </ul>
+            </details>
+        }
+
+        @if (MostrarSubtitulo && !string.IsNullOrWhiteSpace(Subtitulo))
+        {
+            <p class="inventory-card-subtitle" title="@Subtitulo">
+                @Subtitulo
+            </p>
+        }
+
+        <div class="inventory-card-value">
+            <div class="d-flex align-items-center justify-content-between gap-3">
+                <div>
+                    <p class="inventory-card-value-label">@EtiquetaValor</p>
+                    <h4 class="inventory-card-value-number">@MontoInventario.ToString("C2", CulturaMx)</h4>
+                </div>
+                <div class="inventory-card-value-icon">
+                    <span class="material-icons-outlined fs-5">@IconoValor</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-2 mt-3 small">
+            <div class="col-6">
+                <div class="inventory-card-mini-box">
+                    <div class="inventory-card-mini-label">Productos</div>
+                    <div class="inventory-card-mini-value">@ProductosActivos.ToString("N0", CulturaMx)</div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="inventory-card-mini-box">
+                    <div class="inventory-card-mini-label">Existencia</div>
+                    <div class="inventory-card-mini-value">@ExistenciaTotal.ToString("N2", CulturaMx)</div>
+                </div>
+            </div>
+        </div>
+
+        @if (MostrarDatoExtra)
+        {
+            <div class="inventory-card-info-row">
+                <span class="inventory-card-info-label">
+                    <span class="material-icons-outlined fs-6">@IconoExtra</span>
+                    @EtiquetaExtra
+                </span>
+                <span class="inventory-card-info-value" title="@ValorExtra">@ValorExtra</span>
+            </div>
+        }
+
+        <div class="inventory-card-info-row">
+            <span class="inventory-card-info-label">
+                <span class="material-icons-outlined fs-6">person</span>
+                Encargado
+            </span>
+            <span class="inventory-card-info-value" title="@NombreEncargado">@NombreEncargadoSeguro</span>
+        </div>
+
+        <div class="mt-auto pt-3 d-flex align-items-center justify-content-between gap-2">
+            <span class="inventory-card-status @(IsActive ? "inventory-card-status-active" : "inventory-card-status-inactive")">
+                @(IsActive ? "Activo" : "Inactivo")
+            </span>
+
+            @if (InventarioActualizadoUtc.HasValue)
+            {
+                <span class="inventory-card-date" title="Última actualización de inventario">
+                    @MxTime.DateTime(InventarioActualizadoUtc.Value)
+                </span>
+            }
+            else
+            {
+                <span class="inventory-card-date">Sin movimientos</span>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .inventory-card-shell .inventory-card-actions-list .dropdown-header {
+        background: #173f67 !important;
+        color: #fff !important;
+        border-left: 5px solid #63c6ff !important;
+        border-radius: 8px !important;
+        padding: 7px 10px !important;
+        margin: 8px 0 6px 0 !important;
+        letter-spacing: .06em !important;
+        font-weight: 900 !important;
+    }
+
+    .inventory-card-shell .inventory-card-actions-list .dropdown-divider,
+    .inventory-card-shell .inventory-card-actions-list hr {
+        border-top: 1px solid #9fb9d3 !important;
+        opacity: 1 !important;
+        margin: 8px 0 !important;
+    }
+
+    .inventory-card-shell .inventory-card-actions-list .dropdown-item {
+        background: rgba(255,255,255,.78) !important;
+        border-radius: 8px !important;
+        margin-bottom: 4px !important;
+        padding: 7px 9px !important;
+        color: #21384e !important;
+    }
+
+        .inventory-card-shell .inventory-card-actions-list .dropdown-item:hover,
+        .inventory-card-shell .inventory-card-actions-list .dropdown-item:focus {
+            background: #fff !important;
+            color: #0d6efd !important;
+        }
+</style>
+
+@code {
+    private static readonly CultureInfo CulturaMx = CultureInfo.GetCultureInfo("es-MX");
+
+    [Parameter] public string Icono { get; set; } = "warehouse";
+    [Parameter] public string ColorIcono { get; set; } = "primary";
+    [Parameter] public string TipoCard { get; set; } = "Almacén";
+    [Parameter] public string Nombre { get; set; } = string.Empty;
+    [Parameter] public string? Subtitulo { get; set; }
+    [Parameter] public bool MostrarSubtitulo { get; set; } = true;
+    [Parameter] public string EtiquetaValor { get; set; } = "Inventario actual";
+    [Parameter] public string IconoValor { get; set; } = "payments";
+    [Parameter] public decimal MontoInventario { get; set; }
+    [Parameter] public decimal MontoInventarioCosto { get; set; }
+    [Parameter] public int ProductosActivos { get; set; }
+    [Parameter] public decimal ExistenciaTotal { get; set; }
+    [Parameter] public DateTime? InventarioActualizadoUtc { get; set; }
+    [Parameter] public string? NombreEncargado { get; set; }
+    [Parameter] public bool IsActive { get; set; } = true;
+
+    [Parameter] public string? EtiquetaExtra { get; set; }
+    [Parameter] public string? ValorExtra { get; set; }
+    [Parameter] public string IconoExtra { get; set; } = "info";
+
+    [Parameter] public RenderFragment? Opciones { get; set; }
+
+    private bool MostrarDatoExtra => !string.IsNullOrWhiteSpace(EtiquetaExtra) || !string.IsNullOrWhiteSpace(ValorExtra);
+    private string NombreEncargadoSeguro => string.IsNullOrWhiteSpace(NombreEncargado) ? "Sin asignar" : NombreEncargado!;
+}

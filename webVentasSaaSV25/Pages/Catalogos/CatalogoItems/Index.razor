@@ -1,0 +1,186 @@
+@* Pages/Catalogos/CatalogoItems/Index.razor *@
+@page "/catalogos/items"
+@using webVentasSaaSV25.Services.Catalogos
+@inject CatalogoItemService ItemSvc
+@inject CatalogoTipoService TipoSvc
+
+<PageTitle>Ítems de Catálogo — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Ítems de Catálogo" Items="@(new[]{ ("Catálogos","/catalogos"), ("Ítems","") })" />
+<AlertMessage @ref="_alerta" />
+
+{{!-- Selector de tipo por tarjetas --}}
+<div class="row g-2 mb-4">
+    @if (_loadTipos)
+    {
+        <div class="col-12"><LoadingSpinner Texto="Cargando tipos..." Pequeño="true" /></div>
+    }
+    else
+    {
+        <div class="col-6 col-sm-4 col-md-3 col-xl-2">
+            <div class="card h-100 border-2 @(_f.IdTipoCatalogo is null ? "border-primary" : "")"
+                 style="cursor:pointer;" @onclick="()=>FiltrarTipo(null)">
+                <div class="card-body text-center py-3">
+                    <i class="material-icons-outlined text-primary mb-1" style="font-size:26px;">apps</i>
+                    <p class="mb-0 small fw-medium">Todos</p>
+                </div>
+            </div>
+        </div>
+        @foreach (var t in _tipos)
+        {
+            bool sel = _f.IdTipoCatalogo == t.IdTipoCatalogo;
+            <div class="col-6 col-sm-4 col-md-3 col-xl-2">
+                <div class="card h-100 border-2 @(sel ? "border-primary bg-primary bg-opacity-10" : "")"
+                     style="cursor:pointer;" @onclick="()=>FiltrarTipo(t.IdTipoCatalogo)">
+                    <div class="card-body text-center py-3">
+                        <i class="material-icons-outlined text-primary mb-1" style="font-size:26px;">label</i>
+                        <p class="mb-0 small fw-medium">@t.Nombre</p>
+                        <p class="mb-0 text-muted" style="font-size:11px;">@t.Codigo</p>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<DataGrid TItem="CatalogoItemResponse" Titulo="@TituloGrid" Modulo="catalogos"
+          Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
+          Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
+          OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo">
+    <HeaderRow>
+        <th style="width:120px">Clave</th>
+        <th>Nombre</th>
+        <th style="width:150px" class="text-muted small">Tipo</th>
+        <th style="width:60px"  class="text-center">Orden</th>
+        <th style="width:110px" class="text-center">Estado</th>
+        <th style="width:90px"  class="text-center">Acciones</th>
+    </HeaderRow>
+    <RowTemplate>
+        <td><code class="small">@(context.Clave ?? "—")</code></td>
+        <td class="fw-medium">@context.Nombre</td>
+        <td class="text-muted small">@context.NombreTipo</td>
+        <td class="text-center text-muted small">@(context.Orden ?? 0)</td>
+        <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
+        <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2" @onclick="()=>AbrirEditar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger py-1 px-2" @onclick="()=>Eliminar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">delete</i>
+            </button>
+        </td>
+    </RowTemplate>
+</DataGrid>
+
+<FormOffcanvas @ref="_panel" Titulo="@(_edit?"Editar Ítem":"Nuevo Ítem")"
+               Icono="@(_edit?"edit":"add_circle")" OnGuardar="Guardar">
+    <Body>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Tipo de Catálogo <span class="text-danger">*</span></label>
+            <select class="form-select @(_eTipo?"is-invalid":"")"
+                    value="@_idTipo" @onchange="e=>{ _idTipo=int.TryParse(e.Value?.ToString(),out var v)?v:0; _eTipo=false; }"
+                    disabled="@_edit">
+                <option value="0">— Seleccione —</option>
+                @foreach (var t in _tipos)
+                {
+                    <option value="@t.IdTipoCatalogo">@t.Nombre (@t.Codigo)</option>
+                }
+            </select>
+            @if (_eTipo) { <div class="invalid-feedback">Seleccione un tipo.</div> }
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Clave</label>
+            <input class="form-control text-uppercase" maxlength="50"
+                   @bind="_clave" placeholder="Ej. MAYORISTA" />
+            <div class="form-text">Identificador corto opcional.</div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Nombre <span class="text-danger">*</span></label>
+            <input class="form-control @(_eNombre?"is-invalid":"")" maxlength="150"
+                   @bind="_nombre" @oninput="()=>_eNombre=false" placeholder="Ej. Mayorista" />
+            @if (_eNombre) { <div class="invalid-feedback">Requerido.</div> }
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Orden</label>
+            <input type="number" class="form-control" min="0" max="9999" @bind="_orden" />
+        </div>
+        @if (_edit)
+        {
+            <div class="mb-3">
+                <label class="form-label fw-medium">Estado</label>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_isActive" />
+                    <label class="form-check-label">@(_isActive?"Activo":"Inactivo")</label>
+                </div>
+            </div>
+        }
+    </Body>
+</FormOffcanvas>
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    PagedResult<CatalogoItemResponse>? _paged; FiltroCatalogoItemRequest _f = new(); bool _loading;
+    List<CatalogoTipoResponse> _tipos = []; bool _loadTipos = true;
+    AlertMessage? _alerta; FormOffcanvas? _panel; ConfirmDialog? _confirm;
+
+    bool _edit; int _id; int _idTipo; string _clave=""; string _nombre="";
+    int _orden; bool _isActive=true; bool _eTipo,_eNombre;
+
+    string TituloGrid => _f.IdTipoCatalogo.HasValue
+        ? $"Ítems: {_tipos.FirstOrDefault(t=>t.IdTipoCatalogo==_f.IdTipoCatalogo)?.Nombre}"
+        : "Todos los Ítems";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var (td, _) = await TipoSvc.GetAllActivosAsync();
+        _tipos = td?.Items ?? [];
+        _loadTipos = false;
+        await Cargar();
+    }
+
+    async Task Cargar() { _loading=true; var(d,e)=await ItemSvc.GetPagedAsync(_f); _loading=false; if(e!=null)_alerta?.MostrarError(e); else _paged=d; }
+    async Task FiltrarTipo(int? t) { _f.IdTipoCatalogo=t; _f.Page=1; await Cargar(); }
+    async Task OnPage(int p)       { _f.Page=p; await Cargar(); }
+    async Task OnSearch(string? s) { _f.Search=s; _f.Page=1; await Cargar(); }
+
+    void AbrirNuevo()
+    {
+        _edit=false; _idTipo=_f.IdTipoCatalogo??0; _clave=""; _nombre=""; _orden=0;
+        _eTipo=_eNombre=false; _panel?.Abrir();
+    }
+    void AbrirEditar(CatalogoItemResponse x)
+    {
+        _edit=true; _id=x.IdCatalogoItem; _idTipo=x.IdTipoCatalogo;
+        _clave=x.Clave??""; _nombre=x.Nombre; _orden=x.Orden??0; _isActive=x.IsActive;
+        _eTipo=_eNombre=false; _panel?.Abrir();
+    }
+
+    async Task Guardar()
+    {
+        _eTipo=_idTipo<=0; _eNombre=string.IsNullOrWhiteSpace(_nombre);
+        if(_eTipo||_eNombre){_panel?.MostrarError("Corrija los campos marcados.");return;}
+        if(_edit)
+        {
+            var(_,e)=await ItemSvc.ActualizarAsync(_id,new ActualizarCatalogoItemRequest
+            { IdCatalogoItem=_id,IdTipoCatalogo=_idTipo,
+              Clave=string.IsNullOrWhiteSpace(_clave)?null:_clave.ToUpper(),
+              Nombre=_nombre,Orden=_orden,IsActive=_isActive });
+            if(e!=null){_panel?.MostrarError(e);return;}
+        }
+        else
+        {
+            var(_,e)=await ItemSvc.CrearAsync(new CrearCatalogoItemRequest
+            { IdTipoCatalogo=_idTipo,
+              Clave=string.IsNullOrWhiteSpace(_clave)?null:_clave.ToUpper(),
+              Nombre=_nombre,Orden=_orden });
+            if(e!=null){_panel?.MostrarError(e);return;}
+        }
+        _panel?.MostrarExitoYCerrar(_edit?"Ítem actualizado.":"Ítem creado."); await Cargar();
+    }
+
+    async Task Eliminar(CatalogoItemResponse x)
+    {
+        if(!await _confirm!.ConfirmarEliminarAsync("ítem de catálogo"))return;
+        var(_,e)=await ItemSvc.EliminarAsync(x.IdCatalogoItem);
+        if(e!=null)_alerta?.MostrarError(e); else{_alerta?.MostrarExito("Ítem eliminado.");await Cargar();}
+    }
+}

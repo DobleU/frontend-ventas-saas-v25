@@ -1,0 +1,95 @@
+﻿@* Components/Widgets/WidgetListaUsuarios.razor — VentasSaaSDU
+   Lista scrolleable de personas/usuarios con avatar + nombre + dato secundario + checkbox.
+   Footer con botones de acciones (share, mensaje, email, etc).
+   Uso: Nuevos clientes, vendedores activos, usuarios recientes.
+
+   <WidgetListaUsuarios Titulo="Clientes nuevos" AlturaLista="300px">
+       <Items>
+           @foreach (var c in _clientes)
+           {
+               <WidgetItemUsuario AvatarUrl="@c.AvatarUrl"
+                                  Nombre="@c.Nombre"
+                                  DatoSecundario="@c.Telefono"
+                                  Checked="@c.Seleccionado"
+                                  OnCheckChanged="@(v => c.Seleccionado = v)" />
+           }
+       </Items>
+       <AccionesFooter>
+           <a href="javascript:;" class="sharelink"><i class="material-icons-outlined">person_add</i></a>
+           <a href="javascript:;" class="sharelink"><i class="material-icons-outlined">email</i></a>
+           <a href="javascript:;" class="sharelink"><i class="material-icons-outlined">share</i></a>
+       </AccionesFooter>
+   </WidgetListaUsuarios>
+*@
+
+<div class="card w-100 rounded-4 h-100 d-flex flex-column">
+
+    @* Header con búsqueda *@
+    @if (MostrarBusqueda)
+    {
+        <div class="card-header border-0 p-3 border-bottom">
+            <div class="position-relative">
+                <input class="form-control rounded-5 px-5" type="text"
+                       placeholder="@PlaceholderBusqueda"
+                       @oninput="e => OnBusqueda.InvokeAsync(e.Value?.ToString() ?? string.Empty)" />
+                <span class="material-icons-outlined position-absolute ms-3 translate-middle-y start-0 top-50">search</span>
+                <span class="material-icons-outlined position-absolute me-3 translate-middle-y end-0 top-50">people</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card-header border-0 p-3 border-bottom bg-transparent">
+            <div class="d-flex align-items-start justify-content-between">
+                <h5 class="mb-0">@Titulo</h5>
+                <div class="dropdown">
+                    <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle"
+                       onclick="GridMenu.toggle(this)">
+                        <span class="material-icons-outlined fs-5">more_vert</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end grid-action-menu">
+                        @if (Opciones != null)
+                        {
+                            @Opciones
+                        }
+                        else
+                        {
+                            <li><a class="dropdown-item" href="javascript:;">Ver todo</a></li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* Lista scrolleable *@
+    <div class="card-body p-0 flex-grow-1 overflow-auto" style="max-height:@AlturaLista;">
+        <div class="p-3">
+            <div class="d-flex flex-column gap-3">
+                @Items
+            </div>
+        </div>
+    </div>
+
+    @* Footer con acciones *@
+    @if (AccionesFooter != null)
+    {
+        <div class="card-footer bg-transparent p-3">
+            <div class="d-flex align-items-center justify-content-between gap-3">
+                @AccionesFooter
+            </div>
+        </div>
+    }
+
+</div>
+
+@code {
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string AlturaLista { get; set; } = "350px";
+    [Parameter] public bool MostrarBusqueda { get; set; } = false;
+    [Parameter] public string PlaceholderBusqueda { get; set; } = "Buscar...";
+    [Parameter] public RenderFragment? Items { get; set; }
+    [Parameter] public RenderFragment? AccionesFooter { get; set; }
+    [Parameter] public RenderFragment? Opciones { get; set; }
+    [Parameter] public EventCallback<string> OnBusqueda { get; set; }
+}

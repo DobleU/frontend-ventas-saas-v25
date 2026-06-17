@@ -1,0 +1,321 @@
+﻿@* ============================================================
+   [NUEVO ARCHIVO — crear carpeta Pages/Seguridad/Roles/]
+   Ruta: WEB/Pages/Seguridad/Roles/Index.razor
+   ============================================================ *@
+@page "/seguridad/roles"
+@inject RolService Svc
+
+<PageTitle>Roles — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Roles" Items="@(new[] { ("Seguridad", "/seguridad"), ("Roles", "") })" />
+<AlertMessage @ref="_alerta" />
+
+@if (_verMatriz && _rolSeleccionado != null)
+{
+    @* ── Vista matriz de permisos ──────────────────────────────────────── *@
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <button class="btn btn-outline-secondary btn-sm" @onclick="VolverLista">
+            <i class="material-icons-outlined me-1" style="font-size:15px;">arrow_back</i>Volver
+        </button>
+        <h6 class="mb-0">Permisos del rol: <strong>@_rolSeleccionado.Nombre</strong></h6>
+        @if (_rolSeleccionado.EsSistema)
+        {
+            <span class="badge bg-warning-subtle text-warning-emphasis small">Rol de sistema — solo lectura</span>
+        }
+    </div>
+
+    @if (_loadingMatriz)
+    {
+        <LoadingSpinner />
+    }
+    else if (_matriz.Any())
+    {
+        @* Agrupar por módulo *@
+        @foreach (var modulo in _matriz.Select(m => m.ModuloNombre).Distinct())
+        {
+            var items = _matriz.Where(m => m.ModuloNombre == modulo).ToList();
+            var idModulo = items.First().IdModulo;
+            var icono = items.First().ModuloIcono ?? "grid_view";
+
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center gap-2 py-2">
+                    <i class="material-icons-outlined text-primary" style="font-size:18px;">@icono</i>
+                    <span class="fw-medium">@modulo</span>
+                    @* Botón "marcar todo el módulo" *@
+                    @if (!_rolSeleccionado.EsSistema)
+                    {
+                        <button class="btn btn-outline-secondary btn-sm ms-auto py-0 px-2"
+                                @onclick="() => MarcarTodoModulo(idModulo, true)">
+                            Todo
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm py-0 px-2"
+                                @onclick="() => MarcarTodoModulo(idModulo, false)">
+                            Ninguno
+                        </button>
+                    }
+                </div>
+                <div class="card-body py-2">
+                    <div class="row g-2">
+                        @foreach (var p in items)
+                        {
+                            <div class="col-6 col-md-3">
+                                <div class="form-check @(p.EsSensible ? "border border-warning rounded px-2 py-1" : "")">
+                                    <input class="form-check-input" type="checkbox"
+                                           checked="@(_permisosLocales.GetValueOrDefault((p.IdModulo, p.IdAccion)))"
+                                           disabled="@_rolSeleccionado.EsSistema"
+                                           @onchange="async e => await CambiarPermiso(p, (bool)e.Value!)" />
+                                    <label class="form-check-label small">
+                                        @p.AccionNombre
+                                        @if (p.EsSensible)
+                                        {
+                                            <i class="material-icons-outlined ms-1 text-warning" style="font-size:12px;">warning</i>
+                                        }
+                                    </label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    }
+}
+else
+{
+    @* ── Vista lista de roles ──────────────────────────────────────────── *@
+    <DataGrid TItem="RolResponse" Titulo="Roles" Modulo="seguridad"
+              Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
+              Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
+              OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo">
+        <HeaderRow>
+            <th style="width:100px">Código</th>
+            <th>Nombre</th>
+            <th style="width:90px" class="text-center">Usuarios</th>
+            <th style="width:90px" class="text-center">Permisos</th>
+            <th style="width:110px" class="text-center">Estado</th>
+            <th style="width:120px" class="text-center">Acciones</th>
+        </HeaderRow>
+        <RowTemplate>
+            <td>
+                <code class="small">@context.Codigo</code>
+                @if (context.EsSistema)
+                {
+                    <span class="badge bg-warning-subtle text-warning-emphasis ms-1 small">Sistema</span>
+                }
+            </td>
+            <td>
+                <div class="fw-medium">@context.Nombre</div>
+                @if (!string.IsNullOrWhiteSpace(context.Descripcion))
+                {
+                    <div class="text-muted small">@context.Descripcion</div>
+                }
+            </td>
+            <td class="text-center text-muted small">@context.TotalUsuarios</td>
+            <td class="text-center text-muted small">@context.TotalPermisos</td>
+            <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-info me-1 py-1 px-2"
+                        title="Gestionar permisos" @onclick="() => AbrirMatriz(context)">
+                    <i class="material-icons-outlined" style="font-size:15px;">shield</i>
+                </button>
+                <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2"
+                        title="Editar" @onclick="() => AbrirEditar(context)">
+                    <i class="material-icons-outlined" style="font-size:15px;">edit</i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger py-1 px-2"
+                        title="Eliminar" @onclick="() => Eliminar(context)"
+                        disabled="@context.EsSistema">
+                    <i class="material-icons-outlined" style="font-size:15px;">delete</i>
+                </button>
+            </td>
+        </RowTemplate>
+    </DataGrid>
+}
+
+<FormOffcanvas @ref="_panel" Titulo="@(_edit ? "Editar Rol" : "Nuevo Rol")"
+               Icono="@(_edit?"edit":"add_moderator")" Ancho="460px" OnGuardar="Guardar">
+    <Body>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Nombre <span class="text-danger">*</span></label>
+            <input class="form-control @(_eNombre ? "is-invalid" : "")" maxlength="80"
+                   @bind="_nombre" @oninput="() => _eNombre = false"
+                   placeholder="Ej. Vendedor, Administrador..." />
+            @if (_eNombre)
+            {
+                <div class="invalid-feedback">Requerido.</div>
+            }
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Descripción</label>
+            <textarea class="form-control" rows="2" maxlength="300"
+                      @bind="_descripcion" placeholder="Descripción breve del rol"></textarea>
+        </div>
+        @if (_edit)
+        {
+            <div class="mb-3">
+                <label class="form-label fw-medium">Estado</label>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_isActive" />
+                    <label class="form-check-label">@(_isActive ? "Activo" : "Inactivo")</label>
+                </div>
+            </div>
+        }
+    </Body>
+</FormOffcanvas>
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    // ── Lista ─────────────────────────────────────────────────────────────
+    PagedResult<RolResponse>? _paged;
+    FiltroRolRequest _f = new();
+    bool _loading;
+    AlertMessage? _alerta;
+    FormOffcanvas? _panel;
+    ConfirmDialog? _confirm;
+
+    bool _edit; int _id;
+    string _nombre = ""; string _descripcion = ""; bool _isActive = true;
+    bool _eNombre;
+
+    // ── Matriz ────────────────────────────────────────────────────────────
+    bool _verMatriz = false;
+    bool _loadingMatriz = false;
+    RolResponse? _rolSeleccionado;
+    List<PermisoMatrizItem> _matriz = [];
+    // Estado local de la matriz: (idModulo, idAccion) → allow
+    Dictionary<(int, int), bool> _permisosLocales = [];
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    async Task Cargar()
+    {
+        _loading = true;
+        var (d, e) = await Svc.GetPagedAsync(_f);
+        _loading = false;
+        if (e != null) _alerta?.MostrarError(e); else _paged = d;
+    }
+
+    async Task OnPage(int p) { _f.Page = p; await Cargar(); }
+    async Task OnSearch(string? s) { _f.Search = s; _f.Page = 1; await Cargar(); }
+
+    // ── CRUD lista ────────────────────────────────────────────────────────
+    void AbrirNuevo()
+    {
+        _edit = false; _id = 0; _nombre = ""; _descripcion = ""; _eNombre = false;
+        _panel?.Abrir();
+    }
+    void AbrirEditar(RolResponse x)
+    {
+        _edit = true; _id = x.IdRol; _nombre = x.Nombre;
+        _descripcion = x.Descripcion ?? ""; _isActive = x.IsActive; _eNombre = false;
+        _panel?.Abrir();
+    }
+    async Task Guardar()
+    {
+        _eNombre = string.IsNullOrWhiteSpace(_nombre);
+        if (_eNombre) { _panel?.MostrarError("Corrija los campos marcados."); return; }
+
+        if (_edit)
+        {
+            var (_, e) = await Svc.ActualizarAsync(_id, new ActualizarRolRequest
+            { IdRol = _id, Nombre = _nombre.Trim(), Descripcion = _descripcion, IsActive = _isActive });
+            if (e != null) { _panel?.MostrarError(e); return; }
+        }
+        else
+        {
+            var (_, e) = await Svc.CrearAsync(new CrearRolRequest
+            { Nombre = _nombre.Trim(), Descripcion = _descripcion });
+            if (e != null) { _panel?.MostrarError(e); return; }
+        }
+        _panel?.MostrarExitoYCerrar(_edit ? "Rol actualizado." : "Rol creado.");
+        await Cargar();
+    }
+    async Task Eliminar(RolResponse x)
+    {
+        if (!await _confirm!.ConfirmarEliminarAsync("rol")) return;
+        var (_, e) = await Svc.EliminarAsync(x.IdRol);
+        if (e != null) _alerta?.MostrarError(e);
+        else { _alerta?.MostrarExito("Rol eliminado."); await Cargar(); }
+    }
+
+    // ── Matriz de permisos ────────────────────────────────────────────────
+    async Task AbrirMatriz(RolResponse x)
+    {
+        _rolSeleccionado = x;
+        _verMatriz = true;
+        _loadingMatriz = true;
+        StateHasChanged();
+
+        var (data, e) = await Svc.GetByIdAsync(x.IdRol);
+        _loadingMatriz = false;
+
+        if (e != null) { _alerta?.MostrarError(e); _verMatriz = false; return; }
+
+        // Deserializar la respuesta del API (objeto anónimo con rol + matriz)
+        var json = System.Text.Json.JsonSerializer.Serialize(data);
+        var doc = System.Text.Json.JsonDocument.Parse(json);
+        var matrizJson = doc.RootElement.GetProperty("matriz").ToString();
+        _matriz = System.Text.Json.JsonSerializer.Deserialize<List<PermisoMatrizItem>>(
+            matrizJson,
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
+
+        // Cargar estado local
+        _permisosLocales = _matriz.ToDictionary(
+            m => (m.IdModulo, m.IdAccion),
+            m => m.Allow);
+    }
+
+    void VolverLista()
+    {
+        _verMatriz = false; _rolSeleccionado = null;
+        _matriz.Clear(); _permisosLocales.Clear();
+    }
+
+    async Task CambiarPermiso(PermisoMatrizItem item, bool nuevoValor)
+    {
+        if (_rolSeleccionado is null || _rolSeleccionado.EsSistema) return;
+
+        // Actualizar estado local inmediatamente (UX optimista)
+        _permisosLocales[(item.IdModulo, item.IdAccion)] = nuevoValor;
+
+        var (_, e) = await Svc.UpsertPermisoAsync(_rolSeleccionado.IdRol, new UpsertPermisoRequest
+        {
+            IdRol = _rolSeleccionado.IdRol,
+            IdModulo = item.IdModulo,
+            IdAccion = item.IdAccion,
+            Allow = nuevoValor
+        });
+
+        if (e != null)
+        {
+            // Revertir si falló
+            _permisosLocales[(item.IdModulo, item.IdAccion)] = !nuevoValor;
+            _alerta?.MostrarError(e);
+        }
+    }
+
+    async Task MarcarTodoModulo(int idModulo, bool valor)
+    {
+        if (_rolSeleccionado is null || _rolSeleccionado.EsSistema) return;
+
+        var items = _matriz.Where(m => m.IdModulo == idModulo).ToList();
+        foreach (var item in items)
+        {
+            _permisosLocales[(item.IdModulo, item.IdAccion)] = valor;
+        }
+        StateHasChanged();
+
+        // Guardar todos en paralelo
+        var tasks = items.Select(item => Svc.UpsertPermisoAsync(_rolSeleccionado.IdRol,
+            new UpsertPermisoRequest
+            {
+                IdRol = _rolSeleccionado.IdRol,
+                IdModulo = item.IdModulo,
+                IdAccion = item.IdAccion,
+                Allow = valor
+            }));
+
+        var results = await Task.WhenAll(tasks);
+        var errores = results.Where(r => r.E != null).ToList();
+        if (errores.Any()) _alerta?.MostrarError("Algunos permisos no se guardaron correctamente.");
+    }
+}

@@ -1,0 +1,68 @@
+﻿@* Components/Cards/AppCardGradient.razor — VentasSaaSDU
+   Card con fondo de gradiente del template Maxton.
+   Uso típico: categorías, módulos del dashboard, accesos rápidos.
+
+   <AppCardGradient
+       Gradiente="voilet"
+       Titulo="Ventas Tienda"
+       Icono="point_of_sale"
+       Alto="160"
+       OnClick="..." />
+
+   Gradientes disponibles:
+   primary | voilet | success | danger | warning | info | royal | deep-blue | branding
+*@
+
+<div class="card shadow-none bg-grd-@Gradiente mb-0 cursor-pointer @Clase"
+     style="height:@(Alto)px; @Estilo"
+     @onclick="OnClick">
+    <div class="card-body position-relative overflow-hidden">
+
+        @* Ícono o imagen decorativa *@
+        @if (!string.IsNullOrEmpty(Icono))
+        {
+            <div class="mb-2">
+                <span class="material-icons-outlined text-white opacity-75" style="font-size:2rem;">@Icono</span>
+            </div>
+        }
+
+        @* Título *@
+        @if (!string.IsNullOrEmpty(Titulo))
+        {
+            <h5 class="mb-1 text-white">@Titulo</h5>
+        }
+
+        @* Subtítulo / métrica *@
+        @if (!string.IsNullOrEmpty(Subtitulo))
+        {
+            <p class="mb-0 text-white opacity-75 font-text1">@Subtitulo</p>
+        }
+
+        @ContenidoExtra
+
+        @* Imagen decorativa en esquina inferior derecha *@
+        @if (!string.IsNullOrEmpty(ImagenDeco))
+        {
+            <img src="@ImagenDeco"
+                 class="position-absolute end-0 bottom-0 @(string.IsNullOrEmpty(MargenDeco) ? "" : MargenDeco)"
+                 width="@AnchoDeco" alt="" />
+        }
+
+    </div>
+</div>
+
+@code {
+    /// <summary>primary | voilet | success | danger | warning | info | royal | deep-blue | branding</summary>
+    [Parameter] public string Gradiente { get; set; } = "primary";
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string Subtitulo { get; set; } = string.Empty;
+    [Parameter] public string Icono { get; set; } = string.Empty;
+    [Parameter] public string ImagenDeco { get; set; } = string.Empty;
+    [Parameter] public int AnchoDeco { get; set; } = 120;
+    [Parameter] public string MargenDeco { get; set; } = string.Empty;
+    [Parameter] public int Alto { get; set; } = 160;
+    [Parameter] public string Clase { get; set; } = string.Empty;
+    [Parameter] public string Estilo { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ContenidoExtra { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+}

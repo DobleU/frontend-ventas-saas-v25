@@ -1,5 +1,177 @@
-﻿<h3>Index</h3>
+@* Pages/Catalogos/Clasificaciones/Index.razor *@
+@page "/catalogos/clasificaciones"
+@using webVentasSaaSV25.Services.Catalogos
+@inject ClasificacionService Svc
+
+<PageTitle>Clasificaciones — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Clasificaciones" Items="@(new[]{ ("Catálogos","/catalogos"), ("Clasificaciones","") })" />
+<AlertMessage @ref="_alerta" />
+
+{{!-- Filtro rápido por tipo --}}
+<div class="d-flex gap-2 mb-3 flex-wrap">
+    @foreach (var (label, valor) in new[]{ ("Todos",0),("Categorías",1),("Marcas",2) })
+    {
+        <button class="btn btn-sm @(_f.Tipo == (valor==0?null:(int?)valor) ? "btn-primary" : "btn-outline-secondary")"
+                @onclick="()=>FiltrarTipo(valor==0?null:(int?)valor)">
+            @label
+        </button>
+    }
+</div>
+
+<DataGrid TItem="ClasificacionResponse" Titulo="Clasificaciones" Modulo="catalogos"
+          Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
+          Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
+          OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo">
+    <HeaderRow>
+        <th style="width:110px">Código</th>
+        <th>Nombre</th>
+        <th style="width:120px">Padre</th>
+        <th style="width:90px" class="text-center">Tipo</th>
+        <th style="width:110px" class="text-center">Estado</th>
+        <th style="width:90px"  class="text-center">Acciones</th>
+    </HeaderRow>
+    <RowTemplate>
+        <td><code class="small">@context.Codigo</code></td>
+        <td class="fw-medium">
+            @if (context.IdClasificacionPadre.HasValue)
+            {
+                <span class="text-muted me-1">└</span>
+            }
+            @context.Nombre
+        </td>
+        <td class="text-muted small">@(context.NombrePadre ?? "—")</td>
+        <td class="text-center">
+            <StatusBadge Texto="@(context.Tipo==1?"Categoría":"Marca")"
+                         Tipo="@(context.Tipo==1?"primary":"info")" />
+        </td>
+        <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
+        <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2" @onclick="()=>AbrirEditar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger py-1 px-2" @onclick="()=>Eliminar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">delete</i>
+            </button>
+        </td>
+    </RowTemplate>
+</DataGrid>
+
+<FormOffcanvas @ref="_panel" Titulo="@(_edit?"Editar Clasificación":"Nueva Clasificación")"
+               Icono="@(_edit?"edit":"add_circle")" OnGuardar="Guardar">
+    <Body>
+        {{!-- Tipo --}}
+        <div class="mb-3">
+            <label class="form-label fw-medium">Tipo <span class="text-danger">*</span></label>
+            <select class="form-select" @bind="_tipo" disabled="@_edit">
+                <option value="1">Categoría</option>
+                <option value="2">Marca</option>
+            </select>
+        </div>
+        {{!-- Código --}}
+        <div class="mb-3">
+            <label class="form-label fw-medium">Código <span class="text-danger">*</span></label>
+            <input class="form-control text-uppercase @(_eCodigo?"is-invalid":"")" maxlength="50"
+                   @bind="_codigo" @oninput="()=>_eCodigo=false" placeholder="Ej. BEBIDAS" />
+            @if (_eCodigo) { <div class="invalid-feedback">Requerido.</div> }
+        </div>
+        {{!-- Nombre --}}
+        <div class="mb-3">
+            <label class="form-label fw-medium">Nombre <span class="text-danger">*</span></label>
+            <input class="form-control @(_eNombre?"is-invalid":"")" maxlength="150"
+                   @bind="_nombre" @oninput="()=>_eNombre=false" placeholder="Ej. Bebidas" />
+            @if (_eNombre) { <div class="invalid-feedback">Requerido.</div> }
+        </div>
+        {{!-- Padre --}}
+        <div class="mb-3">
+            <label class="form-label fw-medium">Clasificación Padre</label>
+            <select class="form-select" @bind="_idPadre">
+                <option value="0">— Sin padre (raíz) —</option>
+                @foreach (var p in _padres.Where(p => p.Tipo == _tipo))
+                {
+                    <option value="@p.IdClasificacion">@p.Nombre</option>
+                }
+            </select>
+        </div>
+        {{!-- Orden --}}
+        <div class="mb-3">
+            <label class="form-label fw-medium">Orden</label>
+            <input type="number" class="form-control" min="0" max="9999" @bind="_orden" />
+        </div>
+        @if (_edit)
+        {
+            <div class="mb-3">
+                <label class="form-label fw-medium">Estado</label>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_isActive" />
+                    <label class="form-check-label">@(_isActive?"Activo":"Inactivo")</label>
+                </div>
+            </div>
+        }
+    </Body>
+</FormOffcanvas>
+<ConfirmDialog @ref="_confirm" />
 
 @code {
+    PagedResult<ClasificacionResponse>? _paged; FiltroClasificacionRequest _f = new(); bool _loading;
+    AlertMessage? _alerta; FormOffcanvas? _panel; ConfirmDialog? _confirm;
+    List<ClasificacionResponse> _padres = [];
 
+    bool _edit; int _id; string _codigo=""; string _nombre="";
+    int _tipo=1; int _idPadre=0; int _orden=0; bool _isActive=true;
+    bool _eCodigo,_eNombre;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var (pd, _) = await Svc.GetAllActivosAsync();
+        _padres = pd?.Items ?? [];
+        await Cargar();
+    }
+
+    async Task Cargar() { _loading=true; var(d,e)=await Svc.GetPagedAsync(_f); _loading=false; if(e!=null)_alerta?.MostrarError(e); else _paged=d; }
+    async Task FiltrarTipo(int? t) { _f.Tipo=t; _f.Page=1; await Cargar(); }
+    async Task OnPage(int p)       { _f.Page=p; await Cargar(); }
+    async Task OnSearch(string? s) { _f.Search=s; _f.Page=1; await Cargar(); }
+
+    void AbrirNuevo()
+    {
+        _edit=false; _codigo=""; _nombre=""; _tipo=1; _idPadre=0; _orden=0;
+        _eCodigo=_eNombre=false; _panel?.Abrir();
+    }
+
+    void AbrirEditar(ClasificacionResponse x)
+    {
+        _edit=true; _id=x.IdClasificacion; _codigo=x.Codigo; _nombre=x.Nombre;
+        _tipo=x.Tipo; _idPadre=x.IdClasificacionPadre??0; _orden=x.Orden; _isActive=x.IsActive;
+        _eCodigo=_eNombre=false; _panel?.Abrir();
+    }
+
+    async Task Guardar()
+    {
+        _eCodigo=string.IsNullOrWhiteSpace(_codigo); _eNombre=string.IsNullOrWhiteSpace(_nombre);
+        if(_eCodigo||_eNombre){_panel?.MostrarError("Corrija los campos marcados.");return;}
+        if(_edit)
+        {
+            var(_,e)=await Svc.ActualizarAsync(_id,new ActualizarClasificacionRequest
+            { IdClasificacion=_id,Codigo=_codigo.ToUpper(),Nombre=_nombre,
+              IdClasificacionPadre=_idPadre>0?_idPadre:null,Tipo=_tipo,Orden=_orden,IsActive=_isActive });
+            if(e!=null){_panel?.MostrarError(e);return;}
+        }
+        else
+        {
+            var(_,e)=await Svc.CrearAsync(new CrearClasificacionRequest
+            { Codigo=_codigo.ToUpper(),Nombre=_nombre,Tipo=_tipo,
+              IdClasificacionPadre=_idPadre>0?_idPadre:null,Orden=_orden });
+            if(e!=null){_panel?.MostrarError(e);return;}
+        }
+        // Recargar padres por si se agregó uno nuevo
+        var(pd,_)=await Svc.GetAllActivosAsync(); _padres=pd?.Items??[];
+        _panel?.MostrarExitoYCerrar(_edit?"Clasificación actualizada.":"Clasificación creada."); await Cargar();
+    }
+
+    async Task Eliminar(ClasificacionResponse x)
+    {
+        if(!await _confirm!.ConfirmarEliminarAsync("clasificación"))return;
+        var(_,e)=await Svc.EliminarAsync(x.IdClasificacion);
+        if(e!=null)_alerta?.MostrarError(e); else{_alerta?.MostrarExito("Clasificación eliminada.");await Cargar();}
+    }
 }

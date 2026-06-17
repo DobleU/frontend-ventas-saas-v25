@@ -1,0 +1,154 @@
+﻿@* ============================================================
+   [NUEVO ARCHIVO]
+   Ruta: WEB/Pages/Seguridad/Sesiones/Index.razor
+   ARCHIVO INDEPENDIENTE — no contiene ninguna otra página.
+   ============================================================ *@
+@page "/seguridad/sesiones"
+@inject SesionWebService Svc
+
+<PageTitle>Sesiones Activas — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Sesiones"
+            Items="@(new[]{ ("Seguridad","/seguridad"), ("Sesiones activas","") })" />
+<AlertMessage @ref="_alerta" />
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <button class="nav-link @(_tab == 0 ? "active" : "")" @onclick='() => CambiarTab(0)'>
+            <i class="material-icons-outlined me-1" style="font-size:16px;">sensors</i>Sesiones activas
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link @(_tab == 1 ? "active" : "")" @onclick='() => CambiarTab(1)'>
+            <i class="material-icons-outlined me-1" style="font-size:16px;">history</i>Historial de accesos
+        </button>
+    </li>
+</ul>
+
+@if (_tab == 0)
+{
+    <DataGrid TItem="SesionActivaResponse" Titulo="Sesiones activas" Modulo="auditoria"
+              Items="_pagedSes?.Items" TotalRecords="_pagedSes?.TotalRecords ?? 0"
+              Page="_fSes.Page" PageSize="_fSes.PageSize" Loading="_loading"
+              OnPageChanged="OnPageSes" OnSearch="OnSearchSes" OnNuevo="() => Task.CompletedTask">
+        <FiltrosExtra>
+            <div class="form-check form-switch ms-2">
+                <input class="form-check-input" type="checkbox"
+                       checked="@_fSes.SoloActivas"
+                       @onchange="async e => { _fSes.SoloActivas = (bool)e.Value!; await CargarSesiones(); }" />
+                <label class="form-check-label small">Solo vigentes</label>
+            </div>
+        </FiltrosExtra>
+        <HeaderRow>
+            <th>Usuario</th>
+            <th style="width:150px">IP</th>
+            <th style="width:140px">Inicio</th>
+            <th style="width:140px">Expira</th>
+            <th style="width:90px" class="text-center">Estado</th>
+        </HeaderRow>
+        <RowTemplate>
+            <td>
+                <div class="fw-medium">@context.Username</div>
+                <div class="text-muted small">@context.Email</div>
+            </td>
+            <td class="text-muted small">@(context.IpAddress ?? "—")</td>
+            <td class="text-muted small">@MxTime.DateTimeShort(context.FechaInicio)</td>
+            <td class="text-muted small">@MxTime.DateTimeShort(context.FechaExpira)</td>
+            <td class="text-center">
+                @if (context.Vigente)
+                {
+                    <span class="badge bg-success-subtle text-success-emphasis small">Vigente</span>
+                }
+                else
+                {
+
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis small">Expirada</span>
+                }
+            </td>
+        </RowTemplate>
+    </DataGrid>
+}
+
+@if (_tab == 1)
+{
+    <DataGrid TItem="LoginLogResponse" Titulo="Historial de accesos" Modulo="auditoria"
+              Items="_pagedLog?.Items" TotalRecords="_pagedLog?.TotalRecords ?? 0"
+              Page="_fLog.Page" PageSize="_fLog.PageSize" Loading="_loading"
+              OnPageChanged="OnPageLog" OnSearch="OnSearchLog" OnNuevo="() => Task.CompletedTask">
+        <FiltrosExtra>
+            <select class="form-select form-select-sm" style="width:140px" @onchange="OnFiltroResultado">
+                <option value="">Todos</option>
+                <option value="true">Solo fallidos</option>
+            </select>
+        </FiltrosExtra>
+        <HeaderRow>
+            <th>Username</th>
+            <th style="width:130px">IP</th>
+            <th style="width:200px">Fecha</th>
+            <th style="width:90px" class="text-center">Resultado</th>
+        </HeaderRow>
+        <RowTemplate>
+            <td class="fw-medium">@context.Username</td>
+            <td class="text-muted small">@(context.IpAddress ?? "—")</td>
+            <td class="text-muted small">@MxTime.DateTimeSeconds(context.CreatedUtc)</td>
+            <td class="text-center">
+                @if (context.Exitoso)
+                {
+                    <span class="badge bg-success-subtle text-success-emphasis small">OK</span>
+                }
+                else
+                {
+
+                    <span class="badge bg-danger-subtle text-danger-emphasis small">Fallido</span>
+                }
+            </td>
+        </RowTemplate>
+    </DataGrid>
+}
+
+@code {
+    int _tab = 0;
+    AlertMessage? _alerta;
+    bool _loading;
+
+    PagedResult<SesionActivaResponse>? _pagedSes;
+    FiltroSesionRequest _fSes = new();
+
+    PagedResult<LoginLogResponse>? _pagedLog;
+    FiltroLoginLogRequest _fLog = new();
+
+    protected override async Task OnInitializedAsync() => await CargarSesiones();
+
+    async Task CambiarTab(int t)
+    {
+        _tab = t;
+        if (t == 0) await CargarSesiones(); else await CargarLog();
+    }
+
+    async Task CargarSesiones()
+    {
+        _loading = true;
+        var (d, e) = await Svc.GetSesionesAsync(_fSes);
+        _loading = false;
+        if (e != null) _alerta?.MostrarError(e); else _pagedSes = d;
+    }
+
+    async Task CargarLog()
+    {
+        _loading = true;
+        var (d, e) = await Svc.GetLoginLogAsync(_fLog);
+        _loading = false;
+        if (e != null) _alerta?.MostrarError(e); else _pagedLog = d;
+    }
+
+    async Task OnPageSes(int p) { _fSes.Page = p; await CargarSesiones(); }
+    async Task OnSearchSes(string? s) { _fSes.Page = 1; await CargarSesiones(); }
+    async Task OnPageLog(int p) { _fLog.Page = p; await CargarLog(); }
+    async Task OnSearchLog(string? s) { _fLog.Page = 1; await CargarLog(); }
+
+    async Task OnFiltroResultado(ChangeEventArgs e)
+    {
+        _fLog.SoloFallidos = string.IsNullOrEmpty(e.Value?.ToString()) ? null : true;
+        _fLog.Page = 1;
+        await CargarLog();
+    }
+}

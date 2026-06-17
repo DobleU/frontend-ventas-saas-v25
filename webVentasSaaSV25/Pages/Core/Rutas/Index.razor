@@ -1,0 +1,83 @@
+@page "/core/rutas"
+@using webVentasSaaSV25.Services.Catalogos
+@inject RutaService Svc
+@inject AppState Estado
+
+<PageTitle>Rutas — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Rutas de Venta" Items="@(new[]{ ("Configuración",""), ("Rutas","") })" />
+<AlertMessage @ref="_alerta" />
+
+<DataGrid TItem="RutaResponse" Titulo="Rutas de Venta" Modulo="configuracion"
+          Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
+          Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
+          OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo">
+    <HeaderRow>
+        <th>Nombre</th>
+        <th style="width:110px" class="text-center">Estado</th>
+        <th style="width:150px" class="text-muted small">Creado</th>
+        <th style="width:90px"  class="text-center">Acciones</th>
+    </HeaderRow>
+    <RowTemplate>
+        <td class="fw-medium">@context.Nombre</td>
+        <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
+        <td class="text-muted small">@MxTime.Date(context.CreatedUtc)</td>
+        <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2" @onclick="()=>AbrirEditar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger py-1 px-2" @onclick="()=>Eliminar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">delete</i>
+            </button>
+        </td>
+    </RowTemplate>
+</DataGrid>
+
+<FormOffcanvas @ref="_panel" Titulo="@(_edit?"Editar Ruta":"Nueva Ruta")"
+               Icono="@(_edit?"edit":"add_circle")" OnGuardar="Guardar">
+    <Body>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Nombre <span class="text-danger">*</span></label>
+            <input class="form-control @(_eNombre?"is-invalid":"")" maxlength="150"
+                   @bind="_nombre" @oninput="()=>_eNombre=false" placeholder="Ej. Ruta Oriente" />
+            @if (_eNombre) { <div class="invalid-feedback">Requerido.</div> }
+        </div>
+        @if (_edit)
+        {
+            <div class="mb-3">
+                <label class="form-label fw-medium">Estado</label>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_isActive" />
+                    <label class="form-check-label">@(_isActive ? "Activo" : "Inactivo")</label>
+                </div>
+            </div>
+        }
+    </Body>
+</FormOffcanvas>
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    PagedResult<RutaResponse>? _paged; FiltroRutaRequest _f = new(); bool _loading;
+    AlertMessage? _alerta; FormOffcanvas? _panel; ConfirmDialog? _confirm;
+    bool _edit; int _id; string _nombre = ""; bool _isActive = true; bool _eNombre;
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+    async Task Cargar() { _loading=true; var(d,e)=await Svc.GetPagedAsync(_f); _loading=false; if(e!=null)_alerta?.MostrarError(e); else _paged=d; }
+    async Task OnPage(int p)       { _f.Page=p; await Cargar(); }
+    async Task OnSearch(string? s) { _f.Search=s; _f.Page=1; await Cargar(); }
+    void AbrirNuevo()  { _edit=false; _nombre=""; _eNombre=false; _panel?.Abrir(); }
+    void AbrirEditar(RutaResponse x) { _edit=true; _id=x.IdRuta; _nombre=x.Nombre; _isActive=x.IsActive; _eNombre=false; _panel?.Abrir(); }
+    async Task Guardar()
+    {
+        _eNombre=string.IsNullOrWhiteSpace(_nombre);
+        if(_eNombre){_panel?.MostrarError("Corrija los campos.");return;}
+        if(_edit){ var(_,e)=await Svc.ActualizarAsync(_id,new ActualizarRutaRequest{IdRuta=_id,Nombre=_nombre,IsActive=_isActive}); if(e!=null){_panel?.MostrarError(e);return;} }
+        else     { var(_,e)=await Svc.CrearAsync(new CrearRutaRequest{Nombre=_nombre}); if(e!=null){_panel?.MostrarError(e);return;} }
+        _panel?.MostrarExitoYCerrar(_edit?"Ruta actualizada.":"Ruta creada."); await Cargar();
+    }
+    async Task Eliminar(RutaResponse x)
+    {
+        if(!await _confirm!.ConfirmarEliminarAsync("ruta"))return;
+        var(_,e)=await Svc.EliminarAsync(x.IdRuta);
+        if(e!=null)_alerta?.MostrarError(e); else{_alerta?.MostrarExito("Ruta eliminada.");await Cargar();}
+    }
+}

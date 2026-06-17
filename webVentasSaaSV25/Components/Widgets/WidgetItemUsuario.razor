@@ -1,0 +1,59 @@
+﻿@* Components/Widgets/WidgetItemUsuario.razor — VentasSaaSDU
+   Ítem de usuario con avatar + nombre + dato secundario + checkbox opcional.
+   Siempre va dentro del slot <Items> de WidgetListaUsuarios.
+
+   <WidgetItemUsuario AvatarUrl="assets/images/avatars/01.png"
+                      Nombre="Juan Pérez"
+                      DatoSecundario="Ruta Norte"
+                      Checked="false"
+                      OnCheckChanged="v => seleccionado = v" />
+*@
+
+<div class="d-flex align-items-center gap-3">
+
+    @* Avatar *@
+    @if (!string.IsNullOrEmpty(AvatarUrl))
+    {
+        <img src="@AvatarUrl" width="45" height="45" class="rounded-circle flex-shrink-0" alt="@Nombre" />
+    }
+    else
+    {
+        <div class="wh-45 d-flex align-items-center justify-content-center rounded-circle
+                        bg-@ColorAvatar bg-opacity-10 text-@ColorAvatar flex-shrink-0">
+            <span class="material-icons-outlined">@IconoAvatar</span>
+        </div>
+    }
+
+    @* Nombre + dato secundario *@
+    <div class="flex-grow-1">
+        <h6 class="mb-0">@Nombre</h6>
+        @if (!string.IsNullOrEmpty(DatoSecundario))
+        {
+            <p class="mb-0 font-text1 text-secondary">@DatoSecundario</p>
+        }
+    </div>
+
+    @* Slot derecha (checkbox o badge u otro) *@
+    @if (MostrarCheckbox)
+    {
+        <div class="form-check form-check-inline me-0">
+            <input class="form-check-input ms-0" type="checkbox"
+                   checked="@Checked"
+                   @onchange="e => OnCheckChanged.InvokeAsync((bool)(e.Value ?? false))" />
+        </div>
+    }
+    @Extra
+
+</div>
+
+@code {
+    [Parameter] public string AvatarUrl { get; set; } = string.Empty;
+    [Parameter] public string IconoAvatar { get; set; } = "person";
+    [Parameter] public string ColorAvatar { get; set; } = "primary";
+    [Parameter] public string Nombre { get; set; } = string.Empty;
+    [Parameter] public string DatoSecundario { get; set; } = string.Empty;
+    [Parameter] public bool MostrarCheckbox { get; set; } = true;
+    [Parameter] public bool Checked { get; set; } = false;
+    [Parameter] public EventCallback<bool> OnCheckChanged { get; set; }
+    [Parameter] public RenderFragment? Extra { get; set; }
+}

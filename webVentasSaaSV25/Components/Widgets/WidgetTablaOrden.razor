@@ -1,0 +1,107 @@
+﻿@* Components/Widgets/WidgetTablaOrden.razor — VentasSaaSDU
+   Widget tabla simple con búsqueda + filas de datos + status badge + rating opcional.
+   Para: Órdenes recientes, Ventas del día, Últimas transacciones.
+   NO sustituye al DataGrid completo — es para vista rápida en dashboard.
+
+   <WidgetTablaOrden Titulo="Ventas recientes" MostrarBusqueda="true">
+       <Encabezados>
+           <th>Producto</th>
+           <th>Monto</th>
+           <th>Vendedor</th>
+           <th>Estado</th>
+           <th>Rating</th>
+       </Encabezados>
+       <Filas>
+           @foreach (var v in _ventas)
+           {
+               <tr>
+                   <td>
+                       <div class="d-flex align-items-center gap-3">
+                           <img src="@v.Imagen" class="rounded-circle" width="50" height="50" alt="">
+                           <p class="mb-0">@v.Nombre</p>
+                       </div>
+                   </td>
+                   <td>@v.Monto</td>
+                   <td>@v.Vendedor</td>
+                   <td>
+                       <p class="dash-lable mb-0 rounded-2
+                          @(v.Estado == "Completado" ? "bg-success bg-opacity-10 text-success" :
+                            v.Estado == "Pendiente"  ? "bg-warning bg-opacity-10 text-warning" :
+                                                       "bg-danger bg-opacity-10 text-danger")">
+                           @v.Estado
+                       </p>
+                   </td>
+                   <td>
+                       <div class="d-flex align-items-center gap-1">
+                           <p class="mb-0">@v.Rating</p>
+                           <i class="material-icons-outlined text-warning fs-6">star</i>
+                       </div>
+                   </td>
+               </tr>
+           }
+       </Filas>
+   </WidgetTablaOrden>
+*@
+
+<div class="card w-100 rounded-4 h-100">
+    <div class="card-body">
+
+        @* Header *@
+        <div class="d-flex align-items-start justify-content-between mb-3">
+            <h5 class="mb-0">@Titulo</h5>
+            <div class="dropdown">
+                <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle"
+                   onclick="GridMenu.toggle(this)">
+                    <span class="material-icons-outlined fs-5">more_vert</span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end grid-action-menu">
+                    @if (Opciones != null)
+                    {
+                        @Opciones
+                    }
+                    else
+                    {
+                        <li><a class="dropdown-item" href="javascript:;">Ver todo</a></li>
+                        <li><a class="dropdown-item" href="javascript:;">Exportar</a></li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        @* Búsqueda opcional *@
+        @if (MostrarBusqueda)
+        {
+            <div class="position-relative my-3">
+                <input class="form-control rounded-5 px-5" type="text"
+                       placeholder="@PlaceholderBusqueda"
+                       @oninput="e => OnBusqueda.InvokeAsync(e.Value?.ToString() ?? string.Empty)" />
+                <span class="material-icons-outlined position-absolute ms-3 translate-middle-y start-0 top-50">search</span>
+            </div>
+        }
+
+        @* Tabla *@
+        <div class="table-responsive">
+            <table class="table align-middle @ClaseTabla">
+                <thead>
+                    <tr>@Encabezados</tr>
+                </thead>
+                <tbody>
+                    @Filas
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public bool MostrarBusqueda { get; set; } = false;
+    [Parameter] public string PlaceholderBusqueda { get; set; } = "Buscar...";
+    /// <summary>Clases adicionales para la tabla: table-striped, table-hover, etc.</summary>
+    [Parameter] public string ClaseTabla { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? Encabezados { get; set; }
+    [Parameter] public RenderFragment? Filas { get; set; }
+    [Parameter] public RenderFragment? Opciones { get; set; }
+    [Parameter] public EventCallback<string> OnBusqueda { get; set; }
+}

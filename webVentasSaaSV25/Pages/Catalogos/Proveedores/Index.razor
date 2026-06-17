@@ -1,5 +1,156 @@
-﻿<h3>Index</h3>
+@* Pages/Catalogos/Proveedores/Index.razor *@
+@page "/catalogos/proveedores"
+@using webVentasSaaSV25.Services.Catalogos
+@inject ProveedorService Svc
+
+<PageTitle>Proveedores — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Proveedores" Items="@(new[]{ ("Catálogos","/catalogos"), ("Proveedores","") })" />
+<AlertMessage @ref="_alerta" />
+
+<DataGrid TItem="ProveedorResponse" Titulo="Proveedores" Modulo="catalogos"
+          Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
+          Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
+          OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo"
+          SearchPlaceholder="Nombre, RFC, código...">
+    <HeaderRow>
+        <th style="width:110px">Código</th>
+        <th>Nombre / Razón Social</th>
+        <th style="width:130px">RFC</th>
+        <th style="width:150px">Correo</th>
+        <th style="width:80px"  class="text-center">Crédito</th>
+        <th style="width:110px" class="text-center">Estado</th>
+        <th style="width:90px"  class="text-center">Acciones</th>
+    </HeaderRow>
+    <RowTemplate>
+        <td><code class="small">@context.Codigo</code></td>
+        <td class="fw-medium">@context.Nombre</td>
+        <td class="text-muted small">@(context.Rfc ?? "—")</td>
+        <td class="text-muted small">@(context.Correo ?? "—")</td>
+        <td class="text-center text-muted small">@context.DiasCredito d</td>
+        <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
+        <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2" @onclick="()=>AbrirEditar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger py-1 px-2" @onclick="()=>Eliminar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">delete</i>
+            </button>
+        </td>
+    </RowTemplate>
+</DataGrid>
+
+<FormOffcanvas @ref="_panel" Titulo="@(_edit?"Editar Proveedor":"Nuevo Proveedor")"
+               Icono="@(_edit?"edit":"add_circle")" Ancho="520px" OnGuardar="Guardar">
+    <Body>
+        {{!-- Fila: Código + RFC --}}
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <label class="form-label fw-medium">Código <span class="text-danger">*</span></label>
+                <input class="form-control text-uppercase @(_eCodigo?"is-invalid":"")" maxlength="30"
+                       @bind="_codigo" @oninput="()=>_eCodigo=false" placeholder="Ej. PROV-001" />
+                @if (_eCodigo) { <div class="invalid-feedback">Requerido.</div> }
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-medium">RFC</label>
+                <input class="form-control text-uppercase" maxlength="13"
+                       @bind="_rfc" placeholder="Ej. ABC010101XYZ" />
+            </div>
+        </div>
+        {{!-- Nombre --}}
+        <div class="mb-3">
+            <label class="form-label fw-medium">Nombre / Razón Social <span class="text-danger">*</span></label>
+            <input class="form-control @(_eNombre?"is-invalid":"")" maxlength="200"
+                   @bind="_nombre" @oninput="()=>_eNombre=false" placeholder="Ej. Distribuidora ABC S.A. de C.V." />
+            @if (_eNombre) { <div class="invalid-feedback">Requerido.</div> }
+        </div>
+        {{!-- Contacto --}}
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <label class="form-label fw-medium">Teléfono</label>
+                <input class="form-control" maxlength="20" @bind="_telefono" placeholder="Ej. 5512345678" />
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-medium">Correo</label>
+                <input type="email" class="form-control" maxlength="150" @bind="_correo" placeholder="contacto@prov.com" />
+            </div>
+        </div>
+        {{!-- Dirección --}}
+        <div class="mb-3">
+            <label class="form-label fw-medium">Dirección</label>
+            <input class="form-control" maxlength="300" @bind="_direccion1" placeholder="Calle, número, colonia..." />
+        </div>
+        {{!-- Crédito --}}
+        <div class="mb-3">
+            <label class="form-label fw-medium">Días de Crédito</label>
+            <input type="number" class="form-control" min="0" max="365" @bind="_diasCredito" />
+        </div>
+        @if (_edit)
+        {
+            <div class="mb-3">
+                <label class="form-label fw-medium">Estado</label>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_isActive" />
+                    <label class="form-check-label">@(_isActive?"Activo":"Inactivo")</label>
+                </div>
+            </div>
+        }
+    </Body>
+</FormOffcanvas>
+<ConfirmDialog @ref="_confirm" />
 
 @code {
+    PagedResult<ProveedorResponse>? _paged; FiltroProveedorRequest _f=new(); bool _loading;
+    AlertMessage? _alerta; FormOffcanvas? _panel; ConfirmDialog? _confirm;
+    bool _edit; int _id;
+    string _codigo=""; string _nombre=""; string _rfc=""; string _correo="";
+    string _telefono=""; string _direccion1=""; int _diasCredito=0; bool _isActive=true;
+    bool _eCodigo,_eNombre;
 
+    protected override async Task OnInitializedAsync() => await Cargar();
+    async Task Cargar() { _loading=true; var(d,e)=await Svc.GetPagedAsync(_f); _loading=false; if(e!=null)_alerta?.MostrarError(e); else _paged=d; }
+    async Task OnPage(int p)       { _f.Page=p; await Cargar(); }
+    async Task OnSearch(string? s) { _f.Search=s; _f.Page=1; await Cargar(); }
+
+    void AbrirNuevo()
+    {
+        _edit=false; _codigo=""; _nombre=""; _rfc=""; _correo=""; _telefono="";
+        _direccion1=""; _diasCredito=0; _eCodigo=_eNombre=false; _panel?.Abrir();
+    }
+    void AbrirEditar(ProveedorResponse x)
+    {
+        _edit=true; _id=x.IdProveedor; _codigo=x.Codigo; _nombre=x.Nombre;
+        _rfc=x.Rfc??""; _correo=x.Correo??""; _telefono=x.Telefono??"";
+        _diasCredito=x.DiasCredito; _isActive=x.IsActive; _eCodigo=_eNombre=false; _panel?.Abrir();
+    }
+
+    async Task Guardar()
+    {
+        _eCodigo=string.IsNullOrWhiteSpace(_codigo); _eNombre=string.IsNullOrWhiteSpace(_nombre);
+        if(_eCodigo||_eNombre){_panel?.MostrarError("Corrija los campos marcados.");return;}
+        if(_edit)
+        {
+            var(_,e)=await Svc.ActualizarAsync(_id,new ActualizarProveedorRequest
+            { IdProveedor=_id,Codigo=_codigo.ToUpper(),Nombre=_nombre,
+              Rfc=string.IsNullOrWhiteSpace(_rfc)?null:_rfc.ToUpper(),
+              Correo=_correo,Telefono=_telefono,Direccion1=_direccion1,
+              DiasCredito=_diasCredito,IsActive=_isActive });
+            if(e!=null){_panel?.MostrarError(e);return;}
+        }
+        else
+        {
+            var(_,e)=await Svc.CrearAsync(new CrearProveedorRequest
+            { Codigo=_codigo.ToUpper(),Nombre=_nombre,
+              Rfc=string.IsNullOrWhiteSpace(_rfc)?null:_rfc.ToUpper(),
+              Correo=_correo,Telefono=_telefono,Direccion1=_direccion1,DiasCredito=_diasCredito });
+            if(e!=null){_panel?.MostrarError(e);return;}
+        }
+        _panel?.MostrarExitoYCerrar(_edit?"Proveedor actualizado.":"Proveedor creado."); await Cargar();
+    }
+
+    async Task Eliminar(ProveedorResponse x)
+    {
+        if(!await _confirm!.ConfirmarEliminarAsync("proveedor"))return;
+        var(_,e)=await Svc.EliminarAsync(x.IdProveedor);
+        if(e!=null)_alerta?.MostrarError(e); else{_alerta?.MostrarExito("Proveedor eliminado.");await Cargar();}
+    }
 }

@@ -1,0 +1,121 @@
+@page "/almacen/vehiculos/{IdAsignacion:long}/cambiar-chofer"
+@using webVentasSaaSV25.Services.Almacen
+@inject InventarioAlmacenWebService InvSvc
+@inject NavigationManager Nav
+
+<PageTitle>Cambiar chofer - VentasSaaSDU</PageTitle>
+
+<Breadcrumb Titulo="Cambiar chofer" Items="@(new[]{ ("Almacén","/almacen/vehiculos"), ("Cambiar chofer","") })" />
+<AlertMessage @ref="_alerta" />
+
+<div class="card rounded-4">
+    <div class="card-body">
+        @if (_loading)
+        {
+            <LoadingSpinner Solo="true" Texto="Cargando datos..." />
+        }
+        else if (_vehiculo is null)
+        {
+            <div class="text-center py-5">
+                <span class="material-icons-outlined fs-1 text-secondary">local_shipping</span>
+                <h5 class="mt-2">Asignación no encontrada</h5>
+            </div>
+        }
+        else
+        {
+            <div class="vehicle-action-head">
+                <span class="material-icons-outlined">person_sync</span>
+                <div>
+                    <h5 class="mb-1">@(_vehiculo.Placa ?? "SIN PLACAS")</h5>
+                    <div class="text-secondary">@_vehiculo.NombreRuta · Chofer actual: @(_vehiculo.NombreEncargado ?? "Sin asignar")</div>
+                </div>
+            </div>
+
+            <div class="row g-3 mt-2">
+                <div class="col-12 col-lg-7">
+                    <label class="form-label">Nuevo chofer</label>
+                    <select class="form-select" @bind="_idChofer">
+                        <option value="0">Selecciona...</option>
+                        @foreach (var u in _choferes)
+                        {
+                            <option value="@u.IdUsuario">@u.NombreCompleto @(u.RutaActual is null ? "" : $" - {u.RutaActual}")</option>
+                        }
+                    </select>
+                    <div class="form-text">Al guardar, si el chofer estaba en otro vehículo activo, se quita de allá y queda asignado a este.</div>
+                </div>
+                <div class="col-12 d-flex gap-2">
+                    <button class="btn btn-primary" disabled="@_saving" @onclick="Guardar">
+                        <span class="material-icons-outlined fs-6 align-middle">save</span>
+                        Guardar cambio
+                    </button>
+                    <button class="btn btn-light" disabled="@_saving" @onclick="Volver">Cancelar</button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .vehicle-action-head{display:flex;gap:12px;align-items:center;padding:14px;border-radius:12px;background:#edf7fb;border:1px solid #cfe6f3}
+    .vehicle-action-head>.material-icons-outlined{font-size:34px;color:#0d6efd}
+</style>
+
+@code {
+    [Parameter] public long IdAsignacion { get; set; }
+
+    private AlertMessage? _alerta;
+    private SubalmacenVehiculoCardResponse? _vehiculo;
+    private readonly List<ChoferDisponibleResponse> _choferes = [];
+    private bool _loading;
+    private bool _saving;
+    private int _idChofer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        var (vehiculo, errVehiculo) = await InvSvc.GetSubalmacenVehiculoByIdAsync(IdAsignacion);
+        if (errVehiculo is not null)
+        {
+            _loading = false;
+            _alerta?.MostrarError(errVehiculo);
+            return;
+        }
+
+        _vehiculo = vehiculo;
+        _idChofer = _vehiculo?.IdEncargado ?? 0;
+
+        if (_vehiculo is null)
+        {
+            _loading = false;
+            return;
+        }
+
+        var (choferes, errUsuarios) = await InvSvc.GetChoferesDisponiblesAsync();
+        _loading = false;
+
+        if (errUsuarios is not null)
+        {
+            _alerta?.MostrarError("No se pudo cargar la lista de choferes: " + errUsuarios);
+            return;
+        }
+
+        if (choferes is not null) _choferes.AddRange(choferes);
+    }
+
+    private async Task Guardar()
+    {
+        if (_idChofer <= 0) { _alerta?.MostrarError("Selecciona un chofer."); return; }
+        if (!await JSConfirm("Se asignará este chofer al vehículo y se quitará de cualquier otra unidad activa. ¿Continuar?")) return;
+
+        _saving = true;
+        var (_, error) = await InvSvc.CambiarChoferVehiculoRutaAsync(IdAsignacion, new CambiarChoferVehiculoRutaRequest { IdEncargado = _idChofer });
+        _saving = false;
+        if (error is not null) { _alerta?.MostrarError(error); return; }
+        _alerta?.MostrarExito("Chofer actualizado.");
+        Volver();
+    }
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    private async Task<bool> JSConfirm(string msg) => await JS.InvokeAsync<bool>("confirm", msg);
+    private void Volver() => Nav.NavigateTo("/almacen/vehiculos");
+}

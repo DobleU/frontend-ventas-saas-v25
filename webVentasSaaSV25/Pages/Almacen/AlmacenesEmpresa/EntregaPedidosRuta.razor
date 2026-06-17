@@ -1,0 +1,699 @@
+@page "/almacen/almacenes/{IdAlmacen:int}/entrega-pedidos-ruta"
+@using System.Globalization
+@inject InventarioAlmacenWebService Svc
+@inject IJSRuntime JS
+
+<PageTitle>Entrega pedidos ruta - VentasSaaSDU</PageTitle>
+
+<Breadcrumb Titulo="Entrega pedidos ruta" Items="@(new[] { ("Almacen", "/almacen/almacenes"), ("Entrega pedidos ruta", "") })" />
+<AlertMessage @ref="_alerta" />
+
+<section class="route-shell">
+    <div class="route-header">
+        <div>
+            <span class="route-kicker"><span class="material-icons-outlined">local_shipping</span> Almacen @IdAlmacen</span>
+            <h3>Solicitudes de ruta</h3>
+            <p>Revisa solicitudes, captura entregas por lote y prepara el ticket/PDF.</p>
+        </div>
+        <div class="route-status form-check form-switch d-flex align-items-center gap-2 m-0">
+            <input class="form-check-input" type="checkbox" role="switch" id="switchEstatus"
+                   checked="@(_estatus == 3)" @onchange="ToggleEstatus" />
+            <label class="form-check-label text-white" for="switchEstatus">
+                @(_estatus == 3 ? "Entregadas" : "Abiertas")
+            </label>
+        </div>
+    </div>
+
+    <DataGrid TItem="SolicitudRutaResponse"
+              Titulo="Solicitudes"
+              Modulo="almacen"
+              Items="_paged?.Items"
+              TotalRecords="_paged?.TotalRecords ?? 0"
+              Page="_page"
+              PageSize="_pageSize"
+              Loading="_loading"
+              MostrarNuevo="false"
+              MostrarImportar="false"
+              MostrarExportar="false"
+              SearchPlaceholder="Buscar folio, destino o usuario"
+              OnPageChanged="OnPage"
+              OnPageSizeChange="OnPageSize"
+              OnSearch="OnSearch">
+        <HeaderRow>
+            <th style="width:120px">Folio</th>
+            <th>Destino</th>
+            <th style="width:130px">Solicita</th>
+            <th style="width:110px">Estatus</th>
+            <th style="width:130px" class="text-end">Solicitado</th>
+            <th style="width:130px" class="text-end">Surtido</th>
+            <th style="width:140px">Fecha</th>
+        </HeaderRow>
+        <RowTemplate>
+            <td><strong>@context.Folio</strong></td>
+            <td>
+                <div class="fw-semibold">@context.NombreAlmacenDestino</div>
+                <div class="small text-secondary">@context.TotalProductos producto(s)</div>
+            </td>
+            <td>@(context.UsuarioSolicita ?? context.IdUsuarioSolicita.ToString())</td>
+            <td><span class="@Badge(context.Estatus)">@context.DescEstatus</span></td>
+            <td class="text-end">
+                <div>@FormatCajasPiezas(context.TotalCajasSolicitadas, context.TotalPiezasSueltasSolicitadas)</div>
+                <div class="small text-secondary">@context.TotalPiezasSolicitadas.ToString("N0", _mx) pzs totales</div>
+            </td>
+            <td class="text-end">
+                <div>@FormatCajasPiezas(context.TotalCajasSurtidas, context.TotalPiezasSueltasSurtidas)</div>
+                <div class="small text-secondary">@context.TotalPiezasSurtidas.ToString("N0", _mx) pzs totales</div>
+            </td>
+            <td class="small text-secondary">@MxTime.DateTime(context.FechaSolicitudUtc)</td>
+        </RowTemplate>
+        <AccionesExtra>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="javascript:;" @onclick="() => AbrirDetalle(context.IdSolicitud)">
+                    <span class="material-icons-outlined fs-6">visibility</span>
+                    Ver detalle
+                </a>
+            </li>
+            @if (context.Estatus == 1 || context.Estatus == 2)
+            {
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2" href="javascript:;" @onclick="() => AbrirDetalle(context.IdSolicitud)">
+                        <span class="material-icons-outlined fs-6">inventory</span>
+                        Realizar entrega
+                    </a>
+                </li>
+            }
+            else
+            {
+                <li>
+                    <span class="dropdown-item disabled d-flex align-items-center gap-2 text-secondary" title="La solicitud ya no admite captura.">
+                        <span class="material-icons-outlined fs-6">inventory</span>
+                        Realizar entrega
+                    </span>
+                </li>
+            }
+            @if (context.Estatus == 3)
+            {
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2" href="javascript:;" @onclick="() => GenerarPdf(context.IdSolicitud)">
+                        <span class="material-icons-outlined fs-6">picture_as_pdf</span>
+                        PDF / Ticket
+                    </a>
+                </li>
+            }
+            else
+            {
+                <li>
+                    <span class="dropdown-item disabled d-flex align-items-center gap-2 text-secondary" title="Disponible hasta marcar la solicitud como entregada.">
+                        <span class="material-icons-outlined fs-6">picture_as_pdf</span>
+                        PDF / Ticket
+                    </span>
+                </li>
+            }
+        </AccionesExtra>
+    </DataGrid>
+
+    @if (_detalle is not null)
+    {
+        var detalleBloqueado = DetalleBloqueado;
+        <div class="detail-panel">
+            <div class="detail-head">
+                <div>
+                    <span class="small text-secondary">Solicitud</span>
+                    <h5>@_detalle.Cabecera?.Folio - @_detalle.Cabecera?.NombreAlmacenDestino</h5>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success btn-sm" disabled="@(_guardando || _detalle.Entregas.Count == 0 || detalleBloqueado)" @onclick="MarcarEntregado">
+                        <span class="material-icons-outlined fs-6">task_alt</span>
+                        Entregado
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="CerrarDetalle">
+                        <span class="material-icons-outlined fs-6">close</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-end">Solicitado</th>
+                            <th class="text-end">Surtido</th>
+                            <th class="text-end">Pendiente</th>
+                            <th style="width:120px">Lote</th>
+                            <th style="width:90px" class="text-end">Cajas</th>
+                            <th style="width:90px" class="text-end">Pzs</th>
+                            <th style="width:70px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in _detalle.Detalle)
+                        {
+                            var input = GetInput(item);
+                            var solicitadoPzs = GetSolicitadoPiezas(item);
+                            var surtidoPzs = item.CantidadSurtida ?? 0m;
+                            var pendientePzs = Math.Max(0m, solicitadoPzs - surtidoPzs);
+                            var excedentePzs = Math.Max(0m, surtidoPzs - solicitadoPzs);
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@item.NombreProducto</div>
+                                    <div class="small text-secondary">@item.CodigoBarra</div>
+                                </td>
+                                <td class="text-end">
+                                    <div>@FormatCajasPiezas(item.CantCajasSol, item.CantPiezasSol)</div>
+                                    <div class="small text-secondary">@solicitadoPzs.ToString("N0", _mx) pzs totales</div>
+                                    @if ((item.CantCajasSol ?? 0) > 0 && !TieneConversionCaja(item))
+                                    {
+                                        <div class="small text-danger">Falta cant. por caja</div>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <div>@FormatSurtidoDetalle(item)</div>
+                                    <div class="small text-secondary">@surtidoPzs.ToString("N0", _mx) pzs totales</div>
+                                </td>
+                                <td class="text-end fw-semibold">
+                                    <div>@pendientePzs.ToString("N0", _mx) pzs</div>
+                                    @if (excedentePzs > 0)
+                                    {
+                                        <div class="small text-warning">Extra @excedentePzs.ToString("N0", _mx) pzs</div>
+                                    }
+                                </td>
+                                <td>
+                                    <input class="form-control form-control-sm"
+                                           list="@($"lotes-producto-{item.IdProducto}")"
+                                           disabled="@detalleBloqueado"
+                                           @bind="input.NumLote" />
+                                    <datalist id="@($"lotes-producto-{item.IdProducto}")">
+                                        @foreach (var lote in GetLotesProducto(item.IdProducto))
+                                        {
+                                            <option value="@lote.NumLote">@($"{lote.NumLote} ({lote.CantidadPiezas:N2})")</option>
+                                        }
+                                    </datalist>
+                                </td>
+                                <td><input class="form-control form-control-sm text-end" type="number" step="1" min="0" disabled="@detalleBloqueado" @bind="input.CantCajas" /></td>
+                                <td><input class="form-control form-control-sm text-end" type="number" step="1" min="0" disabled="@detalleBloqueado" @bind="input.CantPiezas" /></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" disabled="@(_guardando || detalleBloqueado)" title="Agregar lote capturado" @onclick="() => GuardarEntrega(item)">
+                                        <span class="material-icons-outlined fs-6">add</span>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <h6 class="mt-3">Entregas capturadas</h6>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Producto</th>
+                            <th>Lote</th>
+                            <th class="text-end">Cajas</th>
+                            <th class="text-end">Pzs</th>
+                            <th class="text-end">Total pzs</th>
+                            <th>Fecha</th>
+                            <th style="width:60px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_detalle.Entregas.Count == 0)
+                        {
+                            <tr><td colspan="7" class="text-center text-secondary">Sin entregas capturadas.</td></tr>
+                        }
+                        @foreach (var ent in _detalle.Entregas)
+                        {
+                            <tr>
+                                <td>@ent.NombreProducto</td>
+                                <td>@ent.NumLote</td>
+                                <td class="text-end">@GetEntregaCajas(ent)</td>
+                                <td class="text-end">@GetEntregaPiezas(ent)</td>
+                                <td class="text-end">@ent.Cantidad.ToString("N0", _mx)</td>
+                                <td>@MxTime.DateTime(ent.FechaEntregaUtc)</td>
+                                <td class="text-end">
+                                    <button class="btn btn-outline-danger btn-sm" disabled="@(_guardando || detalleBloqueado)" title="Eliminar captura" @onclick="() => EliminarEntrega(ent.IdEntrega)">
+                                        <span class="material-icons-outlined fs-6">remove</span>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</section>
+
+<style>
+    .route-shell {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .route-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.25rem;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #273b64, #0f7c90);
+        color: #fff;
+        box-shadow: 0 14px 30px rgba(39, 59, 100, .18);
+    }
+
+        .route-header h3 {
+            color: #fff;
+            margin: .25rem 0;
+            font-weight: 800;
+        }
+
+        .route-header p {
+            margin: 0;
+            color: rgba(255,255,255,.82);
+        }
+
+    .route-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        font-weight: 700;
+        color: #dffcf4;
+    }
+
+    .route-status {
+        max-width: 180px;
+        align-self: start;
+    }
+
+    .detail-panel {
+        border-radius: 16px;
+        border: 1px solid #dce7f2;
+        background: #fff;
+        box-shadow: 0 10px 28px rgba(15, 76, 129, .12);
+        padding: 1rem;
+    }
+
+    .detail-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: start;
+        margin-bottom: 1rem;
+    }
+
+        .detail-head h5 {
+            margin: 0;
+            font-weight: 800;
+        }
+
+    @@media (max-width: 768px) {
+        .route-header {
+            flex-direction: column;
+        }
+
+        .route-status {
+            max-width: none;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public int IdAlmacen { get; set; }
+
+    private readonly CultureInfo _mx = CultureInfo.GetCultureInfo("es-MX");
+    private AlertMessage? _alerta;
+    private InventarioAlmacenPagedResult<SolicitudRutaResponse>? _paged;
+    private SolicitudRutaDetalleResponse? _detalle;
+    private readonly Dictionary<int, EntregaInput> _inputs = [];
+    private readonly Dictionary<int, List<InventarioAlmacenItemResponse>> _lotesPorProducto = [];
+    private bool _loading;
+    private bool _guardando;
+    private string? _search;
+    private byte _estatus = 1;
+    private int _page = 1;
+    private int _pageSize = 20;
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    private async Task Cargar()
+    {
+        _loading = true;
+        var (data, error) = await Svc.GetSolicitudesRutaAsync(IdAlmacen, _estatus, _search, _page, _pageSize);
+        _loading = false;
+
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return;
+        }
+
+        _paged = data;
+    }
+
+    private async Task AbrirDetalle(long idSolicitud)
+    {
+        var (data, error) = await Svc.GetSolicitudRutaDetalleAsync(idSolicitud);
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return;
+        }
+        _detalle = data;
+        _inputs.Clear();
+        await CargarLotesDisponibles();
+    }
+
+    private void CerrarDetalle()
+    {
+        _detalle = null;
+        _inputs.Clear();
+        _lotesPorProducto.Clear();
+    }
+
+    private async Task GuardarEntrega(SolicitudRutaDetalleItemResponse item)
+    {
+        if (_detalle?.Cabecera is null) return;
+        if (DetalleBloqueado)
+        {
+            _alerta?.MostrarAdvertencia("La solicitud ya fue cerrada; no permite nuevas capturas.");
+            return;
+        }
+        var input = GetInput(item);
+        var piezasPorCaja = item.CantXcaja ?? 0;
+
+        if (input.CantCajas > 0 && piezasPorCaja <= 0)
+        {
+            _alerta?.MostrarAdvertencia("El producto no tiene configurada la cantidad por caja en ProductoLogistica.");
+            return;
+        }
+
+        var cantidad = (input.CantCajas * piezasPorCaja) + input.CantPiezas;
+        if (string.IsNullOrWhiteSpace(input.NumLote) || cantidad <= 0)
+        {
+            _alerta?.MostrarAdvertencia("Captura lote y cantidad mayor a cero.");
+            return;
+        }
+
+        _guardando = true;
+        var (_, error) = await Svc.RegistrarEntregaRutaAsync(_detalle.Cabecera.IdSolicitud, new RegistrarEntregaRutaRequest
+        {
+            IdProducto = item.IdProducto,
+            NumLote = input.NumLote,
+            Cantidad = cantidad,
+            CantCajas = Convert.ToInt16(input.CantCajas),
+            CantPiezas = Convert.ToInt32(input.CantPiezas)
+        });
+        _guardando = false;
+
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return;
+        }
+
+        _alerta?.MostrarExito("Entrega registrada.");
+        await AbrirDetalle(_detalle.Cabecera.IdSolicitud);
+        await Cargar();
+    }
+
+    private async Task EliminarEntrega(long idEntrega)
+    {
+        if (_detalle?.Cabecera is null) return;
+        if (DetalleBloqueado)
+        {
+            _alerta?.MostrarAdvertencia("La solicitud ya fue cerrada; no permite eliminar capturas.");
+            return;
+        }
+
+        _guardando = true;
+        var (_, error) = await Svc.EliminarEntregaRutaAsync(_detalle.Cabecera.IdSolicitud, idEntrega);
+        _guardando = false;
+
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return;
+        }
+
+        _alerta?.MostrarExito("Captura eliminada.");
+        await AbrirDetalle(_detalle.Cabecera.IdSolicitud);
+        await Cargar();
+    }
+
+    private async Task MarcarEntregado()
+    {
+        if (_detalle?.Cabecera is null) return;
+        if (DetalleBloqueado)
+        {
+            _alerta?.MostrarAdvertencia("La solicitud ya fue cerrada.");
+            return;
+        }
+        if (_detalle.Entregas.Count == 0)
+        {
+            _alerta?.MostrarAdvertencia("Captura al menos una entrega antes de marcar la solicitud como entregada.");
+            return;
+        }
+
+        _guardando = true;
+        var (_, error) = await Svc.CerrarEntregaRutaAsync(_detalle.Cabecera.IdSolicitud);
+        _guardando = false;
+
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return;
+        }
+
+        _alerta?.MostrarExito("Solicitud marcada como entregada.");
+        await AbrirDetalle(_detalle.Cabecera.IdSolicitud);
+        await Cargar();
+    }
+
+    private async Task GenerarPdf(long idSolicitud)
+    {
+        var (data, error) = await Svc.GetSolicitudRutaDetalleAsync(idSolicitud);
+        if (error is not null || data?.Cabecera is null)
+        {
+            _alerta?.MostrarError(error ?? "No se pudo cargar la solicitud para PDF.");
+            return;
+        }
+        if (data.Cabecera.Estatus != 3)
+        {
+            _alerta?.MostrarAdvertencia("El PDF/Ticket estará disponible hasta que la solicitud quede ENTREGADA.");
+            return;
+        }
+
+        var html = BuildTicketHtml(data);
+        await JS.InvokeVoidAsync("printTicketHtml", html);
+    }
+
+    private async Task OnSearch(string? search) { _search = search; _page = 1; await Cargar(); }
+    private async Task OnPage(int page) { _page = page; await Cargar(); }
+    private async Task OnPageSize(int pageSize) { _pageSize = pageSize; _page = 1; await Cargar(); }
+    private async Task ToggleEstatus(ChangeEventArgs e)
+    {
+        var entregadas = e.Value is bool b && b;
+        _estatus = (byte)(entregadas ? 3 : 1);
+        _page = 1;
+        CerrarDetalle();
+        await Cargar();
+    }
+
+    private EntregaInput GetInput(SolicitudRutaDetalleItemResponse item)
+    {
+        if (!_inputs.TryGetValue(item.IdProducto, out var input))
+        {
+            input = new EntregaInput
+            {
+                // Captura manual: se inicia en cero para evitar duplicar entregas por accidente.
+                CantCajas = 0,
+                CantPiezas = 0
+            };
+            _inputs[item.IdProducto] = input;
+        }
+        return input;
+    }
+
+    private IEnumerable<InventarioAlmacenItemResponse> GetLotesProducto(int idProducto)
+        => _lotesPorProducto.TryGetValue(idProducto, out var lotes)
+            ? lotes
+            : Enumerable.Empty<InventarioAlmacenItemResponse>();
+
+    private async Task CargarLotesDisponibles()
+    {
+        _lotesPorProducto.Clear();
+        var (inv, error) = await Svc.GetInventarioAsync(IdAlmacen, pageSize: 1000);
+        if (error is not null || inv is null)
+        {
+            if (error is not null) _alerta?.MostrarAdvertencia($"No se pudieron cargar lotes: {error}");
+            return;
+        }
+
+        foreach (var lote in inv.Items.Where(x => x.CantidadPiezas > 0))
+        {
+            if (!_lotesPorProducto.TryGetValue(lote.IdProducto, out var lista))
+            {
+                lista = [];
+                _lotesPorProducto[lote.IdProducto] = lista;
+            }
+
+            lista.Add(lote);
+        }
+    }
+
+    private bool DetalleBloqueado => _detalle?.Cabecera?.Estatus == 3 || _detalle?.Cabecera?.Estatus == 4 || _detalle?.Cabecera?.Estatus == 5;
+
+    private bool TieneConversionCaja(SolicitudRutaDetalleItemResponse item)
+        => (item.CantXcaja ?? 0) > 0;
+
+    private decimal GetSolicitadoPiezas(SolicitudRutaDetalleItemResponse item)
+    {
+        var cajas = Convert.ToDecimal(item.CantCajasSol ?? 0);
+        var piezas = Convert.ToDecimal(item.CantPiezasSol ?? 0);
+        var cantXcaja = Convert.ToDecimal(item.CantXcaja ?? 0);
+
+        if (cajas > 0 || piezas > 0)
+            return cajas > 0 && cantXcaja <= 0
+                ? item.CantidadSolicitada
+                : (cajas * cantXcaja) + piezas;
+
+        return item.CantidadSolicitada;
+    }
+
+    private string FormatCajasPiezas(decimal? cajas, decimal? piezas)
+        => $"{Math.Max(0m, cajas ?? 0m).ToString("N0", _mx)} cajas / {Math.Max(0m, piezas ?? 0m).ToString("N0", _mx)} pzs";
+
+    private string FormatSurtidoDetalle(SolicitudRutaDetalleItemResponse item)
+    {
+        if (item.CantCajasSurtidas.HasValue || item.CantPiezasSurtidas.HasValue)
+            return FormatCajasPiezas(item.CantCajasSurtidas, item.CantPiezasSurtidas);
+
+        return FormatDesdePiezas(item.CantidadSurtida ?? 0m, item.CantXcaja);
+    }
+
+    private string FormatDesdePiezas(decimal piezasTotales, int? cantXcaja)
+    {
+        var piezas = Math.Max(0m, piezasTotales);
+        var conversion = cantXcaja ?? 0;
+
+        if (conversion <= 0)
+            return $"{piezas.ToString("N0", _mx)} pzs";
+
+        var cajas = Math.Floor(piezas / conversion);
+        var piezasSueltas = piezas - (cajas * conversion);
+        return FormatCajasPiezas(cajas, piezasSueltas);
+    }
+
+    private string GetEntregaCajas(SolicitudRutaEntregaItemResponse ent)
+    {
+        if (ent.CantCajas.HasValue)
+            return Math.Max(0, Convert.ToInt32(ent.CantCajas.Value)).ToString("N0", _mx);
+
+        var conversion = ent.CantXcaja ?? 0;
+        if (conversion <= 0)
+            return "0";
+
+        return Math.Floor(Math.Max(0m, ent.Cantidad) / conversion).ToString("N0", _mx);
+    }
+
+    private string GetEntregaPiezas(SolicitudRutaEntregaItemResponse ent)
+    {
+        if (ent.CantPiezas.HasValue)
+            return Math.Max(0, ent.CantPiezas.Value).ToString("N0", _mx);
+
+        var piezas = Math.Max(0m, ent.Cantidad);
+        var conversion = ent.CantXcaja ?? 0;
+        if (conversion <= 0)
+            return piezas.ToString("N0", _mx);
+
+        var cajas = Math.Floor(piezas / conversion);
+        return (piezas - (cajas * conversion)).ToString("N0", _mx);
+    }
+
+    private static string Badge(byte estatus) => estatus switch
+    {
+        1 => "badge bg-primary-subtle text-primary-emphasis border border-primary-subtle",
+        2 => "badge bg-warning-subtle text-warning-emphasis border border-warning-subtle",
+        3 => "badge bg-success-subtle text-success-emphasis border border-success-subtle",
+        4 => "badge bg-danger-subtle text-danger-emphasis border border-danger-subtle",
+        _ => "badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle"
+    };
+
+    private sealed class EntregaInput
+    {
+        public string? NumLote { get; set; }
+        public int CantCajas { get; set; }
+        public int CantPiezas { get; set; }
+    }
+
+    private string BuildTicketHtml(SolicitudRutaDetalleResponse data)
+    {
+        var c = data.Cabecera!;
+        var sb = new System.Text.StringBuilder();
+
+        string RowsEntregas()
+        {
+            if (data.Entregas.Count == 0)
+                return "<div class=\"empty\">Sin entregas capturadas.</div>";
+
+            var rows = new System.Text.StringBuilder();
+            foreach (var e in data.Entregas)
+            {
+                rows.Append("<div class=\"line-item\">");
+                rows.Append("<div class=\"item-name\">").Append(Esc(e.NombreProducto)).Append("</div>");
+                rows.Append("<div class=\"kv\"><span>Lote</span><strong>").Append(Esc(e.NumLote)).Append("</strong></div>");
+                rows.Append("<div class=\"kv\"><span>Caducidad</span><strong>").Append(e.FechaCaducidad?.ToString("dd/MM/yyyy") ?? "-").Append("</strong></div>");
+                rows.Append("<div class=\"kv\"><span>Cajas</span><strong>").Append(Convert.ToDecimal(e.CantCajas).ToString("N0", _mx)).Append("</strong></div>");
+                rows.Append("<div class=\"kv\"><span>Piezas</span><strong>").Append(Convert.ToDecimal(e.CantPiezas).ToString("N0", _mx)).Append("</strong></div>");
+                rows.Append("<div class=\"kv\"><span>Total pzs</span><strong>").Append(e.Cantidad.ToString("N0", _mx)).Append("</strong></div>");
+                rows.Append("<div class=\"item-code\">").Append(MxTime.DateTime(e.FechaEntregaUtc)).Append("</div>");
+                rows.Append("</div>");
+            }
+            return rows.ToString();
+        }
+
+        sb.Append("<!doctype html><html><head><meta charset=\"utf-8\">");
+        sb.Append("<title>Ticket ").Append(Esc(c.Folio)).Append("</title>");
+        sb.Append("<style>");
+        sb.Append("*{box-sizing:border-box}body{margin:0;padding:18px;font-family:Arial,sans-serif;color:#111827;background:#edf2f7}");
+        sb.Append(".toolbar{position:sticky;top:0;z-index:2;display:flex;gap:8px;justify-content:center;margin:0 0 14px;padding:10px;background:#edf2f7}");
+        sb.Append(".toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#0d6efd;color:#fff}.ghost{background:#fff;color:#243447;border:1px solid #cbd5e1!important}");
+        sb.Append(".ticket{width:58mm;max-width:58mm;margin:0 auto;background:white;border:1px solid #d7e1eb;border-radius:8px;overflow:hidden;box-shadow:0 12px 30px rgba(15,35,58,.16)}");
+        sb.Append(".head{padding:10px 9px;color:white;background:#123f66;text-align:center}");
+        sb.Append(".head small{opacity:.9;font-weight:700;font-size:10px}.head h1{margin:4px 0 0;font-size:13px;line-height:1.15;overflow-wrap:anywhere}");
+        sb.Append(".meta{display:block;padding:8px 9px}.box{border-bottom:1px dashed #cbd5e1;padding:5px 0}");
+        sb.Append(".box span{display:block;color:#607086;font-size:9px;text-transform:uppercase}.box strong{display:block;margin-top:1px;font-size:11px;line-height:1.2;word-break:break-word}");
+        sb.Append("h2{font-size:11px;margin:10px 9px 5px;text-transform:uppercase;border-bottom:1px solid #111827;padding-bottom:3px}");
+        sb.Append(".items{margin:0 9px 10px}.line-item{padding:7px 0;border-bottom:1px dashed #d1d9e6;font-size:10px;overflow-wrap:anywhere}");
+        sb.Append(".item-name{font-weight:700;font-size:11px;line-height:1.18}.item-code{color:#607086;font-size:9px;line-height:1.2;margin-top:2px}");
+        sb.Append(".kv{display:flex;justify-content:space-between;gap:8px;line-height:1.25;margin-top:3px}.kv span{color:#607086;text-transform:uppercase;font-size:8px}.kv strong{text-align:right;font-size:10px}");
+        sb.Append(".empty{text-align:center;color:#607086;font-size:10px;padding:8px 0}");
+        sb.Append(".foot{padding:18px 9px 12px;display:grid;grid-template-columns:1fr;gap:20px;font-size:10px}");
+        sb.Append(".sign{border-top:1px solid #94a3b8;text-align:center;padding-top:5px;color:#607086}");
+        sb.Append("\u0040page{size:58mm auto;margin:0}.print-only{display:none}");
+        sb.Append("\u0040media print{body{background:white;padding:0}.toolbar{display:none}.ticket{width:58mm;max-width:58mm;border:0;border-radius:0;box-shadow:none}.print-only{display:block}}");
+        sb.Append("</style></head><body>");
+        sb.Append("<div class=\"toolbar\"><button class=\"primary\" onclick=\"window.print()\">Descargar PDF</button><button class=\"ghost\" onclick=\"window.print()\">Imprimir</button><button class=\"ghost\" onclick=\"window.close()\">Cerrar</button></div>");
+        sb.Append("<main class=\"ticket\">");
+        sb.Append("<section class=\"head\"><small>Entrega pedidos ruta</small><h1>").Append(Esc(c.Folio)).Append(" - ").Append(Esc(c.NombreAlmacenDestino)).Append("</h1></section>");
+        sb.Append("<section class=\"meta\">");
+        sb.Append("<div class=\"box\"><span>Origen</span><strong>").Append(Esc(c.NombreAlmacenOrigen)).Append("</strong></div>");
+        sb.Append("<div class=\"box\"><span>Destino</span><strong>").Append(Esc(c.NombreAlmacenDestino)).Append("</strong></div>");
+        sb.Append("<div class=\"box\"><span>Estatus</span><strong>").Append(Esc(c.DescEstatus)).Append("</strong></div>");
+        sb.Append("<div class=\"box\"><span>Solicita</span><strong>").Append(Esc(c.UsuarioSolicita ?? c.IdUsuarioSolicita.ToString())).Append("</strong></div>");
+        sb.Append("<div class=\"box\"><span>Entrega</span><strong>").Append(Esc(c.UsuarioEntrega ?? "-")).Append("</strong></div>");
+        sb.Append("<div class=\"box\"><span>Fecha solicitud</span><strong>").Append(MxTime.DateTime(c.FechaSolicitudUtc)).Append("</strong></div>");
+        sb.Append("</section>");
+        sb.Append("<h2>Entregas capturadas</h2><section class=\"items\">").Append(RowsEntregas()).Append("</section>");
+        sb.Append("<section class=\"foot\"><div class=\"sign\">Entrega almacen</div><div class=\"sign\">Recibe ruta</div></section>");
+        sb.Append("</main><script>document.title='Ticket ");
+        sb.Append(Esc(c.Folio));
+        sb.Append("';<");
+        sb.Append("/script></body></html>");
+        return sb.ToString();
+    }
+
+    private static string Esc(string? value)
+        => System.Net.WebUtility.HtmlEncode(value ?? string.Empty);
+}

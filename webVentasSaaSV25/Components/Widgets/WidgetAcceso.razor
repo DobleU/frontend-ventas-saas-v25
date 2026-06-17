@@ -1,0 +1,31 @@
+﻿@* Components/Widgets/WidgetAcceso.razor — VentasSaaSDU
+   Ítem de acceso rápido — ícono circular + texto + separador.
+   Siempre va dentro de <WidgetAccesosRapidos>.
+
+   Gradiente: primary | success | danger | warning | info | branding | deep-blue | royal | voilet
+   ColorTexto: white (default) | dark (para warning)
+*@
+
+<div class="d-flex flex-column align-items-center justify-content-center gap-2">
+    <a href="@(string.IsNullOrEmpty(Href) ? "javascript:;" : Href)"
+       class="wh-48 bg-grd-@Gradiente text-@ColorTexto rounded-circle d-flex align-items-center justify-content-center"
+       @onclick="OnClick"
+       title="@Texto">
+        <i class="material-icons-outlined">@Icono</i>
+    </a>
+    <p class="mb-0 font-text1 text-center" style="max-width:70px;">@Texto</p>
+</div>
+
+@* Separador vertical — se oculta en el último ítem vía CSS del padre *@
+<div class="vr d-none d-lg-block"></div>
+
+@code {
+    [Parameter] public string Icono { get; set; } = "star";
+    [Parameter] public string Texto { get; set; } = string.Empty;
+    /// <summary>primary | success | danger | warning | info | branding | deep-blue | royal | voilet</summary>
+    [Parameter] public string Gradiente { get; set; } = "primary";
+    /// <summary>white | dark</summary>
+    [Parameter] public string ColorTexto { get; set; } = "white";
+    [Parameter] public string Href { get; set; } = string.Empty;
+    [Parameter] public EventCallback OnClick { get; set; }
+}

@@ -1,0 +1,40 @@
+﻿@* Components/Widgets/WidgetItemAccion.razor — VentasSaaSDU
+   Ítem de list-group con ícono cuadrado gradiente + nombre + valor + porcentaje.
+   Siempre va dentro del slot <Items> de WidgetListaAcciones.
+
+   <WidgetItemAccion Icono="point_of_sale" Gradiente="primary"
+                     Nombre="Ventas tienda" Valor="1,248"
+                     Porcentaje="28%" PorcentajePositivo="true" />
+*@
+
+<li class="list-group-item px-0 bg-transparent">
+    <div class="d-flex align-items-center gap-3">
+
+        @* Ícono cuadrado con gradiente *@
+        <div class="wh-42 d-flex align-items-center justify-content-center rounded-3 bg-grd-@Gradiente flex-shrink-0">
+            <span class="material-icons-outlined text-white">@Icono</span>
+        </div>
+
+        @* Nombre *@
+        <div class="flex-grow-1">
+            <h6 class="mb-0">@Nombre</h6>
+        </div>
+
+        @* Valor + porcentaje *@
+        <div class="d-flex align-items-center gap-3">
+            <p class="mb-0">@Valor</p>
+            <p class="mb-0 fw-bold @(PorcentajePositivo ? "text-success" : "text-danger")">@Porcentaje</p>
+        </div>
+
+    </div>
+</li>
+
+@code {
+    [Parameter] public string Icono { get; set; } = "star";
+    /// <summary>primary | success | danger | warning | info | branding | deep-blue | royal | voilet</summary>
+    [Parameter] public string Gradiente { get; set; } = "primary";
+    [Parameter] public string Nombre { get; set; } = string.Empty;
+    [Parameter] public string Valor { get; set; } = string.Empty;
+    [Parameter] public string Porcentaje { get; set; } = string.Empty;
+    [Parameter] public bool PorcentajePositivo { get; set; } = true;
+}

@@ -1,0 +1,70 @@
+﻿@* Components/Cards/AppCardKpi.razor — VentasSaaSDU
+   Widget KPI del dashboard del template Maxton.
+   Uso: métricas de ventas, clientes, pedidos, inventario.
+
+   <AppCardKpi
+       Icono="shopping_cart"
+       ColorIcono="primary"
+       Titulo="Total Pedidos"
+       Valor="248k"
+       Tendencia="+24%"
+       TendenciaPositiva="true"
+       IdChart="chart-pedidos" />
+
+   ColorIcono: primary | success | danger | warning | info | secondary
+*@
+
+<div class="card rounded-4 h-100">
+    <div class="card-body">
+
+        @* Header: ícono + tendencia *@
+        <div class="mb-3 d-flex align-items-center justify-content-between">
+
+            @* Ícono circular *@
+            <div class="wh-42 d-flex align-items-center justify-content-center rounded-circle bg-@ColorIcono bg-opacity-10 text-@ColorIcono">
+                <span class="material-icons-outlined fs-5">@Icono</span>
+            </div>
+
+            @* Tendencia *@
+            @if (!string.IsNullOrEmpty(Tendencia))
+            {
+                <div>
+                    <span class="@(TendenciaPositiva ? "text-success" : "text-danger") d-flex align-items-center gap-1 font-text1 fw-semibold">
+                        @Tendencia
+                        <i class="material-icons-outlined" style="font-size:16px;">
+                            @(TendenciaPositiva ? "expand_less" : "expand_more")
+                        </i>
+                    </span>
+                </div>
+            }
+
+        </div>
+
+        @* Valor principal *@
+        <div>
+            <h4 class="mb-0">@Valor</h4>
+            <p class="mb-2 text-secondary font-text1">@Titulo</p>
+
+            @* Slot para mini-chart (ApexCharts, etc.) *@
+            @if (!string.IsNullOrEmpty(IdChart))
+            {
+                <div id="@IdChart"></div>
+            }
+            @Chart
+        </div>
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Icono { get; set; } = "bar_chart";
+    /// <summary>primary | success | danger | warning | info | secondary</summary>
+    [Parameter] public string ColorIcono { get; set; } = "primary";
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string Valor { get; set; } = "0";
+    [Parameter] public string Tendencia { get; set; } = string.Empty;
+    [Parameter] public bool TendenciaPositiva { get; set; } = true;
+    /// <summary>ID del div donde se inyecta el mini-chart JS</summary>
+    [Parameter] public string IdChart { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? Chart { get; set; }
+}

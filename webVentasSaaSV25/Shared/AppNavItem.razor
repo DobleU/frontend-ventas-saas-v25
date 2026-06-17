@@ -1,0 +1,58 @@
+﻿@* Shared/AppNavItem.razor — VentasSaaSDU
+   Ítem de navegación para AppNavbar.
+   Soporta enlace directo o dropdown con sub-ítems.
+
+   Enlace simple:
+   <AppNavItem Href="/ventas" Icono="home" Texto="Inicio" Activo="true" />
+
+   Con dropdown:
+   <AppNavItem Icono="feedback" Texto="Servicios">
+       <SubItems>
+           <li><a class="dropdown-item" href="/servicios/a">Opción A</a></li>
+           <li><a class="dropdown-item" href="/servicios/b">Opción B</a></li>
+       </SubItems>
+   </AppNavItem>
+*@
+
+@if (SubItems != null)
+{
+    @* Ítem con dropdown *@
+    <li class="nav-item dropdown" data-menu-id="nav-@_id">
+        <a class="nav-link dropdown-toggle d-flex align-items-center gap-1"
+           href="javascript:;"
+           onclick="NavMenu.toggle('nav-@_id')">
+            @if (!string.IsNullOrEmpty(Icono))
+            {
+                <span class="material-icons-outlined fs-5">@Icono</span>
+            }
+            @Texto
+        </a>
+        <ul class="dropdown-menu">
+            @SubItems
+        </ul>
+    </li>
+}
+else
+{
+    @* Ítem simple *@
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-1 @(Activo ? "active" : "")"
+           href="@Href">
+            @if (!string.IsNullOrEmpty(Icono))
+            {
+                <span class="material-icons-outlined fs-5">@Icono</span>
+            }
+            @Texto
+        </a>
+    </li>
+}
+
+@code {
+    [Parameter] public string Href { get; set; } = "javascript:;";
+    [Parameter] public string Icono { get; set; } = string.Empty;
+    [Parameter] public string Texto { get; set; } = string.Empty;
+    [Parameter] public bool Activo { get; set; } = false;
+    [Parameter] public RenderFragment? SubItems { get; set; }
+
+    private readonly string _id = Guid.NewGuid().ToString("N")[..6];
+}

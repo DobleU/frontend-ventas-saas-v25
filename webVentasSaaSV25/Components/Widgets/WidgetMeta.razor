@@ -1,0 +1,62 @@
+﻿@* Components/Widgets/WidgetMeta.razor — VentasSaaSDU
+   Widget de meta con valor + tendencia + barra de progreso.
+   Fila 2 del dashboard. No requiere charts externos.
+
+   <WidgetMeta Valor="$65,129"
+               Etiqueta="Venta del año"
+               Tendencia="24.7%" TendenciaPositiva="true"
+               TextoMeta="285 restantes para la meta"
+               PorcentajeMeta="68"
+               ColorBarra="purple" />
+
+   ColorBarra: purple | danger | success | primary | info | warning
+*@
+
+<div class="card rounded-4 h-100">
+    <div class="card-body">
+
+        @* Valor + tendencia *@
+        <div class="d-flex align-items-center gap-3 mb-2">
+            <h2 class="mb-0">@Valor</h2>
+            <p class="dash-lable d-flex align-items-center gap-1 rounded mb-0
+               @(TendenciaPositiva ? "bg-success text-success" : "bg-danger text-danger") bg-opacity-10">
+                <span class="material-icons-outlined fs-6">
+                    @(TendenciaPositiva ? "arrow_upward" : "arrow_downward")
+                </span>
+                @Tendencia
+            </p>
+        </div>
+
+        @* Etiqueta *@
+        <p class="mb-0 text-secondary font-text1">@Etiqueta</p>
+
+        @* Barra de progreso *@
+        <div class="mt-4">
+            <p class="mb-2 d-flex align-items-center justify-content-between font-text1">
+                <span>@TextoMeta</span>
+                <span>@PorcentajeMeta%</span>
+            </p>
+            <div class="progress w-100" style="height:6px;">
+                <div class="progress-bar bg-grd-@ColorBarra"
+                     style="width:@PorcentajeMeta%"
+                     role="progressbar"
+                     aria-valuenow="@PorcentajeMeta"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Valor { get; set; } = "0";
+    [Parameter] public string Etiqueta { get; set; } = string.Empty;
+    [Parameter] public string Tendencia { get; set; } = string.Empty;
+    [Parameter] public bool TendenciaPositiva { get; set; } = true;
+    [Parameter] public string TextoMeta { get; set; } = "Avance";
+    [Parameter] public int PorcentajeMeta { get; set; } = 0;
+    /// <summary>purple | danger | success | primary | info | warning</summary>
+    [Parameter] public string ColorBarra { get; set; } = "primary";
+}

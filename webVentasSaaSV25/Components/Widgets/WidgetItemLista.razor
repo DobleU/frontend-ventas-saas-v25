@@ -1,0 +1,81 @@
+﻿@* Components/Widgets/WidgetItemLista.razor — VentasSaaSDU
+   Ítem individual para WidgetListaItems.
+   Soporta: imagen, ícono con color, o ícono con gradiente.
+
+   Con imagen:    <WidgetItemLista Imagen="url" Titulo="..." Subtitulo="..." Valor="$199" />
+   Con ícono:     <WidgetItemLista Icono="shopping_cart" ColorIcono="danger" Titulo="..." Subtitulo="..." Valor="$9,848" />
+   Con tendencia: <WidgetItemLista Imagen="url" Titulo="..." Subtitulo="..." Tendencia="28.5%" TendenciaPositiva="true" />
+   Con progreso:  <WidgetItemLista Imagen="url" Titulo="..." Subtitulo="..." Porcentaje="68" ColorBarra="danger" />
+*@
+
+<div class="d-flex align-items-center gap-3">
+
+    @* Imagen o ícono *@
+    @if (!string.IsNullOrEmpty(Imagen))
+    {
+        <img src="@Imagen" width="@TamañoImagen" class="@ClaseImagen" alt="@Titulo" />
+    }
+    else if (!string.IsNullOrEmpty(Icono))
+    {
+        <div class="wh-48 d-flex align-items-center justify-content-center rounded-circle
+                        @(string.IsNullOrEmpty(GradienteIcono) ? $"bg-{ColorIcono} bg-opacity-10 text-{ColorIcono}" : $"bg-grd-{GradienteIcono} text-white")">
+            <span class="material-icons-outlined">@Icono</span>
+        </div>
+    }
+
+    @* Título + subtítulo *@
+    <div class="flex-grow-1">
+        <h6 class="mb-0 @(NegritaTitulo ? "fw-bold" : "")">@Titulo</h6>
+        @if (!string.IsNullOrEmpty(Subtitulo))
+        {
+            <p class="mb-0 font-text1 text-secondary">@Subtitulo</p>
+        }
+    </div>
+
+    @* Valor o tendencia o barra *@
+    @if (!string.IsNullOrEmpty(Valor))
+    {
+        <h5 class="mb-0">@Valor</h5>
+    }
+    else if (!string.IsNullOrEmpty(Tendencia))
+    {
+        <div class="d-flex align-items-center gap-1 @(TendenciaPositiva ? "text-success" : "text-danger")">
+            <span class="material-icons-outlined">
+                @(TendenciaPositiva ? "expand_less" : "expand_more")
+            </span>
+            <span>@Tendencia</span>
+        </div>
+    }
+    else if (Porcentaje > 0)
+    {
+        <div class="progress w-25" style="height:7px;">
+            <div class="progress-bar bg-grd-@ColorBarra" style="width:@Porcentaje%"></div>
+        </div>
+        <p class="mb-0 fs-6 text-nowrap">@Porcentaje%</p>
+    }
+
+    @* Slot contenido extra derecha *@
+    @Extra
+
+</div>
+
+@code {
+    [Parameter] public string Imagen { get; set; } = string.Empty;
+    [Parameter] public int TamañoImagen { get; set; } = 55;
+    [Parameter] public string ClaseImagen { get; set; } = string.Empty;
+    [Parameter] public string Icono { get; set; } = string.Empty;
+    /// <summary>Color Bootstrap sin gradiente: danger | success | primary | info | warning | purple | orange | pink</summary>
+    [Parameter] public string ColorIcono { get; set; } = "primary";
+    /// <summary>Gradiente del template: primary | success | danger | warning | info (si se usa, override ColorIcono)</summary>
+    [Parameter] public string GradienteIcono { get; set; } = string.Empty;
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string Subtitulo { get; set; } = string.Empty;
+    [Parameter] public bool NegritaTitulo { get; set; } = false;
+    [Parameter] public string Valor { get; set; } = string.Empty;
+    [Parameter] public string Tendencia { get; set; } = string.Empty;
+    [Parameter] public bool TendenciaPositiva { get; set; } = true;
+    [Parameter] public int Porcentaje { get; set; } = 0;
+    /// <summary>Color de barra de progreso: danger | success | primary | info | warning | purple</summary>
+    [Parameter] public string ColorBarra { get; set; } = "primary";
+    [Parameter] public RenderFragment? Extra { get; set; }
+}

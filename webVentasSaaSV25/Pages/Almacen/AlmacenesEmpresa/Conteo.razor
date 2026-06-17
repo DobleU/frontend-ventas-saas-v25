@@ -1,0 +1,497 @@
+@page "/almacen/almacenes/{IdAlmacen:int}/conteo"
+@using System.Globalization
+@inject InventarioAlmacenWebService Svc
+@inject IJSRuntime JS
+
+<PageTitle>Proceso de inventario - VentasSaaSDU</PageTitle>
+
+<Breadcrumb Titulo="Proceso de inventario" Items="@(new[]{ ("Almacen","/almacen/almacenes"), ("Proceso de inventario","") })" />
+<AlertMessage @ref="_alerta" AutoOcultarMs="6000" />
+
+<div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
+    <div>
+        <h3 class="mb-1">Proceso de inventario</h3>
+        <p class="text-secondary mb-0">Conteo físico con lote: captura, concluye y resuelve diferencias.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary d-flex align-items-center gap-2" href="/almacen/almacenes">
+            <span class="material-icons-outlined">arrow_back</span> Almacenes
+        </a>
+    </div>
+</div>
+
+@* Indicador de pasos *@
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <span class="badge @PasoBadge(1)">1 · Cabecera</span>
+    <span class="badge @PasoBadge(2)">2 · Capturar</span>
+    <span class="badge @PasoBadge(3)">3 · Concluir</span>
+    <span class="badge @PasoBadge(4)">4 · Resultado</span>
+</div>
+
+@if (_loading)
+{
+    <LoadingSpinner Solo="true" Texto="Cargando..." />
+}
+else if (_cabecera is null)
+{
+    @* ── PASO 1: Crear cabecera (no hay conteo abierto) ── *@
+    <div class="card rounded-4">
+        <div class="card-body">
+            <h5 class="mb-3">Nuevo proceso de inventario</h5>
+            <div class="row g-3">
+                <div class="col-12 col-md-4">
+                    <label class="form-label">Tipo de conteo</label>
+                    <select class="form-select" @bind="_nuevo.TipoConteo">
+                        <option value="1">Total</option>
+                        <option value="2">Parcial</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label">¿Maneja lotes?</label>
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" @bind="_nuevo.ConLotes" id="chkLotes" />
+                        <label class="form-check-label" for="chkLotes">@(_nuevo.ConLotes ? "Sí" : "No")</label>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Observaciones</label>
+                    <textarea class="form-control" rows="2" @bind="_nuevo.Observaciones"></textarea>
+                </div>
+            </div>
+            <div class="mt-3 d-flex justify-content-end">
+                <AppButton Tipo="primary" Icono="add" Texto="Crear y capturar" OnClick="CrearConteo" Loading="_guardando" />
+            </div>
+        </div>
+    </div>
+
+    @if (_historial.Count > 0)
+    {
+        <div class="card rounded-4 mt-3">
+            <div class="card-header bg-white"><strong>Procesos anteriores</strong></div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Folio</th><th>Estatus</th><th>Inicio</th><th class="text-end">Faltante</th><th class="text-end">Sobrante</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var h in _historial)
+                        {
+                            <tr>
+                                <td>@h.Folio</td>
+                                <td><span class="@EstatusBadge(h.Estatus)">@h.DescEstatus</span></td>
+                                <td class="small text-secondary">@MxTime.DateTime(h.FechaInicioUtc)</td>
+                                <td class="text-end text-danger">@((h.MontoFaltante ?? 0).ToString("C2", _mx))</td>
+                                <td class="text-end text-success">@((h.MontoSobrante ?? 0).ToString("C2", _mx))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+else if (_cabecera.Estatus == 1)
+{
+    @* ── PASO 2: Capturar ── *@
+    <div class="card rounded-4 mb-3">
+        <div class="card-body d-flex flex-column flex-md-row justify-content-between gap-2">
+            <div>
+                <div class="small text-secondary">@_cabecera.Folio · ABIERTO</div>
+                <h5 class="mb-0">Capturar conteo físico</h5>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary d-flex align-items-center gap-2" @onclick="GuardarCaptura" disabled="@_guardando">
+                    <span class="material-icons-outlined">save</span> Guardar avance
+                </button>
+                <button class="btn btn-primary d-flex align-items-center gap-2" @onclick="ConcluirConteo" disabled="@_guardando">
+                    <span class="material-icons-outlined">lock</span> Concluir conteo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card rounded-4 mb-3">
+        <div class="card-body">
+            <input class="form-control" placeholder="Buscar producto, sku o lote..." @bind="_searchCaptura" @bind:event="oninput" @onkeyup="FiltrarCaptura" />
+        </div>
+    </div>
+
+    <div class="card rounded-4">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Producto</th>
+                        <th>Lote</th>
+                        <th class="text-end">Existencia BD</th>
+                        <th style="width:160px" class="text-end">Conteo físico</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_capturaFiltrada.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-center text-secondary py-4">Sin productos en existencia.</td></tr>
+                    }
+                    @foreach (var item in _capturaFiltrada)
+                    {
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">@item.NombreProducto</div>
+                                <div class="small text-secondary">@item.Sku</div>
+                            </td>
+                            <td>@(item.NumLote ?? "-")</td>
+                            <td class="text-end">@item.ExistenciaDb.ToString("N2", _mx)</td>
+                            <td class="text-end">
+                                <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end"
+                                       value="@GetFisico(item)" @onchange="@(e => SetFisico(item, e.Value?.ToString()))" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else if (_cabecera.Estatus == 2)
+{
+    @* ── PASO 4: Resolver diferencias (CONCLUIDO) ── *@
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-md-4"><div class="card rounded-4 h-100"><div class="card-body"><div class="text-secondary small">Faltantes</div><div class="fs-4 fw-semibold text-danger">@((_cabecera.MontoFaltante ?? 0).ToString("C2", _mx))</div></div></div></div>
+        <div class="col-12 col-md-4"><div class="card rounded-4 h-100"><div class="card-body"><div class="text-secondary small">Sobrantes</div><div class="fs-4 fw-semibold text-success">@((_cabecera.MontoSobrante ?? 0).ToString("C2", _mx))</div></div></div></div>
+        <div class="col-12 col-md-4"><div class="card rounded-4 h-100"><div class="card-body"><div class="text-secondary small">Líneas con diferencia</div><div class="fs-4 fw-semibold">@_lineas.Count(l => l.Diferencia != 0)</div></div></div></div>
+    </div>
+
+    <div class="card rounded-4 mb-3">
+        <div class="card-body d-flex flex-column flex-md-row justify-content-between gap-2">
+            <div>
+                <div class="small text-secondary">@_cabecera.Folio · CONCLUIDO</div>
+                <h5 class="mb-0">Resolver diferencias y cobrar</h5>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary d-flex align-items-center gap-2" @onclick="ImprimirReporte" disabled="@_guardando">
+                    <span class="material-icons-outlined">print</span> Reporte
+                </button>
+                <button class="btn btn-success d-flex align-items-center gap-2" @onclick="AplicarCerrar" disabled="@_guardando">
+                    <span class="material-icons-outlined">check</span> Aplicar y cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card rounded-4">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Producto / lote</th>
+                        <th class="text-end">BD</th>
+                        <th class="text-end">Físico</th>
+                        <th class="text-end">Dif.</th>
+                        <th class="text-end">Monto</th>
+                        <th>Tipo</th>
+                        <th style="width:200px">Resolución</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var l in _lineas.Where(x => x.Diferencia != 0))
+                    {
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">@l.NombreProducto</div>
+                                <div class="small text-secondary">@l.NumLote</div>
+                            </td>
+                            <td class="text-end">@l.ExistenciaDb.ToString("N2", _mx)</td>
+                            <td class="text-end">@((l.ExistenciaFisica ?? 0).ToString("N2", _mx))</td>
+                            <td class="text-end @(l.Diferencia < 0 ? "text-danger" : "text-success")">@l.Diferencia.ToString("N2", _mx)</td>
+                            <td class="text-end">@Math.Abs(l.MontoDiferencia).ToString("C2", _mx)</td>
+                            <td>
+                                <span class="@(l.Diferencia < 0 ? "badge bg-danger-subtle text-danger-emphasis" : "badge bg-success-subtle text-success-emphasis")">@l.TipoDiferencia</span>
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm"
+                                        value="@(l.DescResultado ?? "")"
+                                        @onchange="@(e => ResolverLinea(l, e.Value?.ToString()))">
+                                    @if (l.Diferencia < 0)
+                                    {
+                                        <option value="Cobrar al vendedor">Cobrar al vendedor</option>
+                                        <option value="Caducado sin costo">Caducado sin costo</option>
+                                        <option value="Mal estado sin costo">Mal estado sin costo</option>
+                                        <option value="Intercambio de producto">Intercambio</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="Sobrante aceptado">Sobrante aceptado</option>
+                                        <option value="Intercambio de producto">Intercambio</option>
+                                    }
+                                </select>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    @* ── CERRADO: solo lectura ── *@
+    <div class="card rounded-4">
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="material-icons-outlined text-success">task_alt</span>
+                <h5 class="mb-0">@_cabecera.Folio — Conteo cerrado</h5>
+            </div>
+            <p class="text-secondary mb-3">El ajuste de inventario fue aplicado. Movimiento: @_cabecera.IdMovimientoAjuste.</p>
+            <div class="row g-3">
+                <div class="col-12 col-md-4"><div class="border rounded-3 p-3"><div class="text-secondary small">Faltantes</div><div class="fs-5 fw-semibold text-danger">@((_cabecera.MontoFaltante ?? 0).ToString("C2", _mx))</div></div></div>
+                <div class="col-12 col-md-4"><div class="border rounded-3 p-3"><div class="text-secondary small">Sobrantes</div><div class="fs-5 fw-semibold text-success">@((_cabecera.MontoSobrante ?? 0).ToString("C2", _mx))</div></div></div>
+            </div>
+            <div class="mt-3 d-flex gap-2">
+                <button class="btn btn-outline-secondary d-flex align-items-center gap-2" @onclick="ImprimirReporte"><span class="material-icons-outlined">print</span> Reporte de faltantes</button>
+                <button class="btn btn-primary d-flex align-items-center gap-2" @onclick="Reiniciar"><span class="material-icons-outlined">add</span> Nuevo conteo</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int IdAlmacen { get; set; }
+
+    private readonly CultureInfo _mx = CultureInfo.GetCultureInfo("es-MX");
+    private AlertMessage? _alerta;
+    private bool _loading = true;
+    private bool _guardando;
+
+    private ConteoFisicoCabeceraResponse? _cabecera;
+    private long _idConteo;
+
+    private readonly CrearConteoFisicoRequest _nuevo = new() { TipoConteo = 1, ConLotes = true };
+    private readonly List<ConteoFisicoListItemResponse> _historial = [];
+
+    // Captura
+    private readonly List<ConteoFisicoExistenciaResponse> _captura = [];
+    private List<ConteoFisicoExistenciaResponse> _capturaFiltrada = [];
+    private readonly Dictionary<string, decimal> _fisicos = [];
+    private string? _searchCaptura;
+
+    // Resultado
+    private readonly List<ConteoFisicoLineaResponse> _lineas = [];
+
+    protected override async Task OnInitializedAsync() => await CargarEstado();
+
+    private async Task CargarEstado()
+    {
+        _loading = true;
+        _cabecera = null;
+
+        // ¿Hay un conteo abierto o concluido sin cerrar para este almacén?
+        var (lista, err) = await Svc.GetConteoListAsync(IdAlmacen, 0, null, 1, 20);
+        if (err is not null) { _alerta?.MostrarError(err); _loading = false; return; }
+
+        _historial.Clear();
+        if (lista?.Items is not null) _historial.AddRange(lista.Items);
+
+        var activo = _historial.FirstOrDefault(x => x.Estatus == 1 || x.Estatus == 2);
+        if (activo is not null)
+        {
+            _idConteo = activo.IdConteo;
+            await CargarConteo();
+        }
+
+        _loading = false;
+    }
+
+    private async Task CargarConteo()
+    {
+        var (res, err) = await Svc.GetConteoResultadoAsync(_idConteo);
+        if (err is not null) { _alerta?.MostrarError(err); return; }
+
+        _cabecera = res?.Cabecera;
+        _lineas.Clear();
+        if (res?.Lineas is not null) _lineas.AddRange(res.Lineas);
+
+        if (_cabecera?.Estatus == 1)
+            await CargarExistencias();
+    }
+
+    private async Task CargarExistencias()
+    {
+        var (data, err) = await Svc.CargarExistenciasConteoAsync(_idConteo);
+        if (err is not null) { _alerta?.MostrarError(err); return; }
+
+        _captura.Clear();
+        _fisicos.Clear();
+        if (data is not null)
+        {
+            _captura.AddRange(data);
+            foreach (var x in data.Where(x => x.ExistenciaFisica.HasValue))
+                _fisicos[Key(x)] = x.ExistenciaFisica!.Value;
+        }
+        FiltrarCaptura();
+    }
+
+    private async Task CrearConteo()
+    {
+        _guardando = true;
+        _nuevo.IdAlmacen = IdAlmacen;
+        var (id, err) = await Svc.CrearConteoAsync(_nuevo);
+        _guardando = false;
+
+        if (err is not null) { _alerta?.MostrarError(err); return; }
+        _idConteo = id ?? 0;
+        await CargarConteo();
+    }
+
+    private void FiltrarCaptura()
+    {
+        var s = _searchCaptura?.Trim().ToLowerInvariant();
+        _capturaFiltrada = string.IsNullOrWhiteSpace(s)
+            ? _captura.ToList()
+            : _captura.Where(x =>
+                x.NombreProducto.ToLowerInvariant().Contains(s)
+                || (x.Sku?.ToLowerInvariant().Contains(s) ?? false)
+                || (x.NumLote?.ToLowerInvariant().Contains(s) ?? false)).ToList();
+    }
+
+    private static string Key(ConteoFisicoExistenciaResponse x) => $"{x.IdProducto}|{x.IdLote}";
+    private string GetFisico(ConteoFisicoExistenciaResponse x) => _fisicos.TryGetValue(Key(x), out var v) ? v.ToString(CultureInfo.InvariantCulture) : "";
+    private void SetFisico(ConteoFisicoExistenciaResponse x, string? value)
+    {
+        if (decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) ||
+            decimal.TryParse(value, NumberStyles.Any, _mx, out v))
+            _fisicos[Key(x)] = v;
+        else
+            _fisicos.Remove(Key(x));
+    }
+
+    private async Task GuardarCaptura()
+    {
+        var lineas = _fisicos.Select(kv =>
+        {
+            var parts = kv.Key.Split('|');
+            return new CapturaConteoLineaRequest
+            {
+                IdProducto = int.Parse(parts[0]),
+                IdLote = long.Parse(parts[1]),
+                ExistenciaFisica = kv.Value
+            };
+        }).ToList();
+
+        if (lineas.Count == 0) { _alerta?.MostrarAdvertencia("Captura al menos un conteo físico."); return; }
+
+        _guardando = true;
+        var (_, err) = await Svc.GuardarCapturaConteoAsync(_idConteo, new GuardarCapturaConteoRequest { Lineas = lineas });
+        _guardando = false;
+
+        if (err is not null) { _alerta?.MostrarError(err); return; }
+        _alerta?.MostrarExito("Avance guardado.");
+    }
+
+    private async Task ConcluirConteo()
+    {
+        // Guarda el avance antes de concluir
+        await GuardarCaptura();
+
+        _guardando = true;
+        var (_, err) = await Svc.ConcluirConteoAsync(_idConteo, new ConcluirConteoRequest { UmbralReconteo = 0, Forzar = false });
+        _guardando = false;
+
+        if (err is not null) { _alerta?.MostrarError(err); return; }
+        _alerta?.MostrarExito("Conteo concluido. Revisa las diferencias.");
+        await CargarConteo();
+    }
+
+    private async Task ResolverLinea(ConteoFisicoLineaResponse l, string? descResultado)
+    {
+        var clave = descResultado switch
+        {
+            "Cobrar al vendedor" => "COBRAR",
+            "Caducado sin costo" => "CADUCADO",
+            "Mal estado sin costo" => "MAL_ESTADO",
+            "Intercambio de producto" => "INTERCAMBIO",
+            "Sobrante aceptado" => "SOBRANTE_OK",
+            _ => null
+        };
+        if (clave is null) return;
+
+        var (_, err) = await Svc.ResolverLineaConteoAsync(_idConteo, new ResolverLineaConteoRequest
+        {
+            IdProducto = l.IdProducto,
+            IdLote = l.IdLote,
+            ClaveResultado = clave
+        });
+
+        if (err is not null) { _alerta?.MostrarError(err); return; }
+    }
+
+    private async Task AplicarCerrar()
+    {
+        _guardando = true;
+        var (data, err) = await Svc.AplicarCerrarConteoAsync(_idConteo);
+        _guardando = false;
+
+        if (err is not null) { _alerta?.MostrarError(err); return; }
+        _alerta?.MostrarExito($"Conteo aplicado. Monto a cobrar al vendedor: {(data?.MontoCobrarVendedor ?? 0).ToString("C2", _mx)}.");
+        await CargarConteo();
+    }
+
+    private async Task ImprimirReporte()
+    {
+        var (data, err) = await Svc.GetConteoReporteFaltantesAsync(_idConteo);
+        if (err is not null || data?.Cabecera is null) { _alerta?.MostrarError(err ?? "No se pudo cargar el reporte."); return; }
+        await JS.InvokeVoidAsync("printTicketHtml", BuildReporteHtml(data));
+    }
+
+    private async Task Reiniciar()
+    {
+        _idConteo = 0;
+        await CargarEstado();
+    }
+
+    private string PasoBadge(int paso)
+    {
+        var actual = _cabecera is null ? 1 : _cabecera.Estatus switch { 1 => 2, 2 => 4, _ => 4 };
+        return paso <= actual ? "bg-primary" : "bg-secondary-subtle text-secondary-emphasis";
+    }
+
+    private static string EstatusBadge(byte estatus) => estatus switch
+    {
+        1 => "badge bg-primary-subtle text-primary-emphasis",
+        2 => "badge bg-warning-subtle text-warning-emphasis",
+        3 => "badge bg-success-subtle text-success-emphasis",
+        _ => "badge bg-secondary-subtle text-secondary-emphasis"
+    };
+
+    private string BuildReporteHtml(ConteoFisicoReporteResponse data)
+    {
+        var c = data.Cabecera!;
+        var sb = new System.Text.StringBuilder();
+        decimal totalCobrar = data.Faltantes.Sum(f => f.MontoCobrar);
+
+        sb.Append("<!doctype html><html><head><meta charset=\"utf-8\"><title>Reporte ").Append(Esc(c.Folio)).Append("</title>");
+        sb.Append("<style>body{font-family:Arial,sans-serif;padding:20px;color:#111}h1{font-size:16px;margin:0 0 4px}");
+        sb.Append(".muted{color:#666;font-size:12px}table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}");
+        sb.Append("th,td{border-bottom:1px solid #ddd;padding:6px;text-align:left}td.r,th.r{text-align:right}");
+        sb.Append(".tot{margin-top:12px;font-size:14px;font-weight:bold;text-align:right}");
+        sb.Append("@@media print{.noprint{display:none}}</style></head><body>");
+        sb.Append("<div class=\"noprint\" style=\"margin-bottom:10px\"><button onclick=\"window.print()\">Imprimir / PDF</button></div>");
+        sb.Append("<h1>Reporte de faltantes — ").Append(Esc(c.Folio)).Append("</h1>");
+        sb.Append("<div class=\"muted\">Almacén: ").Append(Esc(c.NombreAlmacen)).Append("</div>");
+        sb.Append("<table><thead><tr><th>Producto</th><th>Lote</th><th class=\"r\">BD</th><th class=\"r\">Físico</th><th class=\"r\">Dif.</th><th>Resolución</th><th class=\"r\">A cobrar</th></tr></thead><tbody>");
+        foreach (var f in data.Faltantes)
+        {
+            sb.Append("<tr><td>").Append(Esc(f.NombreProducto)).Append("</td><td>").Append(Esc(f.NumLote)).Append("</td>");
+            sb.Append("<td class=\"r\">").Append(f.ExistenciaDb.ToString("N2", _mx)).Append("</td>");
+            sb.Append("<td class=\"r\">").Append((f.ExistenciaFisica ?? 0).ToString("N2", _mx)).Append("</td>");
+            sb.Append("<td class=\"r\">").Append(f.Diferencia.ToString("N2", _mx)).Append("</td>");
+            sb.Append("<td>").Append(Esc(f.DescResultado ?? "-")).Append("</td>");
+            sb.Append("<td class=\"r\">").Append(f.MontoCobrar.ToString("C2", _mx)).Append("</td></tr>");
+        }
+        sb.Append("</tbody></table>");
+        sb.Append("<div class=\"tot\">Total a cobrar al vendedor: ").Append(totalCobrar.ToString("C2", _mx)).Append("</div>");
+        sb.Append("</body></html>");
+        return sb.ToString();
+    }
+
+    private static string Esc(string? v) => System.Net.WebUtility.HtmlEncode(v ?? string.Empty);
+}

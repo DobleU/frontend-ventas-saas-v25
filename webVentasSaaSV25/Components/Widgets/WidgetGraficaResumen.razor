@@ -1,0 +1,66 @@
+﻿@* Components/Widgets/WidgetGraficaResumen.razor — VentasSaaSDU
+   Chart principal + panel inferior con 2-3 periodos: mini-dona + valor + tendencia + sublabel.
+   Uso: Sales & Views con resumen Mensual/Anual, ventas por periodo.
+
+   <WidgetGraficaResumen Titulo="Ventas y Visitas" IdChart="chart-ventas-views">
+       <Periodos>
+           <WidgetItemPeriodo IdChart="chart-periodo-mes"  Label="Mensual"  Valor="65,127"
+                              Tendencia="16.5%" TendenciaPositiva="true"  Sublabel="55.21 USD" />
+           <WidgetItemPeriodo IdChart="chart-periodo-año"  Label="Anual"    Valor="984,246"
+                              Tendencia="24.9%" TendenciaPositiva="true"  Sublabel="267.35 USD" />
+       </Periodos>
+   </WidgetGraficaResumen>
+*@
+
+<div class="card w-100 rounded-4 h-100">
+    <div class="card-body">
+
+        @* Header *@
+        <div class="d-flex align-items-start justify-content-between mb-3">
+            <h5 class="mb-0">@Titulo</h5>
+            <div class="dropdown">
+                <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle"
+                   onclick="GridMenu.toggle(this)">
+                    <span class="material-icons-outlined fs-5">more_vert</span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end grid-action-menu">
+                    @if (Opciones != null)
+                    {
+                        @Opciones
+                    }
+                    else
+                    {
+                        <li><a class="dropdown-item" href="javascript:;">Ver detalle</a></li>
+                        <li><a class="dropdown-item" href="javascript:;">Exportar</a></li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        @* Chart principal *@
+        @if (!string.IsNullOrEmpty(IdChart))
+        {
+            <div id="@IdChart" style="min-height:@AlturaChart;"></div>
+        }
+        @ChartSlot
+
+        @* Panel de resumen de periodos *@
+        @if (Periodos != null)
+        {
+            <div class="d-flex flex-column flex-lg-row align-items-start justify-content-around
+                            border p-3 rounded-4 mt-3 gap-3">
+                @Periodos
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Titulo { get; set; } = string.Empty;
+    [Parameter] public string IdChart { get; set; } = string.Empty;
+    [Parameter] public string AlturaChart { get; set; } = "250px";
+    [Parameter] public RenderFragment? ChartSlot { get; set; }
+    [Parameter] public RenderFragment? Periodos { get; set; }
+    [Parameter] public RenderFragment? Opciones { get; set; }
+}

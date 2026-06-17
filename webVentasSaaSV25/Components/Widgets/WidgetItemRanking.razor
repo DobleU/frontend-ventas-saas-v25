@@ -1,0 +1,59 @@
+﻿@* Components/Widgets/WidgetItemRanking.razor — VentasSaaSDU
+   Ítem de ranking: avatar + nombre + dato secundario + estrellas (1-5).
+   Va dentro del slot <Items> de WidgetListaRanking.
+
+   <WidgetItemRanking AvatarUrl="assets/images/avatars/01.png"
+                      Nombre="Juan Pérez"
+                      DatoSecundario="Ventas: 879"
+                      Estrellas="5" />
+
+   <WidgetItemRanking Icono="store" ColorIcono="primary"
+                      Nombre="Sucursal Norte"
+                      DatoSecundario="$128,450"
+                      Estrellas="4" />
+*@
+
+<div class="d-flex align-items-center gap-3">
+
+    @* Avatar o ícono *@
+    @if (!string.IsNullOrEmpty(AvatarUrl))
+    {
+        <img src="@AvatarUrl" width="55" class="rounded-circle flex-shrink-0" alt="@Nombre" />
+    }
+    else if (!string.IsNullOrEmpty(Icono))
+    {
+        <div class="wh-52 d-flex align-items-center justify-content-center rounded-circle
+                        bg-@ColorIcono bg-opacity-10 text-@ColorIcono flex-shrink-0">
+            <span class="material-icons-outlined">@Icono</span>
+        </div>
+    }
+
+    @* Nombre + dato *@
+    <div class="flex-grow-1">
+        <h6 class="mb-0">@Nombre</h6>
+        @if (!string.IsNullOrEmpty(DatoSecundario))
+        {
+            <p class="mb-0 font-text1 text-secondary">@DatoSecundario</p>
+        }
+    </div>
+
+    @* Estrellas *@
+    <div class="ratings d-flex">
+        @for (int i = 1; i <= 5; i++)
+        {
+            int star = i;
+            <span class="material-icons-outlined @(star <= Estrellas ? "text-warning" : "") fs-5">star</span>
+        }
+    </div>
+
+</div>
+
+@code {
+    [Parameter] public string AvatarUrl { get; set; } = string.Empty;
+    [Parameter] public string Icono { get; set; } = string.Empty;
+    [Parameter] public string ColorIcono { get; set; } = "primary";
+    [Parameter] public string Nombre { get; set; } = string.Empty;
+    [Parameter] public string DatoSecundario { get; set; } = string.Empty;
+    /// <summary>Número de estrellas llenas: 1 a 5</summary>
+    [Parameter] public int Estrellas { get; set; } = 5;
+}

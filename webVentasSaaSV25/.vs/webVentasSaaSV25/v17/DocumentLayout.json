@@ -9,6 +9,82 @@
     {
       "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\pages\\auth\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:pages\\auth\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\wwwroot\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:wwwroot\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\services\\almacen\\inventarioalmacenwebservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:services\\almacen\\inventarioalmacenwebservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\pages\\almacen\\almacenesempresa\\ingresoproduccion.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:pages\\almacen\\almacenesempresa\\ingresoproduccion.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\pages\\almacen\\almacenesempresa\\entregapedidosruta.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:pages\\almacen\\almacenesempresa\\entregapedidosruta.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\wwwroot\\index.html||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:wwwroot\\index.html||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\wwwroot\\assets\\plugins\\simplebar\\js\\simplebar.min.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}|",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:wwwroot\\assets\\plugins\\simplebar\\js\\simplebar.min.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\pages\\almacen\\vehiculos\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:pages\\almacen\\vehiculos\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\components\\cards\\inventariocard.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:components\\cards\\inventariocard.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\wwwroot\\css\\app.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:wwwroot\\css\\app.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\_imports.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:_imports.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\pages\\catalogos\\clientes\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:pages\\catalogos\\clientes\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\components\\grid\\datagrid.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:components\\grid\\datagrid.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\components\\widgets\\widgettablaorden.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:components\\widgets\\widgettablaorden.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\components\\widgets\\widgetlistausuarios.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:components\\widgets\\widgetlistausuarios.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\pages\\seguridad\\usuarios\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:pages\\seguridad\\usuarios\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\pages\\seguridad\\sesiones\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:pages\\seguridad\\sesiones\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|d:\\github\\frontend-ventas-saas-v25\\webventassaasv25\\pages\\core\\seriesdocumento\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9B0D459F-4843-4FF0-BBE1-7AD16996525C}|webVentasSaaSV25.csproj|solutionrelative:pages\\core\\seriesdocumento\\index.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     }
   ],
   "DocumentGroupContainers": [
@@ -32,10 +108,154 @@
               "RelativeDocumentMoniker": "Models\\Auth\\LoginRequest.cs",
               "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Models\\Auth\\LoginRequest.cs",
               "RelativeToolTip": "Models\\Auth\\LoginRequest.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAABAAAAAAAAAA==",
+              "ViewState": "AgIAABAAAAAAAAAAAAAgwBwAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-23T08:09:40.252Z",
+              "WhenOpened": "2026-06-01T01:16:34.486Z",
               "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "launchSettings.json",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Properties\\launchSettings.json",
+              "RelativeDocumentMoniker": "Properties\\launchSettings.json",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Properties\\launchSettings.json",
+              "RelativeToolTip": "Properties\\launchSettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAvAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-05-29T21:10:27.68Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "IngresoProduccion.razor",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Almacen\\AlmacenesEmpresa\\IngresoProduccion.razor",
+              "RelativeDocumentMoniker": "Pages\\Almacen\\AlmacenesEmpresa\\IngresoProduccion.razor",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Almacen\\AlmacenesEmpresa\\IngresoProduccion.razor",
+              "RelativeToolTip": "Pages\\Almacen\\AlmacenesEmpresa\\IngresoProduccion.razor",
+              "ViewState": "AgIAAK4AAAAAAAAAAAArwMMAAAAwAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-05-29T08:12:55.653Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "index.html",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\wwwroot\\index.html",
+              "RelativeDocumentMoniker": "wwwroot\\index.html",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\wwwroot\\index.html",
+              "RelativeToolTip": "wwwroot\\index.html",
+              "ViewState": "AgIAAEIAAAAAAAAAAAAAAFkAAAA7AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001512|",
+              "WhenOpened": "2026-05-25T19:24:07.06Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "simplebar.min.js",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\wwwroot\\assets\\plugins\\simplebar\\js\\simplebar.min.js",
+              "RelativeDocumentMoniker": "wwwroot\\assets\\plugins\\simplebar\\js\\simplebar.min.js",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\wwwroot\\assets\\plugins\\simplebar\\js\\simplebar.min.js",
+              "RelativeToolTip": "wwwroot\\assets\\plugins\\simplebar\\js\\simplebar.min.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-05-25T19:08:27.737Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "Index.razor",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Almacen\\Vehiculos\\Index.razor",
+              "RelativeDocumentMoniker": "Pages\\Almacen\\Vehiculos\\Index.razor",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Almacen\\Vehiculos\\Index.razor",
+              "RelativeToolTip": "Pages\\Almacen\\Vehiculos\\Index.razor",
+              "ViewState": "AgIAAGYAAAAAAAAAAAAAAHIAAAA4AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-05-25T08:36:22.828Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "EntregaPedidosRuta.razor",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Almacen\\AlmacenesEmpresa\\EntregaPedidosRuta.razor",
+              "RelativeDocumentMoniker": "Pages\\Almacen\\AlmacenesEmpresa\\EntregaPedidosRuta.razor",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Almacen\\AlmacenesEmpresa\\EntregaPedidosRuta.razor",
+              "RelativeToolTip": "Pages\\Almacen\\AlmacenesEmpresa\\EntregaPedidosRuta.razor",
+              "ViewState": "AgIAAI8CAAAAAAAAAAAkwKsCAAAgAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-05-25T04:19:03.355Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "InventarioCard.razor",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Components\\Cards\\InventarioCard.razor",
+              "RelativeDocumentMoniker": "Components\\Cards\\InventarioCard.razor",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Components\\Cards\\InventarioCard.razor",
+              "RelativeToolTip": "Components\\Cards\\InventarioCard.razor",
+              "ViewState": "AgIAAIoAAAAAAAAAAAAAAE0AAABXAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-05-24T22:35:36.81Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "app.css",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\wwwroot\\css\\app.css",
+              "RelativeDocumentMoniker": "wwwroot\\css\\app.css",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\wwwroot\\css\\app.css",
+              "RelativeToolTip": "wwwroot\\css\\app.css",
+              "ViewState": "AgIAAO4AAAAAAAAAAAAkwDYBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
+              "WhenOpened": "2026-05-24T22:35:07.384Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\wwwroot\\appsettings.json",
+              "RelativeDocumentMoniker": "wwwroot\\appsettings.json",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\wwwroot\\appsettings.json",
+              "RelativeToolTip": "wwwroot\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-05-24T07:56:10.522Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "InventarioAlmacenWebService.cs",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Services\\Almacen\\InventarioAlmacenWebService.cs",
+              "RelativeDocumentMoniker": "Services\\Almacen\\InventarioAlmacenWebService.cs",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Services\\Almacen\\InventarioAlmacenWebService.cs",
+              "RelativeToolTip": "Services\\Almacen\\InventarioAlmacenWebService.cs",
+              "ViewState": "AgIAAJUBAAAAAAAAAAAawKkBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-05-24T07:54:40.341Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Program.cs",
+              "RelativeDocumentMoniker": "Program.cs",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Program.cs",
+              "RelativeToolTip": "Program.cs",
+              "ViewState": "AgIAAFcAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-05-24T07:54:28.836Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "_Imports.razor",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\_Imports.razor",
+              "RelativeDocumentMoniker": "_Imports.razor",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\_Imports.razor",
+              "RelativeToolTip": "_Imports.razor",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-05-24T07:49:49.584Z"
             },
             {
               "$type": "Document",
@@ -45,10 +265,93 @@
               "RelativeDocumentMoniker": "Pages\\Auth\\Index.razor",
               "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Auth\\Index.razor",
               "RelativeToolTip": "Pages\\Auth\\Index.razor",
-              "ViewState": "AgIAAJwAAAAAAAAAAAAgwLEAAABJAAAAAAAAAA==",
+              "ViewState": "AgIAAJ4AAAAAAAAAAAAUwKsAAAAdAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2026-02-23T08:06:45.821Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-04-30T17:49:17.366Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "DataGrid.razor",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Components\\Grid\\DataGrid.razor",
+              "RelativeDocumentMoniker": "Components\\Grid\\DataGrid.razor",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Components\\Grid\\DataGrid.razor",
+              "RelativeToolTip": "Components\\Grid\\DataGrid.razor",
+              "ViewState": "AgIAAAACAAAAAAAAAAAswGUCAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-04-29T20:34:51.617Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "WidgetTablaOrden.razor",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Components\\Widgets\\WidgetTablaOrden.razor",
+              "RelativeDocumentMoniker": "Components\\Widgets\\WidgetTablaOrden.razor",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Components\\Widgets\\WidgetTablaOrden.razor",
+              "RelativeToolTip": "Components\\Widgets\\WidgetTablaOrden.razor",
+              "ViewState": "AgIAADsAAAAAAAAAAAAvwFIAAAAmAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-04-29T20:32:33.737Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "Index.razor",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Seguridad\\Usuarios\\Index.razor",
+              "RelativeDocumentMoniker": "Pages\\Seguridad\\Usuarios\\Index.razor",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Seguridad\\Usuarios\\Index.razor",
+              "RelativeToolTip": "Pages\\Seguridad\\Usuarios\\Index.razor",
+              "ViewState": "AgIAAPgAAAAAAAAAAAAswBgBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-04-29T20:32:19.52Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "Index.razor",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Seguridad\\Sesiones\\Index.razor",
+              "RelativeDocumentMoniker": "Pages\\Seguridad\\Sesiones\\Index.razor",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Seguridad\\Sesiones\\Index.razor",
+              "RelativeToolTip": "Pages\\Seguridad\\Sesiones\\Index.razor",
+              "ViewState": "AgIAAHoAAAAAAAAAAAAswJoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-04-29T20:31:58.622Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "Index.razor",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Core\\SeriesDocumento\\Index.razor",
+              "RelativeDocumentMoniker": "Pages\\Core\\SeriesDocumento\\Index.razor",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Core\\SeriesDocumento\\Index.razor",
+              "RelativeToolTip": "Pages\\Core\\SeriesDocumento\\Index.razor",
+              "ViewState": "AgIAALMAAAAAAAAAAAAswNMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-04-29T20:31:52.955Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "Index.razor",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Catalogos\\Clientes\\Index.razor",
+              "RelativeDocumentMoniker": "Pages\\Catalogos\\Clientes\\Index.razor",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Pages\\Catalogos\\Clientes\\Index.razor",
+              "RelativeToolTip": "Pages\\Catalogos\\Clientes\\Index.razor",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAABIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-04-29T20:31:32.978Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "WidgetListaUsuarios.razor",
+              "DocumentMoniker": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Components\\Widgets\\WidgetListaUsuarios.razor",
+              "RelativeDocumentMoniker": "Components\\Widgets\\WidgetListaUsuarios.razor",
+              "ToolTip": "D:\\GITHUB\\frontend-ventas-saas-v25\\webVentasSaaSV25\\Components\\Widgets\\WidgetListaUsuarios.razor",
+              "RelativeToolTip": "Components\\Widgets\\WidgetListaUsuarios.razor",
+              "ViewState": "AgIAABEAAAAAAAAAAAAcwCEAAABiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-04-29T20:31:21.815Z"
             }
           ]
         }

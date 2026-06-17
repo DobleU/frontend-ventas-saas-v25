@@ -1,0 +1,208 @@
+﻿/* ============================================================
+   navmenu-extra.css — VentasSaaSDU
+   ============================================================ */
+
+/* ── Barra principal ── */
+.primary-menu .navbar-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 2px;
+}
+
+    .primary-menu .navbar-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+/* ── Items del menú principal ── */
+.primary-menu .nav-item > .nav-link {
+    white-space: nowrap;
+    font-size: 0.78rem !important;
+    padding: 0.5rem 0.45rem !important;
+    cursor: pointer;
+}
+
+/* ── Usar todo el ancho disponible ── */
+.primary-menu .navbar {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+}
+
+    .primary-menu .navbar > .container-xxl {
+        max-width: 100% !important;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+    }
+
+/* ── Ícono expand_more ── */
+.primary-menu .nav-link .material-icons-outlined.fs-6 {
+    font-size: 14px !important;
+    margin-left: 2px;
+    opacity: 0.6;
+    transition: transform 0.2s ease;
+}
+
+.primary-menu .nav-item.dropdown.menu-open > .nav-link .material-icons-outlined.fs-6 {
+    transform: rotate(180deg);
+}
+
+/* ── Z-index del menú principal ── */
+.primary-menu {
+    position: relative;
+    z-index: 1000 !important;
+}
+
+    /* ── Ocultar dropdowns por defecto ── */
+    .primary-menu .nav-item.dropdown {
+        position: static;
+    }
+
+    /* ── Dropdown base ── */
+    .primary-menu .dropdown-menu {
+        display: none;
+        border: 1px solid rgba(0,0,0,.08);
+        box-shadow: 0 8px 24px rgba(0,0,0,.12);
+        border-radius: 8px;
+        padding: 8px 0;
+        min-width: 220px;
+        width: max-content;
+        max-width: 300px;
+        background-color: var(--bs-body-bg, #fff);
+    }
+
+    /* ── Mostrar dropdown — posición calculada por JS ── */
+    .primary-menu .nav-item.dropdown.menu-open > .dropdown-menu {
+        display: block !important;
+        position: fixed !important;
+        transform: none !important;
+        z-index: 99999 !important;
+    }
+
+    /* ── Deshabilitar hover del template ── */
+    .primary-menu .nav-item.dropdown:hover > .dropdown-menu {
+        display: none !important;
+    }
+
+    .primary-menu .nav-item.dropdown.menu-open:hover > .dropdown-menu {
+        display: block !important;
+    }
+
+/* ── Bajar overlay para que no tape el menú ── */
+.overlay {
+    z-index: 500 !important;
+}
+
+/* ── Headers de sección ── */
+.primary-menu .dropdown-header {
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    padding: 6px 14px 2px;
+    color: var(--bs-secondary);
+    font-weight: 700;
+}
+
+/* ── Items del dropdown ── */
+.primary-menu .dropdown-item {
+    font-size: 0.82rem;
+    padding: 6px 14px;
+    border-radius: 4px;
+    margin: 0 4px;
+    width: calc(100% - 8px);
+    transition: background 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+    .primary-menu .dropdown-item:hover {
+        background-color: rgba(var(--bs-primary-rgb), 0.08);
+        color: var(--bs-primary);
+    }
+
+    .primary-menu .dropdown-item.active {
+        background-color: rgba(var(--bs-primary-rgb), 0.12);
+        color: var(--bs-primary);
+        font-weight: 600;
+    }
+
+    .primary-menu .dropdown-item.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .primary-menu .dropdown-item .badge {
+        font-size: 9px;
+        padding: 2px 5px;
+        border-radius: 3px;
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+
+/* ── MEGA DROPDOWN — Catálogos ── */
+.primary-menu .dropdown-menu-lg {
+    min-width: 680px !important;
+    max-width: 750px !important;
+    width: max-content !important;
+    padding: 12px !important;
+}
+
+    .primary-menu .dropdown-menu-lg > li {
+        width: 100%;
+    }
+
+    .primary-menu .dropdown-menu-lg .dropdown-header {
+        padding: 2px 0 6px;
+        margin-bottom: 2px;
+        border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+
+/* ── Divider ── */
+.primary-menu .dropdown-divider {
+    margin: 4px 10px;
+    opacity: 0.15;
+    border-top: 1px solid var(--bs-border-color);
+}
+
+/* ── Móvil ── */
+@media (max-width: 1199.98px) {
+    .primary-menu .nav-item.dropdown.menu-open > .dropdown-menu {
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .primary-menu .dropdown-menu {
+        box-shadow: none;
+        border: none;
+        background: transparent;
+        padding-left: 16px;
+        min-width: unset;
+        max-width: unset;
+        width: 100% !important;
+    }
+
+    .primary-menu .dropdown-menu-lg {
+        min-width: unset !important;
+        max-width: 100% !important;
+    }
+
+        .primary-menu .dropdown-menu-lg > li > .d-flex {
+            flex-direction: column !important;
+            gap: 8px !important;
+        }
+
+    .primary-menu .navbar-nav {
+        overflow-x: hidden;
+        flex-direction: column;
+    }
+
+    .primary-menu .nav-item > .nav-link {
+        padding: 0.45rem 0 !important;
+    }
+}

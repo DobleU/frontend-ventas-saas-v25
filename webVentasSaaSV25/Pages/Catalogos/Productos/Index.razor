@@ -1,5 +1,276 @@
-﻿<h3>Index</h3>
+﻿
+@page "/catalogos/productos"
+@using webVentasSaaSV25.Services.Catalogos
+@inject ProductoService      Svc
+@inject ClasificacionService ClaSvc
+@inject UnidadService        UniSvc
+
+<PageTitle>Productos — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Productos" Items="@(new[]{ ("Catálogos","/catalogos"), ("Productos","") })" />
+<AlertMessage @ref="_alerta" />
+
+<DataGrid TItem="ProductoResponse" Titulo="Productos" Modulo="catalogos"
+          Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
+          Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
+          OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo"
+          SearchPlaceholder="SKU, código de barra, nombre">
+
+    <FiltrosExtra>
+        <div class="d-flex gap-2 flex-wrap">
+            <select class="form-select form-select-sm" style="width:180px" @onchange="OnFiltroCategoria">
+                <option value="">Todas las categorías</option>
+                @foreach (var c in _categorias) { <option value="@c.IdClasificacion">@c.Nombre</option> }
+            </select>
+            <select class="form-select form-select-sm" style="width:130px" @onchange="OnFiltroTipo">
+                <option value="">Todos</option>
+                <option value="false">Productos</option>
+                <option value="true">Servicios</option>
+            </select>
+        </div>
+    </FiltrosExtra>
+
+    <HeaderRow>
+        <th style="width:100px">SKU</th>
+        <th>Nombre</th>
+        <th style="width:140px">Categoría</th>
+        <th style="width:80px">Unidad</th>
+        <th style="width:100px" class="text-end">Precio</th>
+        <th style="width:80px"  class="text-center">Tipo</th>
+        <th style="width:110px" class="text-center">Estado</th>
+        <th style="width:90px"  class="text-center">Acciones</th>
+    </HeaderRow>
+    <RowTemplate>
+        <td><code class="small">@(context.Sku ?? "—")</code></td>
+        <td>
+            <div class="fw-medium">@context.Nombre</div>
+            @if (!string.IsNullOrWhiteSpace(context.NombreMarca))
+            { <div class="text-muted small">@context.NombreMarca</div> }
+        </td>
+        <td class="text-muted small">@(context.NombreClasificacion ?? "—")</td>
+        <td class="text-muted small">@(context.ClaveUnidad ?? context.NombreUnidad ?? "—")</td>
+        <td class="text-end">$@context.PrecioActual.ToString("N2")</td>
+        <td class="text-center">
+            @if (context.EsServicio)
+            { <span class="badge bg-purple-subtle text-purple-emphasis small">Servicio</span> }
+            else if (context.EsKit)
+            { <span class="badge bg-warning-subtle text-warning-emphasis small">Kit</span> }
+            else
+            { <span class="badge bg-secondary-subtle text-secondary-emphasis small">Producto</span> }
+        </td>
+        <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
+        <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2" @onclick="()=>AbrirEditar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger py-1 px-2" @onclick="()=>Eliminar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">delete</i>
+            </button>
+        </td>
+    </RowTemplate>
+</DataGrid>
+
+<FormOffcanvas @ref="_panel" Titulo="@(_edit?"Editar Producto":"Nuevo Producto")"
+               Icono="@(_edit?"edit":"inventory_2")" Ancho="580px" OnGuardar="Guardar">
+    <Body>
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <label class="form-label fw-medium">SKU</label>
+                <input class="form-control text-uppercase" maxlength="60" @bind="_sku" placeholder="Ej. PROD-001" />
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-medium">Código de barra</label>
+                <input class="form-control" maxlength="60" @bind="_codigoBarra" />
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Nombre <span class="text-danger">*</span></label>
+            <input class="form-control @(_eNombre?"is-invalid":"")" maxlength="200"
+                   @bind="_nombre" @oninput="()=>_eNombre=false" placeholder="Nombre del producto o servicio" />
+            @if (_eNombre) { <div class="invalid-feedback">Requerido.</div> }
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Nombre corto</label>
+            <input class="form-control" maxlength="80" @bind="_nombreCorto" placeholder="Para tickets / etiquetas (máx. 80 chars)" />
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <label class="form-label fw-medium">Tipo</label>
+                <select class="form-select" @bind="_tipoProducto">
+                    <option value="1">Producto</option>
+                    <option value="2">Servicio</option>
+                    <option value="3">Kit</option>
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-medium">Categoría</label>
+                <select class="form-select" @bind="_idClasifCategoria">
+                    <option value="0">Sin categoría</option>
+                    @foreach (var c in _categorias) { <option value="@c.IdClasificacion">@c.Nombre</option> }
+                </select>
+            </div>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <label class="form-label fw-medium">Marca</label>
+                <select class="form-select" @bind="_idClasifMarca">
+                    <option value="0">Sin marca</option>
+                    @foreach (var m in _marcas) { <option value="@m.IdClasificacion">@m.Nombre</option> }
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-medium">Unidad</label>
+                <select class="form-select" @bind="_idUnidad">
+                    <option value="0">Sin unidad</option>
+                    @foreach (var u in _unidades) { <option value="@u.IdUnidad">@u.Clave — @u.Nombre</option> }
+                </select>
+            </div>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-4">
+                <label class="form-label fw-medium">Precio ($)</label>
+                <input type="number" class="form-control" min="0" step="0.01" @bind="_precioActual" />
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-medium">Costo ($)</label>
+                <input type="number" class="form-control" min="0" step="0.01" @bind="_costoActual" />
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-medium">IVA (tasa)</label>
+                <input type="number" class="form-control" min="0" max="1" step="0.01" @bind="_ivaTasa" placeholder="0.16" />
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium d-block">Comportamiento</label>
+            <div class="row g-2">
+                <div class="col-6">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" @bind="_manejaInventario" />
+                        <label class="form-check-label">Maneja inventario</label>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" @bind="_manejaLote" />
+                        <label class="form-check-label">Maneja lote</label>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" @bind="_manajaSerie" />
+                        <label class="form-check-label">Maneja serie</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @if (_edit)
+        {
+            <div class="mb-3">
+                <label class="form-label fw-medium">Estado</label>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_isActive" />
+                    <label class="form-check-label">@(_isActive?"Activo":"Inactivo")</label>
+                </div>
+            </div>
+        }
+    </Body>
+</FormOffcanvas>
+<ConfirmDialog @ref="_confirm" />
 
 @code {
+    PagedResult<ProductoResponse>? _paged; FiltroProductoRequest _f = new(); bool _loading;
+    AlertMessage? _alerta; FormOffcanvas? _panel; ConfirmDialog? _confirm;
+    List<ClasificacionResponse> _categorias = []; List<ClasificacionResponse> _marcas = [];
+    List<UnidadResponse> _unidades = [];
 
+    bool    _edit; int _id;
+    string  _sku=""; string _nombre=""; string _nombreCorto=""; string _codigoBarra="";
+    int     _tipoProducto=1; int _idClasifCategoria=0; int _idClasifMarca=0; int _idUnidad=0;
+    decimal _precioActual=0; decimal _costoActual=0; decimal _ivaTasa=0.16m;
+    bool    _manejaInventario=true; bool _manejaLote=false; bool _manajaSerie=false;
+    bool    _isActive=true; bool _eNombre;
+
+    protected override async Task OnInitializedAsync()
+        => await Task.WhenAll(Cargar(), CargarLookups());
+
+    async Task Cargar() { _loading=true; var(d,e)=await Svc.GetPagedAsync(_f); _loading=false; if(e!=null)_alerta?.MostrarError(e); else _paged=d; }
+    async Task CargarLookups()
+    {
+        var(cls,_)=await ClaSvc.GetAllActivosAsync();
+        var todos=cls?.Items??[];
+        // Tipo 1 = categorías, Tipo 2 = marcas (según datos reales del catálogo)
+        _categorias=todos.Where(c=>c.Tipo==1).ToList();
+        _marcas=todos.Where(c=>c.Tipo==2).ToList();
+        if(!_categorias.Any())_categorias=todos; // fallback si no hay tipos distintos
+        var(uni,_)=await UniSvc.GetPagedAsync(new FiltroUnidadRequest{IsActive=true,Page=1,PageSize=500});
+        _unidades=uni?.Items??[];
+    }
+
+    async Task OnPage(int p)       { _f.Page=p;  await Cargar(); }
+    async Task OnSearch(string? s) { _f.Search=s; _f.Page=1; await Cargar(); }
+    async Task OnFiltroCategoria(ChangeEventArgs e)
+    { _f.IdClasifCategoria=int.TryParse(e.Value?.ToString(),out var id)&&id>0?id:null; _f.Page=1; await Cargar(); }
+    async Task OnFiltroTipo(ChangeEventArgs e)
+    { _f.EsServicio=string.IsNullOrEmpty(e.Value?.ToString())?null:bool.Parse(e.Value.ToString()!); _f.Page=1; await Cargar(); }
+
+    void AbrirNuevo()
+    {
+        _edit=false; _id=0; _sku=""; _nombre=""; _nombreCorto=""; _codigoBarra="";
+        _tipoProducto=1; _idClasifCategoria=0; _idClasifMarca=0; _idUnidad=0;
+        _precioActual=0; _costoActual=0; _ivaTasa=0.16m;
+        _manejaInventario=true; _manejaLote=false; _manajaSerie=false; _eNombre=false;
+        _panel?.Abrir();
+    }
+    void AbrirEditar(ProductoResponse x)
+    {
+        _edit=true; _id=x.IdProducto;
+        _sku=x.Sku??""; _nombre=x.Nombre; _nombreCorto=x.NombreCorto??""; _codigoBarra=x.CodigoBarra;
+        _tipoProducto=x.TipoProducto; _idClasifCategoria=x.IdClasifCategoria??0;
+        _idClasifMarca=x.IdClasifMarca??0; _idUnidad=x.IdUnidad??0;
+        _precioActual=x.PrecioActual; _costoActual=x.CostoActual; _ivaTasa=x.IvaTasa;
+        _manejaInventario=x.ManejaInventario; _manejaLote=x.ManejaLote; _manajaSerie=x.ManejaSerie;
+        _isActive=x.IsActive; _eNombre=false; _panel?.Abrir();
+    }
+
+    async Task Guardar()
+    {
+        _eNombre=string.IsNullOrWhiteSpace(_nombre);
+        if(_eNombre){_panel?.MostrarError("Corrija los campos marcados.");return;}
+        if(_edit)
+        {
+            var(_,e)=await Svc.ActualizarAsync(_id,new ActualizarProductoRequest
+            {
+                IdProducto=_id, Sku=string.IsNullOrWhiteSpace(_sku)?null:_sku.ToUpper().Trim(),
+                Nombre=_nombre.Trim(), NombreCorto=string.IsNullOrWhiteSpace(_nombreCorto)?null:_nombreCorto.Trim(),
+                CodigoBarra=string.IsNullOrWhiteSpace(_codigoBarra)?null:_codigoBarra.Trim(),
+                TipoProducto=_tipoProducto, IdClasifCategoria=_idClasifCategoria>0?_idClasifCategoria:null,
+                IdClasifMarca=_idClasifMarca>0?_idClasifMarca:null, IdUnidad=_idUnidad>0?_idUnidad:null,
+                PrecioActual=_precioActual, CostoActual=_costoActual, IvaTasa=_ivaTasa,
+                ManejaInventario=_manejaInventario, ManejaLote=_manejaLote, ManejaSerie=_manajaSerie,
+                IsActive=_isActive
+            });
+            if(e!=null){_panel?.MostrarError(e);return;}
+        }
+        else
+        {
+            var(_,e)=await Svc.CrearAsync(new CrearProductoRequest
+            {
+                Sku=string.IsNullOrWhiteSpace(_sku)?null:_sku.ToUpper().Trim(),
+                Nombre=_nombre.Trim(), NombreCorto=string.IsNullOrWhiteSpace(_nombreCorto)?null:_nombreCorto.Trim(),
+                CodigoBarra=string.IsNullOrWhiteSpace(_codigoBarra)?null:_codigoBarra.Trim(),
+                TipoProducto=_tipoProducto, IdClasifCategoria=_idClasifCategoria>0?_idClasifCategoria:null,
+                IdClasifMarca=_idClasifMarca>0?_idClasifMarca:null, IdUnidad=_idUnidad>0?_idUnidad:null,
+                PrecioActual=_precioActual, CostoActual=_costoActual, IvaTasa=_ivaTasa,
+                ManejaInventario=_manejaInventario, ManejaLote=_manejaLote, ManejaSerie=_manajaSerie
+            });
+            if(e!=null){_panel?.MostrarError(e);return;}
+        }
+        _panel?.MostrarExitoYCerrar(_edit?"Producto actualizado.":"Producto creado."); await Cargar();
+    }
+
+    async Task Eliminar(ProductoResponse x)
+    {
+        if(!await _confirm!.ConfirmarEliminarAsync("producto"))return;
+        var(_,e)=await Svc.EliminarAsync(x.IdProducto);
+        if(e!=null)_alerta?.MostrarError(e); else{_alerta?.MostrarExito("Producto eliminado.");await Cargar();}
+    }
 }

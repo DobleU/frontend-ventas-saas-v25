@@ -1,0 +1,81 @@
+﻿@* Components/Widgets/WidgetMiniChart.razor — VentasSaaSDU
+   Widget compacto (6 por fila) con valor + mini-chart + nota al pie + menú opciones.
+   Fila 3 del dashboard. Slot para cualquier tipo de chart ApexCharts.
+
+   <WidgetMiniChart Valor="97.4K" Etiqueta="Total Ventas"
+                    Nota="12.5% más que el mes pasado"
+                    NotaColor="success"
+                    IdChart="chart-mini-1">
+       <Opciones>
+           <li><a class="dropdown-item" href="#">Ver detalle</a></li>
+           <li><a class="dropdown-item" href="#">Exportar</a></li>
+       </Opciones>
+   </WidgetMiniChart>
+*@
+
+<div class="card rounded-4 w-100 h-100">
+    <div class="card-body d-flex flex-column">
+
+        @* Header: valor + menú opciones *@
+        <div class="d-flex align-items-start justify-content-between mb-3">
+            <div>
+                <h5 class="mb-0">@Valor</h5>
+                <p class="mb-0 text-secondary font-text1">@Etiqueta</p>
+            </div>
+            <div class="dropdown">
+                <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle"
+                   onclick="GridMenu.toggle(this)">
+                    <span class="material-icons-outlined fs-5">more_vert</span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end grid-action-menu">
+                    @if (Opciones != null)
+                    {
+                        @Opciones
+                    }
+                    else
+                    {
+                        <li><a class="dropdown-item" href="javascript:;">Ver detalle</a></li>
+                        <li><a class="dropdown-item" href="javascript:;">Exportar</a></li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        @* Slot mini-chart *@
+        <div class="chart-container2 flex-grow-1">
+            @if (!string.IsNullOrEmpty(IdChart))
+            {
+                <div id="@IdChart" style="min-height:120px;"></div>
+            }
+            @MiniChart
+        </div>
+
+        @* Nota al pie *@
+        @if (!string.IsNullOrEmpty(Nota))
+        {
+            <div class="text-center mt-2">
+                <p class="mb-0 font-text1">
+                    @if (!string.IsNullOrEmpty(NotaDestacada))
+                    {
+                        <span class="text-@NotaColor fw-medium me-1">@NotaDestacada</span>
+                    }
+                    @Nota
+                </p>
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Valor { get; set; } = "0";
+    [Parameter] public string Etiqueta { get; set; } = string.Empty;
+    [Parameter] public string Nota { get; set; } = string.Empty;
+    /// <summary>Texto resaltado antes de la nota (ej. "12.5%")</summary>
+    [Parameter] public string NotaDestacada { get; set; } = string.Empty;
+    /// <summary>Color del texto destacado: success | danger | warning | info</summary>
+    [Parameter] public string NotaColor { get; set; } = "success";
+    [Parameter] public string IdChart { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? MiniChart { get; set; }
+    [Parameter] public RenderFragment? Opciones { get; set; }
+}

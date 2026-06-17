@@ -1,0 +1,26 @@
+@page "/"
+@layout AuthLayout
+@inject AuthService AuthSvc
+@inject AppState Estado
+@inject NavigationManager Nav
+
+<div class="d-flex align-items-center justify-content-center vh-100">
+    <div class="text-center">
+        <div class="spinner-border text-primary mb-3" role="status"></div>
+        <p class="text-muted">Validando sesión...</p>
+    </div>
+</div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await AuthSvc.IntentarRestaurarSesionAsync();
+
+        if (Estado.EstaAutenticado)
+            Nav.NavigateTo("/dashboard", forceLoad: false);
+        else
+            Nav.NavigateTo("/login", forceLoad: false);
+    }
+}
