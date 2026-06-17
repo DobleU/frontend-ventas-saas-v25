@@ -268,10 +268,38 @@
     </text>;
 
     RenderFragment Item(string href, string icon, string label, bool pronto = false) =>
-        @<a class="dropdown-item d-flex align-items-center gap-2 @(pronto ? "disabled text-muted" : "") @(Activo(href) ? "active" : "")"
+        @<a class="dropdown-item nav-dropdown-item @(pronto ? "disabled text-muted" : "") @(Activo(href) ? "active" : "")"
             href="@(pronto ? "javascript:;" : href)">
-            <i class="material-icons-outlined" style="font-size:16px;">@icon</i>
-            <span>@(new MarkupString(label))</span>
+            <i class="material-icons-outlined nav-dropdown-icon">@icon</i>
+            <span class="nav-dropdown-label">@(new MarkupString(label))</span>
             @if (pronto) { <span class="badge bg-secondary ms-auto" style="font-size:9px;">Pronto</span> }
         </a>;
 }
+
+<style>
+    .primary-menu .dropdown-menu {
+        width: max-content;
+        min-width: 240px;
+        max-width: 360px;
+    }
+
+    .primary-menu .nav-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        white-space: nowrap;
+        padding-right: 1rem;
+    }
+
+    .primary-menu .nav-dropdown-icon {
+        width: 18px;
+        min-width: 18px;
+        text-align: center;
+        font-size: 16px;
+        flex: 0 0 18px;
+    }
+
+    .primary-menu .nav-dropdown-label {
+        flex: 0 1 auto;
+    }
+</style>
