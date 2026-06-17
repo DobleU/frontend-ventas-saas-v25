@@ -1,4 +1,4 @@
-﻿@* Shared/NavMenu.razor â€” VentasSaaSDU.Web *@
+@* Shared/NavMenu.razor *@
 @inject PermisoClienteService Permisos
 @inject AppState Estado
 @inject NavigationManager Nav
@@ -57,305 +57,184 @@
     private bool TienePermiso(params string[] modulos) =>
         modulos.Any(m => Permisos.TieneAlgunoEn(m));
 
-    RenderFragment MenuCompleto() =>@<text>
-
+    RenderFragment MenuCompleto() => @<text>
         <li class="nav-item">
-            <NavLink class="nav-link d-flex align-items-center gap-1"
-                     href="/dashboard" Match="NavLinkMatch.All">
+            <NavLink class="nav-link d-flex align-items-center gap-1" href="/dashboard" Match="NavLinkMatch.All">
                 <i class="material-icons-outlined fs-5">home</i>
                 <span>Inicio</span>
             </NavLink>
         </li>
 
-        @if (TienePermiso("ventas_tienda","ventas_ruta","auditoria","reportes"))
-        {
-            <li class="nav-item dropdown" data-menu-id="monitor">
-                <a class="nav-link d-flex align-items-center gap-1 @(Activo("/monitor")?"active":"")"
-                   href="javascript:;" onclick="NavMenu.toggle('monitor')">
-                    <i class="material-icons-outlined fs-5">sensors</i>
-                    <span>Monitor</span>
-                    <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-                </a>
-                <ul class="dropdown-menu">
-                    <li><h6 class="dropdown-header text-uppercase small">Tiempo Real</h6></li>
-                    <li>@Item("/monitor/mapa",       "map",           "Mapa general")</li>
-                    <li>@Item("/monitor/rutas",      "directions_car","Monitor rutas")</li>
-                    <li>@Item("/monitor/clientes",   "groups",        "Monitor clientes")</li>
-                    <li>@Item("/monitor/pos",        "point_of_sale", "POS activos", pronto:true)</li>
-                    <li>@Item("/monitor/alertas",    "warning_amber", "Alertas",    pronto:true)</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Resumen</h6></li>
-                    <li>@Item("/monitor/ventas-dia", "bar_chart",     "Ventas d&iacute;a", pronto:true)</li>
-                    <li>@Item("/monitor/caja",       "payments",      "Estado caja", pronto:true)</li>
-                </ul>
-            </li>
-        }
+        <li class="nav-item dropdown" data-menu-id="crm">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/crm") || Activo("/catalogos/clientes") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('crm')">
+                <i class="material-icons-outlined fs-5">support_agent</i>
+                <span>CRM</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/catalogos/clientes", "people", "Clientes")</li>
+                <li>@Item("/crm/prospectos", "person_add", "Prospectos")</li>
+                <li>@Item("/crm/seguimiento-comercial", "event_note", "Seguimiento Comercial")</li>
+            </ul>
+        </li>
 
-        @if (TienePermiso("configuracion"))
-        {
-            <li class="nav-item dropdown" data-menu-id="core">
-                <a class="nav-link d-flex align-items-center gap-1 @(Activo("/core")?"active":"")"
-                   href="javascript:;" onclick="NavMenu.toggle('core')">
-                    <i class="material-icons-outlined fs-5">business</i>
-                    <span>Core</span>
-                    <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-                </a>
-                <ul class="dropdown-menu">
-                    <li><h6 class="dropdown-header text-uppercase small">Empresa</h6></li>
-                    <li>@Item("/core/empresas",         "domain",            "Mi empresa")</li>
-                    <li>@Item("/core/sucursales",       "store",             "Sucursales")</li>
-                    <li>@Item("/core/zonas",            "map",               "Zonas")</li>
-                    <li>@Item("/core/rutas",            "route",             "Rutas")</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Sistema</h6></li>
-                    <li>@Item("/core/monedas",          "currency_exchange", "Monedas")</li>
-                    <li>@Item("/core/series-documento", "tag",               "Series doc.")</li>
-                    <li>@Item("/core/parametros",       "tune",              "Par&aacute;metros")</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Suscripci&oacute;n</h6></li>
-                    <li>@Item("/suscripcion",           "workspace_premium", "Mi plan")</li>
-                </ul>
-            </li>
-        }
+        <li class="nav-item dropdown" data-menu-id="pos">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/pos") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('pos')">
+                <i class="material-icons-outlined fs-5">point_of_sale</i>
+                <span>POS</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/pos/ventas", "shopping_cart", "Ventas POS", pronto: true)</li>
+                <li>@Item("/pos/caja", "payments", "Caja", pronto: true)</li>
+                <li>@Item("/pos/tickets", "receipt_long", "Tickets", pronto: true)</li>
+            </ul>
+        </li>
 
-        @if (TienePermiso("catalogos","seguridad","auditoria"))
-        {
-            <li class="nav-item dropdown" data-menu-id="catalogos">
-                <a class="nav-link d-flex align-items-center gap-1 @(Activo("/catalogos")||Activo("/seguridad")?"active":"")"
-                   href="javascript:;" onclick="NavMenu.toggle('catalogos')">
-                    <i class="material-icons-outlined fs-5">grid_view</i>
-                    <span>Cat&aacute;logos</span>
-                    <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-                </a>
-                <ul class="dropdown-menu dropdown-menu-lg">
-                    <li class="d-flex flex-wrap px-2 gap-4">
-                        <div style="min-width:160px">
-                            <h6 class="dropdown-header text-uppercase small px-0">Productos</h6>
-                            @ItemRaw("/catalogos/productos",       "inventory_2",   "Productos")
-                            @ItemRaw("/catalogos/clasificaciones", "account_tree",  "Clasific.", pronto:true)
-                            @ItemRaw("/catalogos/unidades",        "straighten",    "Unidades", pronto:true)
-                            @ItemRaw("/catalogos/impuestos",       "receipt_long",  "Impuestos", pronto:true)
-                        </div>
-                        <div style="min-width:160px">
-                            <h6 class="dropdown-header text-uppercase small px-0">Comercial</h6>
-                            @ItemRaw("/catalogos/clientes",    "people",        "Clientes")
-                            @ItemRaw("/catalogos/proveedores", "local_shipping","Proveedores", pronto:true)
-                        </div>
-                        <div style="min-width:160px">
-                            <h6 class="dropdown-header text-uppercase small px-0">General</h6>
-                            @ItemRaw("/catalogos/catalogo-tipos", "category", "Cat. tipos", pronto:true)
-                            @ItemRaw("/catalogos/catalogo-items", "list",     "Cat. items", pronto:true)
-                        </div>
-                        @if (TienePermiso("seguridad","auditoria"))
-                        {
-                            <div style="min-width:160px">
-                                <h6 class="dropdown-header text-uppercase small px-0">Seguridad</h6>
-                                @ItemRaw("/seguridad/empleados", "badge",          "Empleado")
-                                @ItemRaw("/seguridad/usuarios",  "manage_accounts","Usuario")
-                                @ItemRaw("/seguridad/roles",     "shield",         "Roles", pronto:true)
-                                @ItemRaw("/seguridad/sesiones",  "sensors",        "Sesiones", pronto:true)
-                                @ItemRaw("/auditoria",          "manage_search",  "Auditor&iacute;a", pronto:true)
-                            </div>
-                        }
-                    </li>
-                </ul>
-            </li>
-        }
+        <li class="nav-item dropdown" data-menu-id="route">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/route") || Activo("/monitor") || Activo("/ventas/ruta") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('route')">
+                <i class="material-icons-outlined fs-5">route</i>
+                <span>ROUTE</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/monitor/mapa", "map", "Mapa General")</li>
+                <li>@Item("/monitor/rutas", "monitoring", "Monitor Rutas")</li>
+                <li>@Item("/monitor/clientes", "groups", "Monitor Clientes")</li>
+                <li>@Item("/ventas/ruta/recorridos", "directions_car", "Recorridos")</li>
+                <li>@Item("/ventas/ruta/visitas", "location_on", "Visitas")</li>
+                <li>@Item("/ventas/ruta/eventos", "notifications", "Eventos")</li>
+                <li>@Item("/route/escenarios-comerciales", "forum", "Escenarios Comerciales")</li>
+                <li>@Item("/route/sincronizacion-app", "sync", "Sincronización App")</li>
+            </ul>
+        </li>
 
-        @if (TienePermiso("configuracion"))
-        {
-            <li class="nav-item dropdown" data-menu-id="config">
-                <a class="nav-link d-flex align-items-center gap-1 @(Activo("/config")?"active":"")"
-                   href="javascript:;" onclick="NavMenu.toggle('config')">
-                    <i class="material-icons-outlined fs-5">settings</i>
-                    <span>Config</span>
-                    <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-                </a>
-                <ul class="dropdown-menu">
-                    <li><h6 class="dropdown-header text-uppercase small">POS Escritorio</h6></li>
-                    <li>@Item("/config/pos/dispositivos", "computer",      "Dispositivos")</li>
-                    <li>@Item("/config/pos/crear",        "add_circle",    "Nuevo PC")</li>
-                    <li>@Item("/config/pos/versiones",    "system_update", "Versiones",  pronto:true)</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">APP M&oacute;vil</h6></li>
-                    <li>@Item("/config/app/dispositivos", "phone_android", "Dispositivos")</li>
-                    <li>@Item("/config/app/crear",        "add_circle",    "Nuevo m&oacute;vil")</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Licencias</h6></li>
-                    <li>@Item("/config/licencias",        "vpn_key",       "Activaci&oacute;n", pronto:true)</li>
-                </ul>
-            </li>
-        }
+        <li class="nav-item dropdown" data-menu-id="erp">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/core") || Activo("/erp") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('erp')">
+                <i class="material-icons-outlined fs-5">business_center</i>
+                <span>ERP</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/core/empresas", "domain", "Empresa")</li>
+                <li>@Item("/core/sucursales", "store", "Sucursales")</li>
+                <li>@Item("/core/zonas", "map", "Zonas")</li>
+                <li>@Item("/core/rutas", "route", "Rutas")</li>
+                <li>@Item("/catalogos/productos", "inventory_2", "Productos")</li>
+                <li>@Item("/catalogos/proveedores", "local_shipping", "Proveedores", pronto: true)</li>
+            </ul>
+        </li>
 
-        @if (TienePermiso("ventas_tienda","ventas_ruta"))
-        {
-            <li class="nav-item dropdown" data-menu-id="ventas">
-                <a class="nav-link d-flex align-items-center gap-1 @(Activo("/ventas")?"active":"")"
-                   href="javascript:;" onclick="NavMenu.toggle('ventas')">
-                    <i class="material-icons-outlined fs-5">storefront</i>
-                    <span>Ventas</span>
-                    <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-                </a>
-                <ul class="dropdown-menu">
-                    @if (TienePermiso("ventas_tienda"))
-                    {
-                        <li><h6 class="dropdown-header text-uppercase small">Tienda</h6></li>
-                        <li>@Item("/ventas/tienda",        "point_of_sale","Ventas",     pronto:true)</li>
-                        <li>@Item("/ventas/tienda/cobros", "payments",     "Cobros",     pronto:true)</li>
-                        <li>@Item("/ventas/tienda/caja",   "savings",      "Caja",       pronto:true)</li>
-                    }
-                    @if (TienePermiso("ventas_ruta"))
-                    {
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-uppercase small">Ruta</h6></li>
-                        <li>@Item("/ventas/ruta/recorridos","directions_car","Recorridos")</li>
-                        <li>@Item("/ventas/ruta/visitas",   "location_on",   "Visitas")</li>
-                        <li>@Item("/ventas/ruta/eventos",   "notifications", "Eventos")</li>
-                        <li>@Item("/ventas/ruta/pedidos",   "assignment",    "Pedidos",   pronto:true)</li>
-                    }
-                </ul>
-            </li>
-        }
+        <li class="nav-item dropdown" data-menu-id="inventarios">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/almacen") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('inventarios')">
+                <i class="material-icons-outlined fs-5">warehouse</i>
+                <span>Inventarios</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/almacen/almacenes", "warehouse", "Almacenes")</li>
+                <li>@Item("/almacen/vehiculos", "local_shipping", "Vehículos")</li>
+                <li>@Item("/reportes/inventario/movimientos", "swap_vert", "Movimientos")</li>
+            </ul>
+        </li>
 
-        @if (TienePermiso("compras"))
-        {
-            <li class="nav-item dropdown" data-menu-id="compras">
-                <a class="nav-link d-flex align-items-center gap-1 @(Activo("/compras")?"active":"")"
-                   href="javascript:;" onclick="NavMenu.toggle('compras')">
-                    <i class="material-icons-outlined fs-5">shopping_bag</i>
-                    <span>Compras</span>
-                    <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-                </a>
-                <ul class="dropdown-menu">
-                    <li><h6 class="dropdown-header text-uppercase small">Compras</h6></li>
-                    <li>@Item("/compras/lista",      "list_alt",        "Lista",       pronto:true)</li>
-                    <li>@Item("/compras/nueva",      "add_shopping_cart","Nueva",      pronto:true)</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Pagos</h6></li>
-                    <li>@Item("/compras/pagos",      "payments",        "Pagos prov.", pronto:true)</li>
-                    <li>@Item("/compras/pendientes", "pending_actions", "Pendientes",  pronto:true)</li>
-                </ul>
-            </li>
-        }
+        <li class="nav-item dropdown" data-menu-id="finanzas">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/finanzas") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('finanzas')">
+                <i class="material-icons-outlined fs-5">account_balance</i>
+                <span>Finanzas</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/finanzas/cxc", "account_balance_wallet", "Cuentas por Cobrar", pronto: true)</li>
+                <li>@Item("/finanzas/cxp", "money_off", "Cuentas por Pagar", pronto: true)</li>
+                <li>@Item("/finanzas/alertas", "warning", "Alertas", pronto: true)</li>
+            </ul>
+        </li>
 
-        @if (TienePermiso("rh_nomina"))
-        {
-            <li class="nav-item dropdown" data-menu-id="rh">
-                <a class="nav-link d-flex align-items-center gap-1 @(Activo("/rh")?"active":"")"
-                   href="javascript:;" onclick="NavMenu.toggle('rh')">
-                    <i class="material-icons-outlined fs-5">badge</i>
-                    <span>RH</span>
-                    <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-                </a>
-                <ul class="dropdown-menu">
-                    <li><h6 class="dropdown-header text-uppercase small">Personal</h6></li>
-                    <li>@Item("/rh/empleados",     "people",        "Empleados",  pronto:true)</li>
-                    <li>@Item("/rh/departamentos", "account_tree",  "Depart.",    pronto:true)</li>
-                    <li>@Item("/rh/puestos",       "work",          "Puestos",    pronto:true)</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">N&oacute;mina</h6></li>
-                    <li>@Item("/rh/nomina",        "request_quote", "N&oacute;mina",     pronto:true)</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Mantenim.</h6></li>
-                    <li>@Item("/rh/activos",       "build",         "Activos",    pronto:true)</li>
-                    <li>@Item("/rh/vehiculos",     "directions_car","Veh&iacute;culos",  pronto:true)</li>
-                </ul>
-            </li>
-        }
+        <li class="nav-item dropdown" data-menu-id="facturacion">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/facturacion") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('facturacion')">
+                <i class="material-icons-outlined fs-5">receipt</i>
+                <span>Facturación</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/facturacion/ventas", "receipt_long", "Facturación de Ventas", pronto: true)</li>
+                <li>@Item("/facturacion/cancelaciones", "block", "Cancelaciones", pronto: true)</li>
+            </ul>
+        </li>
 
-        @if (TienePermiso("finanzas"))
-        {
-            <li class="nav-item dropdown" data-menu-id="finanzas">
-                <a class="nav-link d-flex align-items-center gap-1 @(Activo("/finanzas")?"active":"")"
-                   href="javascript:;" onclick="NavMenu.toggle('finanzas')">
-                    <i class="material-icons-outlined fs-5">account_balance</i>
-                    <span>Finanzas</span>
-                    <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-                </a>
-                <ul class="dropdown-menu">
-                    <li><h6 class="dropdown-header text-uppercase small">Cartera</h6></li>
-                    <li>@Item("/finanzas/cxc",            "account_balance_wallet","CxC",       pronto:true)</li>
-                    <li>@Item("/finanzas/cxp",            "money_off",             "CxP",       pronto:true)</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Factura</h6></li>
-                    <li>@Item("/finanzas/facturacion",    "receipt",               "Electr&oacute;n.", pronto:true)</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Avisos</h6></li>
-                    <li>@Item("/finanzas/notificaciones", "notifications",          "Push",      pronto:true)</li>
-                    <li>@Item("/finanzas/alertas",        "warning",               "Alertas",   pronto:true)</li>
-                </ul>
-            </li>
-        }
+        <li class="nav-item dropdown" data-menu-id="reportes">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/reportes") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('reportes')">
+                <i class="material-icons-outlined fs-5">bar_chart</i>
+                <span>Reportes</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/reportes/ventas", "trending_up", "Ventas")</li>
+                <li>@Item("/reportes/clientes", "people", "Clientes")</li>
+                <li>@Item("/reportes/inventario/movimientos", "inventory", "Movimientos de Almacén")</li>
+            </ul>
+        </li>
 
-        @if (TienePermiso("reportes"))
-        {
-            <li class="nav-item dropdown" data-menu-id="reportes">
-                <a class="nav-link d-flex align-items-center gap-1 @(Activo("/reportes")?"active":"")"
-                   href="javascript:;" onclick="NavMenu.toggle('reportes')">
-                    <i class="material-icons-outlined fs-5">bar_chart</i>
-                    <span>Reportes</span>
-                    <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-                </a>
-                <ul class="dropdown-menu">
-                    <li><h6 class="dropdown-header text-uppercase small">Ventas</h6></li>
-                    <li>@Item("/reportes/ventas",           "trending_up",    "Ventas")</li>
-                    <li>@Item("/ventas/ruta/recorridos",    "route",          "Recorridos")</li>
-                    <li>@Item("/ventas/ruta/visitas",       "location_on",    "Visitas")</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Clientes</h6></li>
-                    <li>@Item("/reportes/clientes",         "people",         "Clientes")</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Almac&eacute;n</h6></li>
-                    <li>@Item("/reportes/inventario/movimientos", "swap_vert", "Movimientos")</li>
-                </ul>
-            </li>
-        }
+        <li class="nav-item dropdown" data-menu-id="ia">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/ia-comercial") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('ia')">
+                <i class="material-icons-outlined fs-5">psychology</i>
+                <span>IA Comercial</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/ia-comercial/respuestas-vendedores", "record_voice_over", "Respuestas para Vendedores")</li>
+                <li>@Item("/ia-comercial/sugerencias", "lightbulb", "Sugerencias IA", pronto: true)</li>
+            </ul>
+        </li>
 
-        @if (TienePermiso("inventario","almacenes"))
-        {
-            <li class="nav-item dropdown" data-menu-id="almacen">
-                <a class="nav-link d-flex align-items-center gap-1 @(Activo("/almacen")?"active":"")"
-                   href="javascript:;" onclick="NavMenu.toggle('almacen')">
-                    <i class="material-icons-outlined fs-5">warehouse</i>
-                    <span>Almac&eacute;n</span>
-                    <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-                </a>
-                <ul class="dropdown-menu">
-                    <li><h6 class="dropdown-header text-uppercase small">Operaci&oacute;n</h6></li>
-                    <li>@Item("/almacen/almacenes", "warehouse",      "Almacenes de la Empresa")</li>
-                    <li>@Item("/almacen/vehiculos",  "local_shipping", "Veh&iacute;culos")</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Reportes</h6></li>
-                    <li>@Item("/almacen/entradas",       "add_box",                "Entradas",        pronto:true)</li>
-                    <li>@Item("/almacen/salidas",        "indeterminate_check_box","Salidas",         pronto:true)</li>
-                    <li>@Item("/almacen/transferencias", "sync_alt",               "Transferencias",  pronto:true)</li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><h6 class="dropdown-header text-uppercase small">Control</h6></li>
-                    <li>@Item("/almacen/conteos",        "fact_check",             "Conteos",         pronto:true)</li>
-                    <li>@Item("/almacen/ajustes",        "tune",                   "Ajustes",         pronto:true)</li>
-                </ul>
-            </li>
-        }
+        <li class="nav-item dropdown" data-menu-id="admin">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/seguridad") || Activo("/auditoria") || Activo("/suscripcion") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('admin')">
+                <i class="material-icons-outlined fs-5">admin_panel_settings</i>
+                <span>Administración</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/seguridad/empleados", "badge", "Empleados")</li>
+                <li>@Item("/seguridad/usuarios", "manage_accounts", "Usuarios")</li>
+                <li>@Item("/seguridad/roles", "shield", "Roles", pronto: true)</li>
+                <li>@Item("/seguridad/sesiones", "sensors", "Sesiones", pronto: true)</li>
+                <li>@Item("/suscripcion", "workspace_premium", "Suscripción")</li>
+            </ul>
+        </li>
 
+        <li class="nav-item dropdown" data-menu-id="config">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/config") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('config')">
+                <i class="material-icons-outlined fs-5">settings</i>
+                <span>Configuración</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/core/monedas", "currency_exchange", "Monedas")</li>
+                <li>@Item("/core/series-documento", "tag", "Series de Documento")</li>
+                <li>@Item("/core/parametros", "tune", "Parámetros")</li>
+                <li>@Item("/config/app/dispositivos", "phone_android", "Dispositivos App")</li>
+                <li>@Item("/config/pos/dispositivos", "computer", "Dispositivos POS")</li>
+            </ul>
+        </li>
     </text>;
 
     RenderFragment Item(string href, string icon, string label, bool pronto = false) =>
-        @<a class="dropdown-item d-flex align-items-center gap-2 @(pronto?"disabled text-muted":"") @(Activo(href)?"active":"")"
-            href="@(pronto ? "javascript:;" : href)">
-            <i class="material-icons-outlined" style="font-size:16px;">@icon</i>
-            <span>@(new MarkupString(label))</span>
-            @if (pronto) { <span class="badge bg-secondary ms-auto" style="font-size:9px;">Pronto</span> }
-        </a>;
-
-    RenderFragment ItemRaw(string href, string icon, string label, bool pronto = false) =>
-        @<a class="dropdown-item d-flex align-items-center gap-2 @(pronto?"disabled text-muted":"") @(Activo(href)?"active":"")"
+        @<a class="dropdown-item d-flex align-items-center gap-2 @(pronto ? "disabled text-muted" : "") @(Activo(href) ? "active" : "")"
             href="@(pronto ? "javascript:;" : href)">
             <i class="material-icons-outlined" style="font-size:16px;">@icon</i>
             <span>@(new MarkupString(label))</span>
             @if (pronto) { <span class="badge bg-secondary ms-auto" style="font-size:9px;">Pronto</span> }
         </a>;
 }
-
-
-
-

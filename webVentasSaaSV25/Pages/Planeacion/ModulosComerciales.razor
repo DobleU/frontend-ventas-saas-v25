@@ -1,0 +1,306 @@
+@page "/crm/prospectos"
+@page "/crm/seguimiento-comercial"
+@page "/route/escenarios-comerciales"
+@page "/ia-comercial/respuestas-vendedores"
+@page "/route/sincronizacion-app"
+@inject NavigationManager Nav
+
+<PageTitle>@PageTitleText - Integra*System</PageTitle>
+
+<section class="module-shell">
+    <header class="module-hero">
+        <div>
+            <span class="module-kicker">@ModuleArea</span>
+            <h3>@Title</h3>
+            <p>@Description</p>
+        </div>
+        <div class="module-actions">
+            <button class="btn btn-primary" type="button">@PrimaryAction</button>
+            <button class="btn btn-outline-secondary" type="button">Exportar</button>
+            <button class="btn btn-outline-secondary" type="button">Actualizar</button>
+        </div>
+    </header>
+
+    <section class="module-kpis">
+        @foreach (var kpi in Kpis)
+        {
+            <article class="kpi-card">
+                <span>@kpi.Label</span>
+                <strong>@kpi.Value</strong>
+                <small>@kpi.Note</small>
+            </article>
+        }
+    </section>
+
+    <section class="module-grid">
+        <article class="panel-card">
+            <div class="panel-head">
+                <div>
+                    <h5>Filtros y captura</h5>
+                    <small>Vista semirreal lista para enlazar backend.</small>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                @foreach (var field in Fields)
+                {
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">@field</label>
+                        <input class="form-control" placeholder="@($"Capturar {field.ToLowerInvariant()}")" />
+                    </div>
+                }
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-12">
+                    <label class="form-label">Observaciones</label>
+                    <textarea class="form-control" rows="4" placeholder="Notas internas, acuerdos, comentarios o contexto operativo."></textarea>
+                </div>
+            </div>
+        </article>
+
+        <article class="panel-card">
+            <div class="panel-head">
+                <div>
+                    <h5>Flujo sugerido</h5>
+                    <small>Basado en el documento anexo.</small>
+                </div>
+            </div>
+
+            <div class="timeline-list">
+                @foreach (var step in Steps)
+                {
+                    <div class="timeline-item">
+                        <span class="timeline-dot"></span>
+                        <div>
+                            <strong>@step.Title</strong>
+                            <small>@step.Detail</small>
+                        </div>
+                    </div>
+                }
+            </div>
+        </article>
+    </section>
+
+    <section class="panel-card">
+        <div class="panel-head">
+            <div>
+                <h5>Tabla principal</h5>
+                <small>Diseño base con filtros, badges y acciones.</small>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        @foreach (var col in Columns)
+                        {
+                            <th>@col</th>
+                        }
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Rows)
+                    {
+                        <tr>
+                            @foreach (var value in row.Values)
+                            {
+                                <td>@value</td>
+                            }
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-primary me-1">Editar</button>
+                                <button class="btn btn-sm btn-outline-secondary">Detalle</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+
+@code {
+    private string CurrentPath => "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].Trim('/');
+
+    private string PageTitleText => Title;
+
+    private string ModuleArea => CurrentPath switch
+    {
+        "/crm/prospectos" => "CRM",
+        "/crm/seguimiento-comercial" => "CRM",
+        "/route/escenarios-comerciales" => "ROUTE",
+        "/ia-comercial/respuestas-vendedores" => "IA Comercial",
+        "/route/sincronizacion-app" => "ROUTE",
+        _ => "Planeacion"
+    };
+
+    private string Title => CurrentPath switch
+    {
+        "/crm/prospectos" => "Prospectos",
+        "/crm/seguimiento-comercial" => "Seguimiento Comercial",
+        "/route/escenarios-comerciales" => "Escenarios Comerciales",
+        "/ia-comercial/respuestas-vendedores" => "Respuestas para Vendedores",
+        "/route/sincronizacion-app" => "Sincronizacion App",
+        _ => "Modulo Comercial"
+    };
+
+    private string Description => CurrentPath switch
+    {
+        "/crm/prospectos" => "Control de leads, conversion, vendedor responsable, interes detectado y seguimiento de perdida.",
+        "/crm/seguimiento-comercial" => "Bitacora operativa para visitas, llamadas, compromisos, recordatorios y siguientes acciones.",
+        "/route/escenarios-comerciales" => "Catalogo de objeciones, escenarios de venta, tono y prioridad para uso en ruta.",
+        "/ia-comercial/respuestas-vendedores" => "Banco de respuestas recomendadas, variantes y apoyos comerciales para vendedores.",
+        "/route/sincronizacion-app" => "Estado de descarga, pendientes, errores, lotes sincronizados y control operativo de app movil.",
+        _ => "Vista base."
+    };
+
+    private string PrimaryAction => CurrentPath switch
+    {
+        "/crm/prospectos" => "Nuevo prospecto",
+        "/crm/seguimiento-comercial" => "Nueva actividad",
+        "/route/escenarios-comerciales" => "Nuevo escenario",
+        "/ia-comercial/respuestas-vendedores" => "Nueva respuesta",
+        "/route/sincronizacion-app" => "Sincronizar ahora",
+        _ => "Nuevo"
+    };
+
+    private IReadOnlyList<KpiModel> Kpis => CurrentPath switch
+    {
+        "/crm/prospectos" => [
+            new("Prospectos activos", "126", "En seguimiento"),
+            new("Por convertir", "34", "Alta prioridad"),
+            new("Perdidos", "12", "Mes actual"),
+            new("Vendedores", "8", "Con cartera")
+        ],
+        "/crm/seguimiento-comercial" => [
+            new("Actividades", "248", "Ultimos 30 dias"),
+            new("Pendientes", "41", "Requieren accion"),
+            new("Hoy", "18", "Agenda actual"),
+            new("Cerradas", "67%", "Cumplimiento")
+        ],
+        "/route/escenarios-comerciales" => [
+            new("Escenarios", "58", "Activos"),
+            new("Categorias", "9", "Configuradas"),
+            new("Top respuestas", "145", "Disponibles"),
+            new("Rutas asignadas", "12", "Con cobertura")
+        ],
+        "/ia-comercial/respuestas-vendedores" => [
+            new("Respuestas", "214", "Publicadas"),
+            new("Favoritas", "37", "Marcadas"),
+            new("Con audio", "19", "Preparadas"),
+            new("Sin revisar", "11", "Pendientes")
+        ],
+        _ => [
+            new("Dispositivos", "53", "Registrados"),
+            new("Pendientes", "9", "Por enviar"),
+            new("Errores", "4", "Atencion"),
+            new("Exitosas", "92%", "Tasa actual")
+        ]
+    };
+
+    private IReadOnlyList<string> Fields => CurrentPath switch
+    {
+        "/crm/prospectos" => ["Nombre comercial", "Contacto", "Telefono", "Ruta sugerida", "Interes detectado", "Vendedor responsable"],
+        "/crm/seguimiento-comercial" => ["Cliente o prospecto", "Tipo de actividad", "Fecha compromiso", "Responsable", "Estado", "Proxima accion"],
+        "/route/escenarios-comerciales" => ["Escenario", "Categoria", "Tono", "Prioridad", "Ruta aplicable", "Producto relacionado"],
+        "/ia-comercial/respuestas-vendedores" => ["Escenario", "Respuesta corta", "Respuesta larga", "Tono sugerido", "Enfasis", "Favorita"],
+        _ => ["Dispositivo", "Ruta", "Ultima sincronizacion", "Pendientes", "Version app", "Estado"]
+    };
+
+    private IReadOnlyList<StepModel> Steps => CurrentPath switch
+    {
+        "/crm/prospectos" => [
+            new("Captura inicial", "Registrar contacto, giro, ubicacion e interes detectado."),
+            new("Asignacion", "Relacionar vendedor responsable y ruta o zona sugerida."),
+            new("Seguimiento", "Programar visita, llamada o conversion."),
+            new("Cierre", "Convertir a cliente o marcar motivo de perdida.")
+        ],
+        "/crm/seguimiento-comercial" => [
+            new("Seleccion", "Elegir cliente, prospecto u oportunidad."),
+            new("Registro", "Capturar actividad, comentario y compromiso."),
+            new("Agenda", "Definir proxima accion y fecha."),
+            new("Cumplimiento", "Cerrar, reprogramar o escalar actividad.")
+        ],
+        "/route/escenarios-comerciales" => [
+            new("Definicion", "Capturar objecion o situacion comercial."),
+            new("Clasificacion", "Asignar categoria, tono y prioridad."),
+            new("Respuesta", "Vincular respuestas y productos relacionados."),
+            new("Publicacion", "Sincronizar con rutas y app movil.")
+        ],
+        "/ia-comercial/respuestas-vendedores" => [
+            new("Curacion", "Redactar respuesta principal y variantes."),
+            new("Contexto", "Definir tono, enfasis y casos de uso."),
+            new("Ranking", "Marcar mejores respuestas para vendedores."),
+            new("Distribucion", "Enviar a rutas o grupos autorizados.")
+        ],
+        _ => [
+            new("Lectura", "Ver estado de descargas y cargas pendientes."),
+            new("Revision", "Validar errores, lotes y dispositivo."),
+            new("Accion", "Reintentar, forzar o escalar sincronizacion."),
+            new("Cierre", "Confirmar consistencia operativa.")
+        ]
+    };
+
+    private IReadOnlyList<string> Columns => CurrentPath switch
+    {
+        "/crm/prospectos" => ["Prospecto", "Contacto", "Ruta", "Interes", "Vendedor", "Estado"],
+        "/crm/seguimiento-comercial" => ["Registro", "Relacionado", "Actividad", "Responsable", "Proxima accion", "Estado"],
+        "/route/escenarios-comerciales" => ["Escenario", "Categoria", "Tono", "Ruta", "Prioridad", "Estatus"],
+        "/ia-comercial/respuestas-vendedores" => ["Escenario", "Respuesta", "Tono", "Enfasis", "Uso", "Estatus"],
+        _ => ["Dispositivo", "Ruta", "Ultima sync", "Pendientes", "Version", "Estado"]
+    };
+
+    private IReadOnlyList<RowModel> Rows => CurrentPath switch
+    {
+        "/crm/prospectos" => [
+            new(["Abarrotes El Sol", "Martha Ruiz", "Ruta Norte", "Alto", "Luis H.", "En seguimiento"]),
+            new(["Minisuper Maya", "Carlos T.", "Ruta Centro", "Medio", "Ana P.", "Por visitar"])
+        ],
+        "/crm/seguimiento-comercial" => [
+            new(["SEG-1042", "Abarrotes El Sol", "Visita", "Luis H.", "Enviar propuesta", "Pendiente"]),
+            new(["SEG-1043", "Prospecto Maya", "Llamada", "Ana P.", "Agendar demo", "Programada"])
+        ],
+        "/route/escenarios-comerciales" => [
+            new(["Cliente pide descuento", "Precio", "Persuasivo", "Todas", "Alta", "Activo"]),
+            new(["Cliente reclama merma", "Reclamo", "Empatico", "Ruta Norte", "Media", "Activo"])
+        ],
+        "/ia-comercial/respuestas-vendedores" => [
+            new(["Cliente dice que esta caro", "Resaltar rotacion y margen", "Consultivo", "Convincente", "Frecuente", "Aprobada"]),
+            new(["Cliente pide credito", "Validar historial y alternativa", "Profesional", "Firme", "Cobranza", "Revision"])
+        ],
+        _ => [
+            new(["Tablet Ruta 01", "Ruta Norte", "17/06/2026 08:32", "3", "2.5.1", "Parcial"]),
+            new(["Movil Vendedor 08", "Ruta Centro", "17/06/2026 08:10", "0", "2.5.1", "Sincronizado"])
+        ]
+    };
+
+    private sealed record KpiModel(string Label, string Value, string Note);
+    private sealed record StepModel(string Title, string Detail);
+    private sealed record RowModel(IReadOnlyList<string> Values);
+}
+
+<style>
+    .module-shell{display:grid;gap:1rem;padding-bottom:2rem}
+    .module-hero,.module-actions,.module-grid,.panel-head,.timeline-item{display:flex}
+    .module-hero,.panel-head{align-items:flex-start;justify-content:space-between;gap:1rem}
+    .module-hero h3,.panel-head h5{margin:0;font-weight:800;color:#344054}
+    .module-hero p,.panel-head small{margin:.25rem 0 0;color:#667085}
+    .module-kicker{display:inline-flex;padding:.3rem .65rem;border-radius:999px;background:#eef5ff;color:#0d6efd;font-size:.78rem;font-weight:700;margin-bottom:.6rem}
+    .module-actions{gap:.5rem;flex-wrap:wrap}
+    .module-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}
+    .kpi-card,.panel-card{background:#fff;border:1px solid #e6eaf0;border-radius:12px;box-shadow:0 4px 18px rgba(18,38,63,.05)}
+    .kpi-card{padding:1rem}
+    .kpi-card span,.kpi-card small{display:block;color:#667085}
+    .kpi-card strong{display:block;font-size:1.4rem;color:#344054}
+    .module-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:1rem}
+    .panel-card{padding:1rem}
+    .timeline-list{display:grid;gap:.9rem}
+    .timeline-item{gap:.75rem;align-items:flex-start}
+    .timeline-dot{width:12px;height:12px;border-radius:50%;background:#0d6efd;flex:0 0 auto;margin-top:.28rem}
+    .timeline-item strong,.timeline-item small{display:block}
+    .timeline-item small{color:#667085}
+    @@media (max-width:1199.98px){.module-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.module-grid{grid-template-columns:1fr}}
+    @@media (max-width:767.98px){.module-kpis{grid-template-columns:1fr}.module-hero{flex-direction:column}}
+</style>
