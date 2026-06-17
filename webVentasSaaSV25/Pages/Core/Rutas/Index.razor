@@ -15,7 +15,7 @@
         <th>Nombre</th>
         <th style="width:110px" class="text-center">Estado</th>
         <th style="width:150px" class="text-muted small">Creado</th>
-        <th style="width:90px"  class="text-center">Acciones</th>
+        <th style="width:220px" class="text-center">Acciones</th>
     </HeaderRow>
     <RowTemplate>
         <td class="fw-medium">@context.Nombre</td>
@@ -25,6 +25,12 @@
             <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2" @onclick="()=>AbrirEditar(context)">
                 <i class="material-icons-outlined" style="font-size:15px;">edit</i>
             </button>
+            <a class="btn btn-sm btn-outline-secondary me-1 py-1 px-2" href="@($"/monitor/rutas?ruta={context.IdRuta}")" title="Monitor de ruta">
+                <i class="material-icons-outlined" style="font-size:15px;">monitoring</i>
+            </a>
+            <a class="btn btn-sm btn-outline-secondary me-1 py-1 px-2" href="@($"/monitor/mapa?ruta={context.IdRuta}")" title="Mapa de ruta">
+                <i class="material-icons-outlined" style="font-size:15px;">map</i>
+            </a>
             <button class="btn btn-sm btn-outline-danger py-1 px-2" @onclick="()=>Eliminar(context)">
                 <i class="material-icons-outlined" style="font-size:15px;">delete</i>
             </button>

@@ -1,20 +1,19 @@
-@page "/ventas/ruta/recorridos"
+@page "/reportes/ventas"
 @using System.Globalization
 @using System.Text
-@inject MonitorMapaService MapaSvc
+@inject MonitorMapaService MonitorApi
 @inject IJSRuntime JS
 
-<PageTitle>Recorridos - VentasSaaSDU</PageTitle>
-
-<Breadcrumb Titulo="Recorridos" Items="@(new[] { ("Ventas", "/ventas"), ("Ruta", ""), ("Recorridos", "") })" />
+<PageTitle>Reporte de Ventas - Integra*System</PageTitle>
+<Breadcrumb Titulo="Reporte de Ventas" Items="@(new[] { ("Reportes", "/reportes"), ("Ventas", "") })" />
 <AlertMessage @ref="_alerta" />
 
 <section class="report-shell">
     <div class="report-header">
         <div>
-            <span class="report-kicker"><span class="material-icons-outlined">directions_car</span> Operacion de ruta</span>
-            <h3>Recorridos</h3>
-            <p>Consulta cierre, efectividad, ventas y cancelaciones por recorrido.</p>
+            <span class="report-kicker"><span class="material-icons-outlined">payments</span> Comercial</span>
+            <h3>Reporte de ventas</h3>
+            <p>Buscador de ventas por ruta y periodo con tabla exportable para Excel.</p>
         </div>
         <button class="btn btn-outline-primary" disabled="@(!_items.Any())" @onclick="Exportar">
             <span class="material-icons-outlined fs-6">download</span>
@@ -29,9 +28,9 @@
                     <label class="form-label">Ruta</label>
                     <select class="form-select" @bind="_idRuta">
                         <option value="0">Todas</option>
-                        @foreach (var r in _rutas)
+                        @foreach (var route in _rutas)
                         {
-                            <option value="@r.IdRuta">@r.Nombre</option>
+                            <option value="@route.IdRuta">@route.Nombre</option>
                         }
                     </select>
                 </div>
@@ -44,7 +43,7 @@
                     <input class="form-control" type="date" @bind="_fechaFin" />
                 </div>
                 <div class="col-12 col-md-3">
-                    <button class="btn btn-primary w-100" disabled="@_loading" @onclick="Cargar">
+                    <button class="btn btn-primary w-100" disabled="@_loading" @onclick="Consultar">
                         <span class="material-icons-outlined fs-6">search</span>
                         Consultar
                     </button>
@@ -55,24 +54,10 @@
 
     <div class="row g-3 mb-3">
         <div class="col-6 col-xl-3">@Kpi("Recorridos", _data.Kpi.TotalRecorridos.ToString("N0", _mx), "route")</div>
-        <div class="col-6 col-xl-3">@Kpi("Completos", _data.Kpi.RecorridosCompletos.ToString("N0", _mx), "task_alt")</div>
-        <div class="col-6 col-xl-3">@Kpi("Efectividad", $"{_data.Kpi.EfectividadPromedio:N1}%", "speed", EfectividadCss(_data.Kpi.EfectividadPromedio))</div>
         <div class="col-6 col-xl-3">@Kpi("Ventas", _data.Kpi.MontoVentas.ToString("C2", _mx), "payments")</div>
+        <div class="col-6 col-xl-3">@Kpi("Credito", _items.Sum(x => x.MontoCredito).ToString("C2", _mx), "credit_score")</div>
+        <div class="col-6 col-xl-3">@Kpi("Cancelaciones", _data.Kpi.MontoCancelaciones.ToString("C2", _mx), "money_off")</div>
     </div>
-
-    @if (_data.ProgramacionDias.Any())
-    {
-        <div class="card border-0 shadow-sm mb-3">
-            <div class="card-body py-3">
-                <div class="d-flex flex-wrap gap-2">
-                    @foreach (var d in _data.ProgramacionDias)
-                    {
-                        <span class="day-pill">@d.DiaNombre: <strong>@d.TotalProgramado</strong></span>
-                    }
-                </div>
-            </div>
-        </div>
-    }
 
     <div class="card border-0 shadow-sm">
         <div class="table-responsive">
@@ -86,33 +71,35 @@
                         <th class="text-end">Visitas</th>
                         <th class="text-end">Efectividad</th>
                         <th class="text-end">Ventas</th>
+                        <th class="text-end">Efectivo</th>
+                        <th class="text-end">Credito</th>
                         <th class="text-end">Cancelaciones</th>
-                        <th class="text-end">Pausa</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (_loading)
                     {
-                        <tr><td colspan="9" class="text-center py-4 text-secondary">Cargando...</td></tr>
+                        <tr><td colspan="10" class="text-center py-4 text-secondary">Cargando ventas...</td></tr>
                     }
                     else if (!_items.Any())
                     {
-                        <tr><td colspan="9" class="text-center py-4 text-secondary">Sin recorridos para el filtro.</td></tr>
+                        <tr><td colspan="10" class="text-center py-4 text-secondary">Sin resultados para el filtro.</td></tr>
                     }
                     else
                     {
-                        @foreach (var r in _items)
+                        @foreach (var item in _items)
                         {
                             <tr>
-                                <td class="fw-semibold">@r.Ruta</td>
-                                <td>@r.FechaRecorrido.ToString("dd/MM/yyyy")</td>
-                                <td>@r.Vendedor</td>
-                                <td><span class="badge bg-light text-dark">@r.Estatus</span></td>
-                                <td class="text-end">@r.VisitasRealizadas / @r.VisitasProgramadas</td>
-                                <td class="text-end"><span class="@EfectividadBadge(r.Efectividad)">@r.Efectividad.ToString("N1", _mx)%</span></td>
-                                <td class="text-end">@r.MontoVentas.ToString("C2", _mx)</td>
-                                <td class="text-end">@r.MontoCancelaciones.ToString("C2", _mx)</td>
-                                <td class="text-end">@r.MinutosPausa min</td>
+                                <td class="fw-semibold">@item.Ruta</td>
+                                <td>@item.FechaRecorrido.ToString("dd/MM/yyyy")</td>
+                                <td>@TextOrDash(item.Vendedor)</td>
+                                <td><span class="badge bg-light text-dark">@TextOrDash(item.Estatus)</span></td>
+                                <td class="text-end">@item.VisitasRealizadas / @item.VisitasProgramadas</td>
+                                <td class="text-end"><span class="@EfectividadBadge(item.Efectividad)">@item.Efectividad.ToString("N1", _mx)%</span></td>
+                                <td class="text-end">@item.MontoVentas.ToString("C2", _mx)</td>
+                                <td class="text-end">@item.MontoEfectivo.ToString("C2", _mx)</td>
+                                <td class="text-end">@item.MontoCredito.ToString("C2", _mx)</td>
+                                <td class="text-end">@item.MontoCancelaciones.ToString("C2", _mx)</td>
                             </tr>
                         }
                     }
@@ -137,16 +124,16 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var (rutas, error) = await MapaSvc.GetRutasAsync();
-        if (error is null && rutas is not null) _rutas = rutas.ToList();
+        var (routes, error) = await MonitorApi.GetRutasAsync();
+        if (error is null && routes is not null) _rutas = routes.ToList();
         if (QueryRouteId is > 0) _idRuta = QueryRouteId.Value;
-        await Cargar();
+        await Consultar();
     }
 
-    private async Task Cargar()
+    private async Task Consultar()
     {
         _loading = true;
-        var (data, error) = await MapaSvc.GetReporteRecorridosAsync(_idRuta > 0 ? _idRuta : null, _fechaInicio, _fechaFin);
+        var (data, error) = await MonitorApi.GetReporteRecorridosAsync(_idRuta > 0 ? _idRuta : null, _fechaInicio, _fechaFin);
         _loading = false;
 
         if (error is not null)
@@ -161,41 +148,39 @@
     private async Task Exportar()
     {
         var csv = new StringBuilder();
-        csv.AppendLine("Ruta,Fecha,Vendedor,Estatus,VisitasProgramadas,VisitasRealizadas,Efectividad,MontoVentas,MontoEfectivo,MontoCredito,MontoCancelaciones,MinutosRecorrido,MinutosPausa");
-        foreach (var r in _items)
+        csv.AppendLine("Ruta,Fecha,Vendedor,Estatus,VisitasProgramadas,VisitasRealizadas,Efectividad,MontoVentas,MontoEfectivo,MontoCredito,MontoCancelaciones");
+        foreach (var item in _items)
         {
             csv.AppendLine(string.Join(",",
-                Csv(r.Ruta),
-                Csv(r.FechaRecorrido.ToString("dd/MM/yyyy")),
-                Csv(r.Vendedor),
-                Csv(r.Estatus),
-                r.VisitasProgramadas,
-                r.VisitasRealizadas,
-                r.Efectividad.ToString(CultureInfo.InvariantCulture),
-                r.MontoVentas.ToString(CultureInfo.InvariantCulture),
-                r.MontoEfectivo.ToString(CultureInfo.InvariantCulture),
-                r.MontoCredito.ToString(CultureInfo.InvariantCulture),
-                r.MontoCancelaciones.ToString(CultureInfo.InvariantCulture),
-                r.MinutosRecorrido,
-                r.MinutosPausa));
+                Csv(item.Ruta),
+                Csv(item.FechaRecorrido.ToString("dd/MM/yyyy")),
+                Csv(item.Vendedor),
+                Csv(item.Estatus),
+                item.VisitasProgramadas,
+                item.VisitasRealizadas,
+                item.Efectividad.ToString(CultureInfo.InvariantCulture),
+                item.MontoVentas.ToString(CultureInfo.InvariantCulture),
+                item.MontoEfectivo.ToString(CultureInfo.InvariantCulture),
+                item.MontoCredito.ToString(CultureInfo.InvariantCulture),
+                item.MontoCancelaciones.ToString(CultureInfo.InvariantCulture)));
         }
 
         var serialized = System.Text.Json.JsonSerializer.Serialize(csv.ToString());
         await JS.InvokeVoidAsync("eval",
-            $"const blob=new Blob([{serialized}],{{type:'text/csv;charset=utf-8;'}});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='recorridos-ruta.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);");
+            $"const blob=new Blob([{serialized}],{{type:'text/csv;charset=utf-8;'}});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='reporte-ventas.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);");
     }
 
     private static string Csv(string? value) => string.Concat("\"", (value ?? string.Empty).Replace("\"", "\"\""), "\"");
-    private static string EfectividadCss(decimal value) => value < 75 ? "kpi-danger" : "kpi-ok";
+    private static string TextOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "Sin dato" : value;
     private static string EfectividadBadge(decimal value) => value < 75 ? "badge bg-danger" : "badge bg-success";
 
-    private RenderFragment Kpi(string titulo, string valor, string icono, string? css = null) => @<div class="card border-0 shadow-sm h-100 kpi-card @css">
+    private RenderFragment Kpi(string title, string value, string icon) => @<div class="card border-0 shadow-sm h-100">
         <div class="card-body d-flex align-items-center justify-content-between">
             <div>
-                <div class="text-secondary small">@titulo</div>
-                <div class="fs-5 fw-bold">@valor</div>
+                <div class="text-secondary small">@title</div>
+                <div class="fs-5 fw-bold">@value</div>
             </div>
-            <span class="material-icons-outlined text-primary">@icono</span>
+            <span class="material-icons-outlined text-primary">@icon</span>
         </div>
     </div>;
 }
@@ -206,8 +191,5 @@
     .report-header h3 { margin:0; font-weight:800; }
     .report-header p { margin:.25rem 0 0; color:#6c757d; }
     .report-kicker { display:flex; align-items:center; gap:.35rem; color:#f05a1a; font-weight:700; font-size:.78rem; text-transform:uppercase; }
-    .day-pill { border:1px solid #e5e7eb; border-radius:999px; padding:.35rem .7rem; background:#fff; }
-    .kpi-card.kpi-danger { border-left:4px solid #dc3545 !important; }
-    .kpi-card.kpi-ok { border-left:4px solid #198754 !important; }
     @@media (max-width: 768px) { .report-header { flex-direction:column; } }
 </style>

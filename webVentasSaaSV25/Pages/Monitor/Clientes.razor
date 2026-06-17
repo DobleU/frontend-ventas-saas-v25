@@ -1,0 +1,442 @@
+@page "/monitor/clientes"
+@inject MonitorMapaService MonitorApi
+@inject IJSRuntime JS
+
+<PageTitle>Monitor de Clientes - Integra*System</PageTitle>
+
+<div class="clients-monitor-page">
+    <header class="clients-monitor-header">
+        <div>
+            <h4>Monitor de Clientes</h4>
+            <p>Vista de clientes por ruta para revision comercial, cobertura y datos operativos.</p>
+        </div>
+        <div class="clients-monitor-actions">
+            <a class="btn btn-outline-secondary" href="@MapaRouteUrl">
+                <i class="material-icons-outlined">map</i>
+                Ver mapa
+            </a>
+            <button class="btn btn-outline-primary" type="button" @onclick="RecargarAsync" disabled="@_loading">
+                <i class="material-icons-outlined">refresh</i>
+                Recargar
+            </button>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-warning py-2">@_error</div>
+    }
+
+    <section class="clients-metrics">
+        <div><span>Clientes visibles</span><strong>@VisibleClients.Count</strong></div>
+        <div><span>Con credito</span><strong>@VisibleClients.Count(x => !string.Equals(x.CreditText, "Sin credito", StringComparison.OrdinalIgnoreCase))</strong></div>
+        <div><span>Sin coordenada</span><strong>@VisibleClients.Count(x => x.GeoSource == "SIN_COORDENADA")</strong></div>
+        <div><span>Alertas</span><strong>@VisibleClients.Count(x => x.Status == ClientStatus.Alert)</strong></div>
+    </section>
+
+    <section class="monitor-shortcuts">
+        <a class="shortcut-card" href="@RutasRouteUrl">
+            <span class="material-icons-outlined">route</span>
+            <div>
+                <strong>Monitor de rutas</strong>
+                <small>Seguimiento consolidado de cobertura y alertas.</small>
+            </div>
+        </a>
+        <a class="shortcut-card" href="@MapaRouteUrl">
+            <span class="material-icons-outlined">map</span>
+            <div>
+                <strong>Mapa general</strong>
+                <small>Ubica el cliente dentro de la secuencia de ruta.</small>
+            </div>
+        </a>
+        <a class="shortcut-card" href="@VisitasRouteUrl">
+            <span class="material-icons-outlined">location_on</span>
+            <div>
+                <strong>Visitas</strong>
+                <small>Revisa tiempos, QR y venta por cliente.</small>
+            </div>
+        </a>
+        <a class="shortcut-card" href="@ClientesReportUrl">
+            <span class="material-icons-outlined">download</span>
+            <div>
+                <strong>Reporte clientes</strong>
+                <small>Consulta y exportacion del catalogo operativo.</small>
+            </div>
+        </a>
+    </section>
+
+    <section class="clients-monitor-shell">
+        <aside class="clients-sidebar">
+            <div class="clients-card">
+                <label class="form-label">Ruta</label>
+                <select class="form-select" value="@_routeId" @onchange="OnRouteChangedAsync">
+                    <option value="0">Selecciona una ruta</option>
+                    @foreach (var route in _routes)
+                    {
+                        <option value="@route.IdRuta">@route.Nombre</option>
+                    }
+                </select>
+
+                <label class="form-label mt-3">Buscar cliente</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white">
+                        <i class="material-icons-outlined">search</i>
+                    </span>
+                    <input class="form-control" placeholder="Cliente, RFC, telefono" value="@_search" @oninput="OnSearchInput" />
+                </div>
+
+                <div class="clients-chip-row mt-3">
+                    <button type="button" class="@ChipClass(null)" @onclick="() => SetFilterAsync(null)">Todos</button>
+                    <button type="button" class="@ChipClass(ClientStatus.Pending)" @onclick="() => SetFilterAsync(ClientStatus.Pending)">Pendientes</button>
+                    <button type="button" class="@ChipClass(ClientStatus.Done)" @onclick="() => SetFilterAsync(ClientStatus.Done)">Visitados</button>
+                    <button type="button" class="@ChipClass(ClientStatus.Alert)" @onclick="() => SetFilterAsync(ClientStatus.Alert)">Alertas</button>
+                </div>
+            </div>
+
+            <div class="clients-card client-list-card">
+                <div class="list-head">
+                    <h6>Clientes cargados</h6>
+                    <span>@VisibleClients.Count</span>
+                </div>
+
+                @if (_loading)
+                {
+                    <div class="empty-box small">Cargando clientes...</div>
+                }
+                else if (!VisibleClients.Any())
+                {
+                    <div class="empty-box small">Selecciona una ruta para revisar clientes.</div>
+                }
+                else
+                {
+                    @foreach (var client in VisibleClients)
+                    {
+                        <button type="button" class="client-row @(SelectedClass(client))" @onclick="() => SelectClientAsync(client)">
+                            <span class="status-dot @StatusClass(client.Status)"></span>
+                            <span class="client-row-main">
+                                <strong>@client.Name</strong>
+                                <small>@client.Address</small>
+                            </span>
+                            <span class="client-row-order">#@client.Order</span>
+                        </button>
+                    }
+                }
+            </div>
+        </aside>
+
+        <main class="clients-stage">
+            @if (_selected is null)
+            {
+                <div class="empty-box">
+                    <i class="material-icons-outlined">person_search</i>
+                    <strong>Selecciona un cliente</strong>
+                    <span>Aqui veras credito, ruta, visitas y contexto comercial.</span>
+                </div>
+            }
+            else
+            {
+                <div class="clients-card detail-card">
+                    <div class="detail-top">
+                        <div>
+                            <span class="route-pill">@_selected.RouteName</span>
+                            <h5>@_selected.Name</h5>
+                            <p>@_selected.Address</p>
+                        </div>
+                        <span class="badge @BadgeClass(_selected.Status)">@StatusText(_selected.Status)</span>
+                    </div>
+
+                    <div class="detail-mosaic">
+                        <div><span>Orden</span><strong>@_selected.Order</strong></div>
+                        <div><span>Credito</span><strong>@_selected.CreditText</strong></div>
+                        <div><span>Ultima visita</span><strong>@_selected.LastVisit</strong></div>
+                        <div><span>GPS</span><strong>@GeoText(_selected.GeoSource)</strong></div>
+                        <div><span>Telefono</span><strong>@TextOrDash(_selected.Phone)</strong></div>
+                        <div><span>RFC</span><strong>@TextOrDash(_selected.Rfc)</strong></div>
+                    </div>
+
+                    <div class="detail-actions">
+                        <a class="btn btn-sm btn-primary" href="@MapaClientUrl(_selected)">Ver en mapa</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="@RutasClientUrl(_selected)">Abrir en monitor rutas</a>
+                        <a class="btn btn-sm btn-outline-secondary" href="/catalogos/clientes">Ir a catalogo</a>
+                    </div>
+
+                    <div class="clients-card mini-card">
+                        <div class="mini-card-head">
+                            <h6>Top de productos</h6>
+                            <small>Resumen comercial</small>
+                        </div>
+                        <pre>@TextOrDash(_selected.ProductTop)</pre>
+                    </div>
+                </div>
+            }
+        </main>
+    </section>
+</div>
+
+<style>
+    .clients-monitor-page{display:grid;gap:1rem}
+    .clients-monitor-header,.clients-monitor-actions,.clients-chip-row,.client-row,.clients-monitor-shell,.detail-top,.detail-mosaic,.clients-metrics,.monitor-shortcuts,.shortcut-card,.detail-actions{display:flex}
+    .clients-monitor-header,.detail-top,.shortcut-card{align-items:flex-start;justify-content:space-between;gap:1rem}
+    .clients-monitor-header h4,.detail-top h5,.mini-card-head h6{margin:0;font-weight:700;color:#344054}
+    .clients-monitor-header p,.detail-top p,.mini-card-head small{margin:0;color:#667085}
+    .clients-monitor-actions,.detail-actions{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+    .clients-monitor-actions .btn,.shortcut-card{display:inline-flex;align-items:center;gap:.35rem}
+    .clients-metrics{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:.75rem}
+    .clients-metrics div,.clients-card{background:#fff;border:1px solid #e6eaf0;border-radius:10px;box-shadow:0 4px 18px rgba(18,38,63,.05)}
+    .clients-metrics div{padding:.9rem 1rem}
+    .clients-metrics span,.detail-mosaic span{display:block;color:#667085;font-size:.8rem}
+    .clients-metrics strong,.detail-mosaic strong{font-size:1.15rem;color:#344054}
+    .monitor-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}
+    .shortcut-card{text-decoration:none;padding:.95rem 1rem;border-radius:10px;border:1px solid #e6eaf0;background:linear-gradient(180deg,#fff,#f8fbff);box-shadow:0 4px 18px rgba(18,38,63,.04);color:#344054}
+    .shortcut-card:hover{border-color:#bfd7ff;background:#eef5ff}
+    .shortcut-card span{font-size:22px;color:#0d6efd}
+    .shortcut-card strong,.shortcut-card small{display:block}
+    .shortcut-card small{color:#667085}
+    .clients-monitor-shell{display:grid;grid-template-columns:minmax(320px,360px) 1fr;gap:1rem}
+    .clients-sidebar{display:grid;gap:1rem}
+    .clients-card{padding:1rem}
+    .clients-chip-row{gap:.45rem;flex-wrap:wrap}
+    .clients-chip-row button{border:1px solid #d7dde6;background:#fff;color:#475467;border-radius:999px;padding:.45rem .75rem;font-size:.85rem}
+    .clients-chip-row button.active{border-color:#0d6efd;background:#eaf2ff;color:#0d6efd;font-weight:650}
+    .client-list-card{max-height:720px;overflow:auto;padding:0}
+    .list-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:.9rem 1rem;background:#fff;border-bottom:1px solid #eef2f7}
+    .list-head h6{margin:0;font-weight:700}
+    .list-head span{background:#0d6efd;color:#fff;border-radius:999px;padding:.1rem .45rem;font-size:.8rem}
+    .client-row{width:100%;border:0;border-bottom:1px solid #eef2f7;background:#fff;padding:.8rem 1rem;gap:.7rem;align-items:flex-start;text-align:left}
+    .client-row:hover,.client-row.active-card{background:#eef5ff}
+    .client-row-main{flex:1;min-width:0}
+    .client-row-main strong,.client-row-main small{display:block}
+    .client-row-main small{color:#667085}
+    .client-row-order{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;border-radius:999px;background:#eef2f7;color:#344054;font-weight:700;font-size:.8rem}
+    .clients-stage{display:grid}
+    .detail-card{display:grid;gap:1rem}
+    .route-pill{display:inline-flex;padding:.3rem .65rem;border-radius:999px;background:#eaf2ff;color:#0d6efd;font-size:.78rem;font-weight:700;margin-bottom:.55rem}
+    .detail-top .badge{font-size:.82rem;padding:.45rem .7rem}
+    .detail-mosaic{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem}
+    .detail-mosaic>div,.mini-card{background:#f8fafc;border:1px solid #edf2f7;border-radius:10px;padding:.9rem}
+    .mini-card pre{margin:0;white-space:pre-line;font-family:inherit;color:#344054}
+    .empty-box{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem;min-height:320px;text-align:center;color:#667085;background:#fff;border:1px dashed #d7dde6;border-radius:10px}
+    .empty-box.small{min-height:140px;background:transparent;border:0}
+    .empty-box i{font-size:52px;color:#98a2b3}
+    .status-dot{width:12px;height:12px;border-radius:50%;background:#98a2b3;flex:0 0 auto;margin-top:.25rem}
+    .status-dot.pending{background:#0d6efd}.status-dot.done{background:#198754}.status-dot.alert{background:#dc3545}
+    .badge-soft-primary{background:#eaf2ff;color:#0d6efd}.badge-soft-success{background:#eafbf2;color:#198754}.badge-soft-danger{background:#fff2f4;color:#dc3545}
+    @@media (max-width:1199.98px){.clients-monitor-shell,.monitor-shortcuts{grid-template-columns:1fr}.clients-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.detail-mosaic{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @@media (max-width:767.98px){.clients-metrics,.detail-mosaic{grid-template-columns:1fr}}
+</style>
+
+@code {
+    [SupplyParameterFromQuery(Name = "ruta")] public int? QueryRouteId { get; set; }
+    [SupplyParameterFromQuery(Name = "cliente")] public int? QueryClientId { get; set; }
+
+    private const string StorageKey = "monitor-clientes-state";
+
+    private enum ClientStatus { Pending, Done, Alert }
+
+    private List<MapaRutaOptionResponse> _routes = [];
+    private List<ClientRowModel> _clients = [];
+    private ClientRowModel? _selected;
+    private ClientStatus? _filter;
+    private int _routeId;
+    private string? _search;
+    private string? _error;
+    private bool _loading;
+    private bool _restored;
+
+    private List<ClientRowModel> VisibleClients => _clients
+        .Where(x => _filter is null || x.Status == _filter)
+        .Where(MatchesSearch)
+        .OrderBy(x => x.Order)
+        .ToList();
+
+    private string MapaRouteUrl => _routeId > 0 ? $"/monitor/mapa?ruta={_routeId}" : "/monitor/mapa";
+    private string RutasRouteUrl => _routeId > 0 ? $"/monitor/rutas?ruta={_routeId}" : "/monitor/rutas";
+    private string VisitasRouteUrl => _routeId > 0 ? $"/ventas/ruta/visitas?ruta={_routeId}" : "/ventas/ruta/visitas";
+    private string ClientesReportUrl => _routeId > 0 ? $"/reportes/clientes?ruta={_routeId}" : "/reportes/clientes";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var (routes, error) = await MonitorApi.GetRutasAsync();
+        _routes = routes?.ToList() ?? [];
+        _error = error;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _restored)
+        {
+            return;
+        }
+
+        _restored = true;
+        await RestoreStateAsync();
+        if (QueryRouteId is > 0)
+        {
+            _routeId = QueryRouteId.Value;
+        }
+
+        if (_routeId > 0)
+        {
+            await CargarClientesAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnRouteChangedAsync(ChangeEventArgs e)
+    {
+        _routeId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        await SaveStateAsync();
+        await CargarClientesAsync();
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString();
+        await SaveStateAsync();
+    }
+
+    private async Task SetFilterAsync(ClientStatus? status)
+    {
+        _filter = status;
+        await SaveStateAsync();
+    }
+
+    private async Task SelectClientAsync(ClientRowModel client)
+    {
+        _selected = client;
+        await SaveStateAsync();
+    }
+
+    private async Task RecargarAsync() => await CargarClientesAsync();
+
+    private async Task CargarClientesAsync()
+    {
+        _selected = null;
+        _clients = [];
+        _error = null;
+        if (_routeId <= 0)
+        {
+            await SaveStateAsync();
+            return;
+        }
+
+        _loading = true;
+        var (data, error) = await MonitorApi.GetRutaAsync(new MapaRutaRequest
+        {
+            IdRuta = _routeId,
+            Search = _search,
+            Modo = "ruta"
+        });
+        _loading = false;
+        _error = error;
+        _clients = data?.Puntos.Select(FromApi).ToList() ?? [];
+        _selected = _clients.FirstOrDefault();
+        if (QueryClientId is > 0)
+        {
+            _selected = _clients.FirstOrDefault(x => x.Id == QueryClientId.Value) ?? _selected;
+        }
+
+        await SaveStateAsync();
+    }
+
+    private async Task RestoreStateAsync()
+    {
+        var json = await JS.InvokeAsync<string?>("AppInterop.localStorageGet", StorageKey);
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return;
+        }
+
+        try
+        {
+            var state = System.Text.Json.JsonSerializer.Deserialize<MonitorClientState>(json);
+            if (state is null)
+            {
+                return;
+            }
+
+            if (QueryRouteId is null or <= 0)
+            {
+                _routeId = state.RouteId;
+            }
+
+            _search = state.Search;
+            _filter = Enum.TryParse<ClientStatus>(state.Filter, out var filter) ? filter : null;
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task SaveStateAsync()
+    {
+        var payload = new MonitorClientState(_routeId, _search, _filter?.ToString(), _selected?.Id);
+        await JS.InvokeVoidAsync("AppInterop.localStorageSet", StorageKey, System.Text.Json.JsonSerializer.Serialize(payload));
+    }
+
+    private bool MatchesSearch(ClientRowModel client)
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        return client.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || client.Address.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || (client.Phone?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (client.Rfc?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+    }
+
+    private string ChipClass(ClientStatus? status) => _filter == status ? "active" : "";
+    private string SelectedClass(ClientRowModel row) => _selected?.Id == row.Id ? "active-card" : "";
+    private static string StatusClass(ClientStatus status) => status switch { ClientStatus.Done => "done", ClientStatus.Alert => "alert", _ => "pending" };
+    private static string StatusText(ClientStatus status) => status switch { ClientStatus.Done => "Visitado", ClientStatus.Alert => "Alerta", _ => "Pendiente" };
+    private static string BadgeClass(ClientStatus status) => status switch
+    {
+        ClientStatus.Done => "badge-soft-success",
+        ClientStatus.Alert => "badge-soft-danger",
+        _ => "badge-soft-primary"
+    };
+    private static string TextOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "Sin dato" : value;
+    private static string GeoText(string source) => source switch
+    {
+        "REAL_FIN" => "GPS real de cierre",
+        "REAL_INICIO" => "GPS de inicio",
+        "CLIENTE_DIR" => "Direccion del cliente",
+        _ => "Sin coordenada confiable"
+    };
+
+    private string MapaClientUrl(ClientRowModel client) => $"/monitor/mapa?ruta={_routeId}&cliente={client.Id}";
+    private string RutasClientUrl(ClientRowModel client) => $"/monitor/rutas?ruta={_routeId}&cliente={client.Id}";
+
+    private static ClientRowModel FromApi(MapaClientePuntoResponse point) => new(
+        point.IdCliente,
+        point.Orden,
+        point.Nombre,
+        point.NombreRuta ?? "Sin ruta",
+        point.Direccion ?? "Direccion pendiente",
+        point.Telefono,
+        point.Rfc,
+        point.Credito,
+        point.UltimaVisita,
+        point.GeoSource,
+        point.ProductoTop,
+        point.Estado?.ToLowerInvariant() switch
+        {
+            "visitado" => ClientStatus.Done,
+            "alerta" => ClientStatus.Alert,
+            _ => ClientStatus.Pending
+        });
+
+    private sealed record ClientRowModel(
+        int Id,
+        int Order,
+        string Name,
+        string RouteName,
+        string Address,
+        string? Phone,
+        string? Rfc,
+        string CreditText,
+        string LastVisit,
+        string GeoSource,
+        string? ProductTop,
+        ClientStatus Status);
+
+    private sealed record MonitorClientState(int RouteId, string? Search, string? Filter, int? SelectedClientId);
+}
