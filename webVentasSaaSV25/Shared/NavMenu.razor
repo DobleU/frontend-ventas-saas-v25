@@ -65,20 +65,6 @@
             </NavLink>
         </li>
 
-        <li class="nav-item dropdown" data-menu-id="crm">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/crm") || Activo("/catalogos/clientes") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('crm')">
-                <i class="material-icons-outlined fs-5">support_agent</i>
-                <span>CRM</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/catalogos/clientes", "people", "Clientes")</li>
-                <li>@Item("/crm/prospectos", "person_add", "Prospectos")</li>
-                <li>@Item("/crm/seguimiento-comercial", "event_note", "Seguimiento Comercial")</li>
-            </ul>
-        </li>
-
         <li class="nav-item dropdown" data-menu-id="monitor">
             <a class="nav-link d-flex align-items-center gap-1 @(Activo("/monitor") ? "active" : "")"
                href="javascript:;" onclick="NavMenu.toggle('monitor')">
@@ -90,6 +76,20 @@
                 <li>@Item("/monitor/mapa", "map", "Mapa General")</li>
                 <li>@Item("/monitor/rutas", "monitoring", "Monitor Rutas")</li>
                 <li>@Item("/monitor/clientes", "groups", "Monitor Clientes")</li>
+            </ul>
+        </li>
+
+        <li class="nav-item dropdown" data-menu-id="crm">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/crm") || Activo("/catalogos/clientes") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('crm')">
+                <i class="material-icons-outlined fs-5">support_agent</i>
+                <span>CRM</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/catalogos/clientes", "people", "Clientes")</li>
+                <li>@Item("/crm/prospectos", "person_add", "Prospectos")</li>
+                <li>@Item("/crm/seguimiento-comercial", "event_note", "Seguimiento Comercial")</li>
             </ul>
         </li>
 
@@ -175,7 +175,7 @@
             <a class="nav-link d-flex align-items-center gap-1 @(Activo("/almacen") ? "active" : "")"
                href="javascript:;" onclick="NavMenu.toggle('inventarios')">
                 <i class="material-icons-outlined fs-5">warehouse</i>
-                <span>Inventarios</span>
+                <span>INV</span>
                 <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
             </a>
             <ul class="dropdown-menu">
@@ -188,8 +188,8 @@
         <li class="nav-item dropdown" data-menu-id="finanzas">
             <a class="nav-link d-flex align-items-center gap-1 @(Activo("/finanzas") ? "active" : "")"
                href="javascript:;" onclick="NavMenu.toggle('finanzas')">
-                <i class="material-icons-outlined fs-5">account_balance</i>
-                <span>Finanzas</span>
+                <i class="material-icons-outlined fs-5">attach_money</i>
+                <span>FIN</span>
                 <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
             </a>
             <ul class="dropdown-menu">
@@ -208,7 +208,7 @@
             <a class="nav-link d-flex align-items-center gap-1 @(Activo("/reportes") ? "active" : "")"
                href="javascript:;" onclick="NavMenu.toggle('reportes')">
                 <i class="material-icons-outlined fs-5">bar_chart</i>
-                <span>Reportes</span>
+                <span>REP</span>
                 <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
             </a>
             <ul class="dropdown-menu">
@@ -224,7 +224,7 @@
             <a class="nav-link d-flex align-items-center gap-1 @(Activo("/seguridad") || Activo("/auditoria") || Activo("/suscripcion") ? "active" : "")"
                href="javascript:;" onclick="NavMenu.toggle('admin')">
                 <i class="material-icons-outlined fs-5">admin_panel_settings</i>
-                <span>Administración</span>
+                <span>ADM</span>
                 <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
             </a>
             <ul class="dropdown-menu">
@@ -244,7 +244,7 @@
             <a class="nav-link d-flex align-items-center gap-1 @(Activo("/config") ? "active" : "")"
                href="javascript:;" onclick="NavMenu.toggle('config')">
                 <i class="material-icons-outlined fs-5">settings</i>
-                <span>Configuración</span>
+                <span>CONF</span>
                 <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
             </a>
             <ul class="dropdown-menu">
