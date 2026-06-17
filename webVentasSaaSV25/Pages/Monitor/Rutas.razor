@@ -1,21 +1,21 @@
 @page "/monitor/rutas"
+@using System.Globalization
 @inject MonitorMapaService MonitorApi
-@inject IJSRuntime JS
 
-<PageTitle>Monitor de Rutas - Integra*System</PageTitle>
+<PageTitle>Monitor de Recorrido - Integra*System</PageTitle>
 
 <div class="monitor-page">
     <header class="monitor-hero">
         <div>
-            <h4>Monitor de Rutas</h4>
-            <p>Seguimiento operativo por ruta con foco en cobertura, alertas y clientes por atender.</p>
+            <h4>Monitor de Recorrido</h4>
+            <p>Consulta operativa por ruta y fecha con foco en cobertura, tiempos de traslado, visitas y venta.</p>
         </div>
         <div class="monitor-hero-actions">
             <a class="btn btn-outline-secondary" href="@MapaRouteUrl">
                 <i class="material-icons-outlined">map</i>
                 Ver mapa
             </a>
-            <button class="btn btn-outline-primary" type="button" @onclick="RecargarAsync" disabled="@_loading">
+            <button class="btn btn-outline-primary" type="button" @onclick="CargarAsync" disabled="@(_loading || _routeId <= 0)">
                 <i class="material-icons-outlined">refresh</i>
                 Recargar
             </button>
@@ -29,36 +29,35 @@
 
     <section class="monitor-top-grid">
         <article class="monitor-panel">
-            <label class="form-label">Ruta</label>
-            <select class="form-select" value="@_routeId" @onchange="OnRouteChangedAsync">
-                <option value="0">Selecciona una ruta</option>
-                @foreach (var route in _routes)
-                {
-                    <option value="@route.IdRuta">@route.Nombre</option>
-                }
-            </select>
-
-            <label class="form-label mt-3">Buscar cliente</label>
-            <div class="input-group">
-                <span class="input-group-text bg-white">
-                    <i class="material-icons-outlined">search</i>
-                </span>
-                <input class="form-control" value="@_search" @oninput="OnSearchInput" placeholder="Nombre, RFC o telefono" />
-            </div>
-
-            <div class="monitor-pill-row mt-3">
-                <button type="button" class="@FilterClass(null)" @onclick="() => SetFilterAsync(null)">Todos</button>
-                <button type="button" class="@FilterClass(RouteClientStatus.Pending)" @onclick="() => SetFilterAsync(RouteClientStatus.Pending)">Pendientes</button>
-                <button type="button" class="@FilterClass(RouteClientStatus.Done)" @onclick="() => SetFilterAsync(RouteClientStatus.Done)">Visitados</button>
-                <button type="button" class="@FilterClass(RouteClientStatus.Alert)" @onclick="() => SetFilterAsync(RouteClientStatus.Alert)">Alertas</button>
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-5">
+                    <label class="form-label">Ruta</label>
+                    <select class="form-select" value="@_routeId" @onchange="OnRouteChangedAsync">
+                        <option value="0">Selecciona una ruta</option>
+                        @foreach (var route in _routes)
+                        {
+                            <option value="@route.IdRuta">@route.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label">Fecha</label>
+                    <input class="form-control" type="date" @bind="_fecha" />
+                </div>
+                <div class="col-12 col-md-3">
+                    <button class="btn btn-primary w-100" type="button" @onclick="CargarAsync" disabled="@(_loading || _routeId <= 0)">
+                        <i class="material-icons-outlined fs-6">search</i>
+                        Consultar
+                    </button>
+                </div>
             </div>
         </article>
 
         <article class="monitor-panel monitor-kpis">
-            <div><span>Clientes</span><strong>@VisibleStops.Count</strong></div>
-            <div><span>Visitados</span><strong>@VisibleStops.Count(x => x.Status == RouteClientStatus.Done)</strong></div>
-            <div><span>Pendientes</span><strong>@VisibleStops.Count(x => x.Status == RouteClientStatus.Pending)</strong></div>
-            <div><span>Alertas</span><strong>@VisibleStops.Count(x => x.Status == RouteClientStatus.Alert)</strong></div>
+            <div><span>Programados</span><strong>@ProgramadosTexto</strong></div>
+            <div><span>Realizados</span><strong>@_visitas.Kpi.TotalVisitas</strong></div>
+            <div><span>Pendientes</span><strong>@Pendientes</strong></div>
+            <div><span>Venta</span><strong>@_visitas.Kpi.MontoVentas.ToString("C0", _mx)</strong></div>
         </article>
     </section>
 
@@ -66,29 +65,29 @@
         <a class="shortcut-card" href="@MapaRouteUrl">
             <span class="material-icons-outlined">map</span>
             <div>
-                <strong>Mapa de ruta</strong>
-                <small>Ubicacion visual y clientes en secuencia.</small>
+                <strong>Mapa general</strong>
+                <small>Ubicacion visual y secuencia de clientes.</small>
             </div>
         </a>
         <a class="shortcut-card" href="@VisitasRouteUrl">
             <span class="material-icons-outlined">location_on</span>
             <div>
                 <strong>Visitas</strong>
-                <small>Auditoria de campo para la ruta seleccionada.</small>
+                <small>Auditoria tabular y exportable.</small>
             </div>
         </a>
         <a class="shortcut-card" href="@RecorridosRouteUrl">
             <span class="material-icons-outlined">route</span>
             <div>
                 <strong>Recorridos</strong>
-                <small>Cierre, efectividad y ventas por recorrido.</small>
+                <small>Historial de cierres y efectividad.</small>
             </div>
         </a>
-        <a class="shortcut-card" href="@VentasReportUrl">
-            <span class="material-icons-outlined">bar_chart</span>
+        <a class="shortcut-card" href="@ClientesRouteUrl">
+            <span class="material-icons-outlined">groups</span>
             <div>
-                <strong>Reporte de ventas</strong>
-                <small>Consulta exportable ligada a operacion.</small>
+                <strong>Monitor clientes</strong>
+                <small>Contexto comercial por cliente de ruta.</small>
             </div>
         </a>
     </section>
@@ -97,52 +96,114 @@
         <article class="monitor-panel">
             <div class="panel-head">
                 <div>
-                    <h5>Estado de la ruta</h5>
-                    <small>@(_routeName ?? "Sin ruta seleccionada")</small>
+                    <h5>Resumen del recorrido</h5>
+                    <small>@ResumenRuta</small>
                 </div>
-                <span class="source-pill">@(_routeId > 0 ? "Datos API" : "Esperando seleccion")</span>
+                <span class="source-pill">@EstadoRecorrido</span>
             </div>
 
             @if (_loading)
             {
-                <div class="monitor-empty">Cargando informacion de la ruta...</div>
+                <div class="monitor-empty">Cargando informacion del recorrido...</div>
             }
-            else if (!VisibleStops.Any())
+            else if (_routeId <= 0)
             {
-                <div class="monitor-empty">Selecciona una ruta para visualizar su estado operativo.</div>
+                <div class="monitor-empty">Selecciona una ruta para iniciar el monitoreo.</div>
+            }
+            else if (_recorrido is null)
+            {
+                <div class="monitor-empty">No se encontro recorrido para la fecha seleccionada.</div>
             }
             else
             {
-                <div class="route-lane">
-                    @foreach (var stop in VisibleStops.Take(12))
-                    {
-                        <button type="button" class="lane-stop @StatusClass(stop.Status) @SelectedClass(stop)" @onclick="() => SelectStopAsync(stop)">
-                            <span class="lane-order">@stop.Order</span>
-                            <div>
-                                <strong>@stop.Name</strong>
-                                <small>@stop.Address</small>
-                            </div>
-                        </button>
-                    }
+                <div class="route-summary-grid route-summary-grid-hero">
+                    <div class="summary-card">
+                        <span>Vendedor</span>
+                        <strong>@Texto(_recorrido.Vendedor)</strong>
+                    </div>
+                    <div class="summary-card">
+                        <span>Efectividad</span>
+                        <strong>@_recorrido.Efectividad.ToString("N1", _mx)%</strong>
+                    </div>
+                    <div class="summary-card">
+                        <span>Con venta</span>
+                        <strong>@_visitas.Kpi.VisitasConVenta</strong>
+                    </div>
+                    <div class="summary-card">
+                        <span>Sin venta</span>
+                        <strong>@_visitas.Kpi.VisitasSinVenta</strong>
+                    </div>
+                    <div class="summary-card">
+                        <span>Tiempo recorrido</span>
+                        <strong>@_recorrido.MinutosRecorrido min</strong>
+                    </div>
+                    <div class="summary-card">
+                        <span>Pausa</span>
+                        <strong>@_recorrido.MinutosPausa min</strong>
+                    </div>
+                    <div class="summary-card">
+                        <span>QR</span>
+                        <strong>@_visitas.Kpi.PorcentajeQr.ToString("N1", _mx)%</strong>
+                    </div>
+                    <div class="summary-card">
+                        <span>GPS valido</span>
+                        <strong>@_visitas.Kpi.PorcentajeGpsValido.ToString("N1", _mx)%</strong>
+                    </div>
+                    <div class="summary-card">
+                        <span>Visitas extra</span>
+                        <strong>@_visitas.Kpi.VisitasExtra</strong>
+                    </div>
+                    <div class="summary-card">
+                        <span>Recargas</span>
+                        <strong>@(_recorrido.TieneRecargas ? $"{_recorrido.TotalRecargas} evento(s)" : "Sin recargas")</strong>
+                    </div>
+                    <div class="summary-card">
+                        <span>Tiempo traslado</span>
+                        <strong>@_visitas.Kpi.TiempoMuertoMinutos min</strong>
+                    </div>
                 </div>
 
-                <div class="route-summary-grid">
-                    <div class="summary-card">
-                        <span>Primer cliente</span>
-                        <strong>@VisibleStops.First().Name</strong>
+                @if (_recorrido.TieneRecargas)
+                {
+                    <div class="recarga-banner">
+                        <strong>Hubo recargas en el recorrido.</strong>
+                        <span>Se detectaron @_recorrido.TotalRecargas bloque(s) de recarga registrados en el cierre operativo.</span>
                     </div>
-                    <div class="summary-card">
-                        <span>Ultimo cliente</span>
-                        <strong>@VisibleStops.Last().Name</strong>
-                    </div>
-                    <div class="summary-card">
-                        <span>Con GPS confiable</span>
-                        <strong>@VisibleStops.Count(x => x.GeoSource != "SIN_COORDENADA")</strong>
-                    </div>
-                    <div class="summary-card">
-                        <span>Sin coordenada</span>
-                        <strong>@VisibleStops.Count(x => x.GeoSource == "SIN_COORDENADA")</strong>
-                    </div>
+                }
+            }
+        </article>
+
+        <article class="monitor-panel">
+            <div class="panel-head">
+                <div>
+                    <h5>Visitas del recorrido</h5>
+                    <small>@_visitas.Visitas.Count registro(s)</small>
+                </div>
+            </div>
+
+            @if (_loading)
+            {
+                <div class="monitor-empty small">Cargando visitas...</div>
+            }
+            else if (!_visitas.Visitas.Any())
+            {
+                <div class="monitor-empty small">No hay visitas registradas para este filtro.</div>
+            }
+            else
+            {
+                <div class="route-client-list">
+                    @foreach (var visit in _visitas.Visitas)
+                    {
+                        <button type="button" class="route-client-card @SelectedClass(visit)" @onclick="() => SelectVisit(visit)">
+                            <span class="status-dot @StatusClass(visit)"></span>
+                            <div class="route-client-main">
+                                <strong>@(visit.Sucursal ?? visit.Cliente)</strong>
+                                <small>@visit.Cliente</small>
+                                <small>@Texto(visit.Direccion)</small>
+                            </div>
+                            <span class="route-client-order">@Math.Round(visit.SegundosVisita / 60m, 1) m</span>
+                        </button>
+                    }
                 </div>
             }
         </article>
@@ -150,63 +211,73 @@
         <article class="monitor-panel">
             <div class="panel-head">
                 <div>
-                    <h5>Clientes de la ruta</h5>
-                    <small>@VisibleStops.Count registro(s) visibles</small>
-                </div>
-                <a class="btn btn-sm btn-outline-secondary" href="@ClientesRouteUrl">Vista clientes</a>
-            </div>
-
-            <div class="route-client-list">
-                @if (!VisibleStops.Any())
-                {
-                    <div class="monitor-empty small">Sin clientes cargados para esta vista.</div>
-                }
-                else
-                {
-                    @foreach (var stop in VisibleStops)
-                    {
-                        <button type="button" class="route-client-card @(SelectedClass(stop))" @onclick="() => SelectStopAsync(stop)">
-                            <span class="status-dot @StatusClass(stop.Status)"></span>
-                            <div class="route-client-main">
-                                <strong>@stop.Name</strong>
-                                <small>@stop.Address</small>
-                            </div>
-                            <span class="route-client-order">#@stop.Order</span>
-                        </button>
-                    }
-                }
-            </div>
-        </article>
-
-        <article class="monitor-panel">
-            <div class="panel-head">
-                <div>
-                    <h5>Detalle del cliente</h5>
-                    <small>Contexto rapido para operacion</small>
+                    <h5>Detalle de visita</h5>
+                    <small>Tiempo, venta y estatus del punto seleccionado</small>
                 </div>
             </div>
 
-            @if (_selected is null)
+            @if (_selectedVisit is null)
             {
-                <div class="monitor-empty small">Selecciona un cliente para revisar detalle.</div>
+                <div class="monitor-empty small">Selecciona una visita para revisar detalle.</div>
             }
             else
             {
                 <div class="detail-grid">
-                    <span>Cliente</span><strong>@_selected.Name</strong>
-                    <span>Ruta</span><strong>@_selected.RouteName</strong>
-                    <span>Estado</span><strong>@StatusText(_selected.Status)</strong>
-                    <span>Credito</span><strong>@_selected.CreditText</strong>
-                    <span>Ultima visita</span><strong>@_selected.LastVisit</strong>
-                    <span>Telefono</span><strong>@TextOrDash(_selected.Phone)</strong>
-                    <span>RFC</span><strong>@TextOrDash(_selected.Rfc)</strong>
-                    <span>GPS</span><strong>@GeoText(_selected.GeoSource)</strong>
-                    <span>Direccion</span><strong>@_selected.Address</strong>
+                    <span>Cliente</span><strong>@_selectedVisit.Cliente</strong>
+                    <span>Sucursal</span><strong>@Texto(_selectedVisit.Sucursal)</strong>
+                    <span>Estatus</span><strong>@Texto(_selectedVisit.Estatus)</strong>
+                    <span>Motivo</span><strong>@Texto(_selectedVisit.MotivoNoVenta)</strong>
+                    <span>Inicio</span><strong>@FechaHora(_selectedVisit.FechaInicioUtc)</strong>
+                    <span>Fin</span><strong>@FechaHora(_selectedVisit.FechaFinUtc)</strong>
+                    <span>Visita</span><strong>@Math.Round(_selectedVisit.SegundosVisita / 60m, 1) min</strong>
+                    <span>Traslado</span><strong>@(_selectedVisit.MinutosTraslado?.ToString("N0", _mx) ?? "Sin dato")</strong>
+                    <span>QR</span><strong>@(_selectedVisit.TieneQr ? "Si" : "No")</strong>
+                    <span>Tipo</span><strong>@(_selectedVisit.EsExtra ? "Extra" : _selectedVisit.EsProgramada ? "Programada" : "Libre")</strong>
+                    <span>GPS</span><strong>@GpsTexto(_selectedVisit)</strong>
+                    <span>Ventas</span><strong>@_selectedVisit.Ventas</strong>
+                    <span>Monto</span><strong>@_selectedVisit.MontoVentas.ToString("C2", _mx)</strong>
+                    <span>Productos</span><strong class="preline">@Texto(_selectedVisit.ProductosVendidos)</strong>
+                    <span>Observaciones</span><strong>@Texto(_selectedVisit.Observaciones)</strong>
                 </div>
 
                 <div class="detail-actions">
-                    <a class="btn btn-sm btn-primary" href="@ClienteDetailUrl(_selected)">Ir a monitor cliente</a>
-                    <a class="btn btn-sm btn-outline-secondary" href="@MapaClientUrl(_selected)">Centrar en mapa</a>
+                    <a class="btn btn-sm btn-primary" href="@($"/monitor/clientes?ruta={_routeId}&cliente={_selectedVisit.IdCliente}")">Ir a monitor cliente</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="@($"/monitor/mapa?ruta={_routeId}&cliente={_selectedVisit.IdCliente}")">Ver en mapa</a>
+                </div>
+            }
+        </article>
+
+        <article class="monitor-panel">
+            <div class="panel-head">
+                <div>
+                    <h5>No visitados</h5>
+                    <small>@_visitas.NoVisitados.Count registro(s) programados</small>
+                </div>
+            </div>
+
+            @if (_loading)
+            {
+                <div class="monitor-empty small">Cargando pendientes...</div>
+            }
+            else if (!_visitas.NoVisitados.Any())
+            {
+                <div class="monitor-empty small">Sin clientes programados pendientes para esta fecha.</div>
+            }
+            else
+            {
+                <div class="route-client-list">
+                    @foreach (var pending in _visitas.NoVisitados)
+                    {
+                        <div class="route-client-card static-card">
+                            <span class="status-dot alert"></span>
+                            <div class="route-client-main">
+                                <strong>@pending.Cliente</strong>
+                                <small>@Texto(pending.Direccion)</small>
+                                <small>@Texto(pending.Telefono)</small>
+                            </div>
+                            <span class="route-client-order">#@pending.Orden</span>
+                        </div>
+                    }
                 </div>
             }
         </article>
@@ -215,262 +286,150 @@
 
 <style>
     .monitor-page{display:grid;gap:1rem}
-    .monitor-hero,.monitor-top-grid,.monitor-route-layout,.panel-head,.monitor-kpis,.monitor-pill-row,.route-client-card,.route-lane,.route-summary-grid,.monitor-shortcuts,.shortcut-card,.detail-actions{display:flex}
+    .monitor-hero,.monitor-top-grid,.monitor-route-layout,.panel-head,.monitor-kpis,.route-summary-grid,.monitor-shortcuts,.shortcut-card,.detail-actions{display:flex}
     .monitor-hero,.panel-head,.shortcut-card{align-items:flex-start;justify-content:space-between;gap:1rem}
     .monitor-hero h4,.panel-head h5{margin:0;font-weight:700;color:#344054}
     .monitor-hero p,.panel-head small{margin:0;color:#667085}
     .monitor-hero-actions,.detail-actions{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
     .monitor-hero-actions .btn,.shortcut-card{display:inline-flex;align-items:center;gap:.35rem}
     .monitor-top-grid{gap:1rem;align-items:stretch}
-    .monitor-top-grid>.monitor-panel:first-child{flex:1.2}
+    .monitor-top-grid>.monitor-panel:first-child{flex:1.3}
     .monitor-top-grid>.monitor-panel:last-child{flex:1}
     .monitor-panel{background:#fff;border:1px solid #e6eaf0;border-radius:10px;padding:1rem;box-shadow:0 4px 18px rgba(18,38,63,.05)}
     .monitor-kpis{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:.75rem}
     .monitor-kpis div,.summary-card{background:#f8fafc;border:1px solid #edf2f7;border-radius:9px;padding:.9rem}
     .monitor-kpis span,.summary-card span{display:block;color:#667085;font-size:.8rem}
     .monitor-kpis strong,.summary-card strong{font-size:1.2rem;color:#344054}
-    .monitor-pill-row{gap:.45rem;flex-wrap:wrap}
-    .monitor-pill-row button{border:1px solid #d7dde6;background:#fff;color:#475467;border-radius:999px;padding:.45rem .75rem;font-size:.85rem}
-    .monitor-pill-row button.active{border-color:#0d6efd;background:#eaf2ff;color:#0d6efd;font-weight:650}
     .monitor-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}
     .shortcut-card{text-decoration:none;padding:.95rem 1rem;border-radius:10px;border:1px solid #e6eaf0;background:linear-gradient(180deg,#fff,#f8fbff);box-shadow:0 4px 18px rgba(18,38,63,.04);color:#344054}
     .shortcut-card:hover{border-color:#bfd7ff;background:#eef5ff}
     .shortcut-card span{font-size:22px;color:#0d6efd}
     .shortcut-card strong,.shortcut-card small{display:block}
     .shortcut-card small{color:#667085}
-    .monitor-route-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.95fr) minmax(300px,.8fr);gap:1rem}
-    .route-lane{gap:.75rem;overflow:auto;padding-bottom:.35rem}
-    .lane-stop{min-width:210px;display:flex;gap:.75rem;align-items:flex-start;padding:.85rem;border-radius:10px;border:1px solid #edf2f7;background:#fbfdff;text-align:left}
-    .lane-stop.pending{border-color:#bfd7ff;background:#eef5ff}
-    .lane-stop.done{border-color:#bee6ce;background:#eefbf3}
-    .lane-stop.alert{border-color:#f4c7cf;background:#fff2f4}
-    .lane-stop.active-card{box-shadow:0 0 0 2px rgba(13,110,253,.12) inset}
-    .lane-order,.route-client-order{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;border-radius:999px;background:#eef2f7;font-weight:700;font-size:.8rem;color:#344054}
-    .lane-stop strong,.lane-stop small,.route-client-main strong,.route-client-main small{display:block}
-    .lane-stop small,.route-client-main small{color:#667085}
-    .route-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin-top:1rem}
+    .monitor-route-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,.95fr) minmax(320px,.85fr);gap:1rem}
+    .route-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+    .route-summary-grid-hero{margin-top:.5rem}
+    .recarga-banner{margin-top:1rem;border:1px solid #dbe5ef;background:#f8fbff;border-radius:10px;padding:.9rem 1rem;display:grid;gap:.2rem}
+    .recarga-banner strong{color:#0d6efd}
+    .recarga-banner span{color:#667085}
     .route-client-list{display:grid;gap:.6rem;max-height:620px;overflow:auto}
     .route-client-card{width:100%;border:1px solid #edf2f7;background:#fff;border-radius:10px;padding:.75rem;gap:.75rem;align-items:flex-start;text-align:left}
     .route-client-card.active-card,.route-client-card:hover{background:#eef5ff;border-color:#bfd7ff}
+    .route-client-card.static-card:hover{background:#fff;border-color:#edf2f7}
     .route-client-main{flex:1;min-width:0}
+    .route-client-main strong,.route-client-main small{display:block}
+    .route-client-main small{color:#667085}
+    .route-client-order{display:inline-flex;align-items:center;justify-content:center;min-width:58px;height:34px;border-radius:999px;background:#eef2f7;font-weight:700;font-size:.8rem;color:#344054;padding:0 .55rem}
     .status-dot{width:12px;height:12px;border-radius:50%;background:#98a2b3;flex:0 0 auto;margin-top:.25rem}
     .status-dot.pending{background:#0d6efd}.status-dot.done{background:#198754}.status-dot.alert{background:#dc3545}
     .detail-grid{display:grid;grid-template-columns:110px 1fr;gap:.7rem .8rem;font-size:.92rem}
     .detail-grid span{color:#667085}.detail-grid strong{color:#344054;font-weight:650}
+    .preline{white-space:pre-line}
     .monitor-empty{display:flex;align-items:center;justify-content:center;min-height:180px;text-align:center;color:#667085}
     .monitor-empty.small{min-height:120px}
+    .source-pill{display:inline-flex;align-items:center;background:#eaf2ff;color:#0d6efd;border-radius:999px;font-size:.78rem;font-weight:700;padding:.22rem .55rem}
+    @@media (max-width:1399.98px){.monitor-route-layout{grid-template-columns:1fr 1fr}}
     @@media (max-width:1199.98px){.monitor-route-layout,.monitor-shortcuts{grid-template-columns:1fr 1fr}.monitor-top-grid{flex-direction:column}}
     @@media (max-width:767.98px){.monitor-shortcuts,.monitor-route-layout{grid-template-columns:1fr}}
 </style>
 
 @code {
     [SupplyParameterFromQuery(Name = "ruta")] public int? QueryRouteId { get; set; }
-    [SupplyParameterFromQuery(Name = "cliente")] public int? QueryClientId { get; set; }
 
-    private const string StorageKey = "monitor-rutas-state";
-
-    private enum RouteClientStatus { Pending, Done, Alert }
-
+    private readonly CultureInfo _mx = CultureInfo.GetCultureInfo("es-MX");
     private List<MapaRutaOptionResponse> _routes = [];
-    private List<RouteStop> _stops = [];
-    private RouteStop? _selected;
-    private RouteClientStatus? _statusFilter;
+    private ReporteRecorridosResponse _recorridos = new();
+    private ReporteVisitasResponse _visitas = new();
+    private ReporteRecorridoRowResponse? _recorrido;
+    private ReporteVisitaRowResponse? _selectedVisit;
     private int _routeId;
-    private string? _routeName;
-    private string? _search;
-    private string? _error;
+    private DateTime _fecha = DateTime.Today;
     private bool _loading;
-    private bool _restored;
-
-    private List<RouteStop> VisibleStops => _stops
-        .Where(x => _statusFilter is null || x.Status == _statusFilter)
-        .Where(MatchesSearch)
-        .OrderBy(x => x.Order)
-        .ToList();
+    private string? _error;
 
     private string MapaRouteUrl => _routeId > 0 ? $"/monitor/mapa?ruta={_routeId}" : "/monitor/mapa";
     private string ClientesRouteUrl => _routeId > 0 ? $"/monitor/clientes?ruta={_routeId}" : "/monitor/clientes";
     private string RecorridosRouteUrl => _routeId > 0 ? $"/ventas/ruta/recorridos?ruta={_routeId}" : "/ventas/ruta/recorridos";
     private string VisitasRouteUrl => _routeId > 0 ? $"/ventas/ruta/visitas?ruta={_routeId}" : "/ventas/ruta/visitas";
-    private string VentasReportUrl => _routeId > 0 ? $"/reportes/ventas?ruta={_routeId}" : "/reportes/ventas";
+    private string ProgramadosTexto => _recorrido?.VisitasProgramadas.ToString("N0", _mx) ?? "0";
+    private int Pendientes => Math.Max((_recorrido?.VisitasProgramadas ?? 0) - _visitas.Kpi.TotalVisitas, 0);
+    private string ResumenRuta => _recorrido is null
+        ? "Sin recorrido cargado"
+        : $"{_recorrido.Ruta} · {_fecha:dd/MM/yyyy}";
+    private string EstadoRecorrido => Texto(_recorrido?.Estatus);
 
     protected override async Task OnInitializedAsync()
     {
         var (routes, error) = await MonitorApi.GetRutasAsync();
         _routes = routes?.ToList() ?? [];
         _error = error;
-    }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender || _restored)
-        {
-            return;
-        }
-
-        _restored = true;
-        await RestoreStateAsync();
         if (QueryRouteId is > 0)
         {
             _routeId = QueryRouteId.Value;
-        }
-
-        if (_routeId > 0)
-        {
-            await CargarRutaAsync();
-            StateHasChanged();
+            await CargarAsync();
         }
     }
 
     private async Task OnRouteChangedAsync(ChangeEventArgs e)
     {
         _routeId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
-        await SaveStateAsync();
-        await CargarRutaAsync();
+        await CargarAsync();
     }
 
-    private async Task OnSearchInput(ChangeEventArgs e)
+    private async Task CargarAsync()
     {
-        _search = e.Value?.ToString();
-        await SaveStateAsync();
-    }
-
-    private async Task SetFilterAsync(RouteClientStatus? status)
-    {
-        _statusFilter = status;
-        await SaveStateAsync();
-    }
-
-    private async Task SelectStopAsync(RouteStop stop)
-    {
-        _selected = stop;
-        await SaveStateAsync();
-    }
-
-    private async Task RecargarAsync() => await CargarRutaAsync();
-
-    private async Task CargarRutaAsync()
-    {
-        _selected = null;
-        _stops = [];
-        _routeName = _routes.FirstOrDefault(x => x.IdRuta == _routeId)?.Nombre;
+        _loading = true;
         _error = null;
+        _recorridos = new();
+        _visitas = new();
+        _recorrido = null;
+        _selectedVisit = null;
 
         if (_routeId <= 0)
         {
-            await SaveStateAsync();
+            _loading = false;
             return;
         }
 
-        _loading = true;
-        var (data, error) = await MonitorApi.GetRutaAsync(new MapaRutaRequest
+        var (recorridos, recorridosError) = await MonitorApi.GetReporteRecorridosAsync(_routeId, _fecha, _fecha, 50);
+        _recorridos = recorridos ?? new();
+        _recorrido = _recorridos.Recorridos
+            .OrderByDescending(x => x.FechaInicioUtc ?? x.FechaRecorrido)
+            .FirstOrDefault();
+
+        if (_recorrido is not null)
         {
-            IdRuta = _routeId,
-            Search = _search,
-            Modo = "ruta"
-        });
+            var (visitas, visitasError) = await MonitorApi.GetReporteVisitasAsync(_routeId, _fecha, _recorrido.IdRecorrido);
+            _visitas = visitas ?? new();
+            _selectedVisit = _visitas.Visitas.FirstOrDefault();
+            _error = visitasError ?? recorridosError;
+        }
+        else
+        {
+            _error = recorridosError;
+        }
+
         _loading = false;
-        _error = error;
-        _routeName = data?.NombreRuta ?? _routeName;
-        _stops = data?.Puntos.Select(FromApi).ToList() ?? [];
-        _selected = _stops.FirstOrDefault();
-        if (QueryClientId is > 0)
-        {
-            _selected = _stops.FirstOrDefault(x => x.Id == QueryClientId.Value) ?? _selected;
-        }
-        await SaveStateAsync();
     }
 
-    private async Task RestoreStateAsync()
+    private void SelectVisit(ReporteVisitaRowResponse visit) => _selectedVisit = visit;
+
+    private string SelectedClass(ReporteVisitaRowResponse visit) => _selectedVisit?.IdVisita == visit.IdVisita ? "active-card" : "";
+
+    private static string StatusClass(ReporteVisitaRowResponse visit)
     {
-        var json = await JS.InvokeAsync<string?>("AppInterop.localStorageGet", StorageKey);
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return;
-        }
-
-        try
-        {
-            var state = System.Text.Json.JsonSerializer.Deserialize<MonitorRouteState>(json);
-            if (state is null)
-            {
-                return;
-            }
-
-            if (QueryRouteId is null or <= 0)
-            {
-                _routeId = state.RouteId;
-            }
-
-            _search = state.Search;
-            _statusFilter = Enum.TryParse<RouteClientStatus>(state.Filter, out var filter) ? filter : null;
-        }
-        catch
-        {
-        }
+        if (visit.Ventas > 0) return "done";
+        if (!string.IsNullOrWhiteSpace(visit.MotivoNoVenta)) return "alert";
+        return "pending";
     }
 
-    private async Task SaveStateAsync()
+    private static string Texto(string? value) => string.IsNullOrWhiteSpace(value) ? "Sin dato" : value;
+    private static string FechaHora(DateTime? value) => value?.ToLocalTime().ToString("dd/MM HH:mm") ?? "Sin dato";
+    private static string GpsTexto(ReporteVisitaRowResponse visit)
     {
-        var payload = new MonitorRouteState(_routeId, _search, _statusFilter?.ToString(), _selected?.Id);
-        await JS.InvokeVoidAsync("AppInterop.localStorageSet", StorageKey, System.Text.Json.JsonSerializer.Serialize(payload));
+        if (visit.DistanciaMetros is null) return "Sin referencia";
+        var baseText = $"{visit.DistanciaMetros.Value:N1} m";
+        return visit.GpsValido50m ? $"{baseText} · Valido" : $"{baseText} · Fuera de rango";
     }
-
-    private bool MatchesSearch(RouteStop stop)
-    {
-        if (string.IsNullOrWhiteSpace(_search)) return true;
-        return stop.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)
-            || stop.Address.Contains(_search, StringComparison.OrdinalIgnoreCase)
-            || (stop.Phone?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
-            || (stop.Rfc?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
-    }
-
-    private string FilterClass(RouteClientStatus? status) => _statusFilter == status ? "active" : "";
-    private string SelectedClass(RouteStop stop) => _selected?.Id == stop.Id ? "active-card" : "";
-    private static string StatusClass(RouteClientStatus status) => status switch { RouteClientStatus.Done => "done", RouteClientStatus.Alert => "alert", _ => "pending" };
-    private static string StatusText(RouteClientStatus status) => status switch { RouteClientStatus.Done => "Visitado", RouteClientStatus.Alert => "Alerta", _ => "Pendiente" };
-    private static string TextOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "Sin dato" : value;
-    private static string GeoText(string source) => source switch
-    {
-        "REAL_FIN" => "GPS real de cierre",
-        "REAL_INICIO" => "GPS de inicio",
-        "CLIENTE_DIR" => "Direccion del cliente",
-        _ => "Sin coordenada confiable"
-    };
-
-    private string ClienteDetailUrl(RouteStop stop) => $"/monitor/clientes?ruta={_routeId}&cliente={stop.Id}";
-    private string MapaClientUrl(RouteStop stop) => $"/monitor/mapa?ruta={_routeId}&cliente={stop.Id}";
-
-    private static RouteStop FromApi(MapaClientePuntoResponse point) => new(
-        point.IdCliente,
-        point.Orden,
-        point.Nombre,
-        point.NombreRuta ?? "Sin ruta",
-        point.Direccion ?? "Direccion pendiente",
-        point.Telefono,
-        point.Rfc,
-        point.Credito,
-        point.UltimaVisita,
-        point.GeoSource,
-        point.Estado?.ToLowerInvariant() switch
-        {
-            "visitado" => RouteClientStatus.Done,
-            "alerta" => RouteClientStatus.Alert,
-            _ => RouteClientStatus.Pending
-        });
-
-    private sealed record RouteStop(
-        int Id,
-        int Order,
-        string Name,
-        string RouteName,
-        string Address,
-        string? Phone,
-        string? Rfc,
-        string CreditText,
-        string LastVisit,
-        string GeoSource,
-        RouteClientStatus Status);
-
-    private sealed record MonitorRouteState(int RouteId, string? Search, string? Filter, int? SelectedClientId);
 }

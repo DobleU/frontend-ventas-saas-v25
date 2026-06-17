@@ -169,6 +169,9 @@ public sealed class ReporteRecorridoRowResponse
     public decimal MontoCancelaciones { get; init; }
     public int MinutosRecorrido { get; init; }
     public int MinutosPausa { get; init; }
+    public bool TieneRecargas { get; init; }
+    public int TotalRecargas { get; init; }
+    public string? ResumenRecargas { get; init; }
 }
 
 public sealed class ReporteVisitasResponse
@@ -176,6 +179,7 @@ public sealed class ReporteVisitasResponse
     public ReporteVisitasHeaderResponse Header { get; init; } = new();
     public ReporteVisitasKpiResponse Kpi { get; init; } = new();
     public IReadOnlyList<ReporteVisitaRowResponse> Visitas { get; init; } = [];
+    public IReadOnlyList<ReporteVisitaPendienteRowResponse> NoVisitados { get; init; } = [];
 }
 
 public sealed class ReporteVisitasHeaderResponse
@@ -189,13 +193,18 @@ public sealed class ReporteVisitasHeaderResponse
 
 public sealed class ReporteVisitasKpiResponse
 {
+    public int VisitasProgramadas { get; init; }
     public int TotalVisitas { get; init; }
     public int VisitasConVenta { get; init; }
     public int VisitasSinVenta { get; init; }
+    public int VisitasExtra { get; init; }
+    public int NoVisitados { get; init; }
     public int LecturasQr { get; init; }
     public decimal PorcentajeQr { get; init; }
     public decimal MontoVentas { get; init; }
     public int TiempoMuertoMinutos { get; init; }
+    public int VisitasGpsValido { get; init; }
+    public decimal PorcentajeGpsValido { get; init; }
 }
 
 public sealed class ReporteVisitaRowResponse
@@ -215,7 +224,23 @@ public sealed class ReporteVisitaRowResponse
     public bool TieneQr { get; init; }
     public int Ventas { get; init; }
     public decimal MontoVentas { get; init; }
+    public bool EsProgramada { get; init; }
+    public bool EsExtra { get; init; }
+    public decimal? DistanciaMetros { get; init; }
+    public bool GpsValido50m { get; init; }
+    public string? ProductosVendidos { get; init; }
     public string? Observaciones { get; init; }
+}
+
+public sealed class ReporteVisitaPendienteRowResponse
+{
+    public int IdCliente { get; init; }
+    public int Orden { get; init; }
+    public string Cliente { get; init; } = string.Empty;
+    public string? Sucursal { get; init; }
+    public string? Direccion { get; init; }
+    public string TipoVisita { get; init; } = "PROGRAMADA";
+    public string? Telefono { get; init; }
 }
 
 public sealed class ReporteEventosResponse
