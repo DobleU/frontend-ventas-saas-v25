@@ -1,8 +1,46 @@
 @page "/crm/prospectos"
 @page "/crm/seguimiento-comercial"
+@page "/pos/ventas"
+@page "/pos/caja"
+@page "/pos/tickets"
+@page "/route/clientes-ruta"
+@page "/route/planeacion-visitas"
+@page "/route/liquidacion-ruta"
 @page "/route/escenarios-comerciales"
 @page "/ia-comercial/respuestas-vendedores"
 @page "/route/sincronizacion-app"
+@page "/erp/compras"
+@page "/erp/promociones-campanas"
+@page "/erp/rh"
+@page "/erp/proveedores"
+@page "/erp/ordenes-compra"
+@page "/erp/recepcion-mercancia"
+@page "/finanzas/cxc"
+@page "/finanzas/cxp"
+@page "/finanzas/bancos"
+@page "/finanzas/conciliacion"
+@page "/finanzas/reportes-financieros"
+@page "/facturacion/ventas"
+@page "/facturacion/global"
+@page "/facturacion/cancelaciones"
+@page "/reportes/ruta"
+@page "/reportes/utilidad-margen"
+@page "/config/reglas-comerciales"
+@page "/config/alertas-sistema"
+@page "/config/app-movil"
+@page "/config/audio"
+@page "/config/ia"
+@page "/config/datos-empresa"
+@page "/config/parametros-generales"
+@page "/config/parametros-venta"
+@page "/config/parametros-ruta"
+@page "/config/parametros-inventario"
+@page "/config/parametros-credito"
+@page "/config/parametros-facturacion"
+@page "/config/catalogos-generales"
+@page "/admin/dispositivos-moviles"
+@page "/admin/auditoria"
+@page "/admin/bitacora-errores"
 @inject NavigationManager Nav
 
 <PageTitle>@PageTitleText - Integra*System</PageTitle>
@@ -130,9 +168,47 @@
     {
         "/crm/prospectos" => "CRM",
         "/crm/seguimiento-comercial" => "CRM",
+        "/pos/ventas" => "POS",
+        "/pos/caja" => "POS",
+        "/pos/tickets" => "POS",
+        "/route/clientes-ruta" => "ROUTE",
+        "/route/planeacion-visitas" => "ROUTE",
+        "/route/liquidacion-ruta" => "ROUTE",
         "/route/escenarios-comerciales" => "ROUTE",
         "/ia-comercial/respuestas-vendedores" => "IA Comercial",
         "/route/sincronizacion-app" => "ROUTE",
+        "/erp/compras" => "ERP",
+        "/erp/promociones-campanas" => "ERP",
+        "/erp/rh" => "ERP",
+        "/erp/proveedores" => "ERP",
+        "/erp/ordenes-compra" => "ERP",
+        "/erp/recepcion-mercancia" => "ERP",
+        "/finanzas/cxc" => "Finanzas",
+        "/finanzas/cxp" => "Finanzas",
+        "/finanzas/bancos" => "Finanzas",
+        "/finanzas/conciliacion" => "Finanzas",
+        "/finanzas/reportes-financieros" => "Finanzas",
+        "/facturacion/ventas" => "Facturación",
+        "/facturacion/global" => "Facturación",
+        "/facturacion/cancelaciones" => "Facturación",
+        "/reportes/ruta" => "Reportes",
+        "/reportes/utilidad-margen" => "Reportes",
+        "/config/reglas-comerciales" => "Configuración",
+        "/config/alertas-sistema" => "Configuración",
+        "/config/app-movil" => "Configuración",
+        "/config/audio" => "Configuración",
+        "/config/ia" => "Configuración",
+        "/config/datos-empresa" => "Configuración",
+        "/config/parametros-generales" => "Configuración",
+        "/config/parametros-venta" => "Configuración",
+        "/config/parametros-ruta" => "Configuración",
+        "/config/parametros-inventario" => "Configuración",
+        "/config/parametros-credito" => "Configuración",
+        "/config/parametros-facturacion" => "Configuración",
+        "/config/catalogos-generales" => "Configuración",
+        "/admin/dispositivos-moviles" => "Administración",
+        "/admin/auditoria" => "Administración",
+        "/admin/bitacora-errores" => "Administración",
         _ => "Planeacion"
     };
 
@@ -140,9 +216,47 @@
     {
         "/crm/prospectos" => "Prospectos",
         "/crm/seguimiento-comercial" => "Seguimiento Comercial",
+        "/pos/ventas" => "Punto de Venta",
+        "/pos/caja" => "Caja",
+        "/pos/tickets" => "Reimpresión de Ticket",
+        "/route/clientes-ruta" => "Clientes por Ruta",
+        "/route/planeacion-visitas" => "Planeación de Visitas",
+        "/route/liquidacion-ruta" => "Liquidación de Ruta",
         "/route/escenarios-comerciales" => "Escenarios Comerciales",
         "/ia-comercial/respuestas-vendedores" => "Respuestas para Vendedores",
         "/route/sincronizacion-app" => "Sincronizacion App",
+        "/erp/compras" => "Compras",
+        "/erp/promociones-campanas" => "Promociones y Campañas",
+        "/erp/rh" => "Recursos Humanos",
+        "/erp/proveedores" => "Proveedores",
+        "/erp/ordenes-compra" => "Ordenes de Compra",
+        "/erp/recepcion-mercancia" => "Recepcion de Mercancia",
+        "/finanzas/cxc" => "Cuentas por Cobrar",
+        "/finanzas/cxp" => "Cuentas por Pagar",
+        "/finanzas/bancos" => "Bancos",
+        "/finanzas/conciliacion" => "Conciliación",
+        "/finanzas/reportes-financieros" => "Reportes Financieros",
+        "/facturacion/ventas" => "Facturación de Ventas",
+        "/facturacion/global" => "Facturación Global",
+        "/facturacion/cancelaciones" => "Cancelación de Facturas",
+        "/reportes/ruta" => "Reportes de Ruta",
+        "/reportes/utilidad-margen" => "Utilidad y Margen",
+        "/config/reglas-comerciales" => "Reglas Comerciales",
+        "/config/alertas-sistema" => "Alertas del Sistema",
+        "/config/app-movil" => "Configuración App Móvil",
+        "/config/audio" => "Configuración de Audio",
+        "/config/ia" => "Configuración de IA",
+        "/config/datos-empresa" => "Datos de Empresa",
+        "/config/parametros-generales" => "Parametros Generales",
+        "/config/parametros-venta" => "Parametros de Venta",
+        "/config/parametros-ruta" => "Parametros de Ruta",
+        "/config/parametros-inventario" => "Parametros de Inventario",
+        "/config/parametros-credito" => "Parametros de Credito",
+        "/config/parametros-facturacion" => "Parametros de Facturacion",
+        "/config/catalogos-generales" => "Catalogos Generales",
+        "/admin/dispositivos-moviles" => "Dispositivos Moviles",
+        "/admin/auditoria" => "Auditoria",
+        "/admin/bitacora-errores" => "Bitacora de Errores",
         _ => "Modulo Comercial"
     };
 
@@ -150,9 +264,47 @@
     {
         "/crm/prospectos" => "Control de leads, conversion, vendedor responsable, interes detectado y seguimiento de perdida.",
         "/crm/seguimiento-comercial" => "Bitacora operativa para visitas, llamadas, compromisos, recordatorios y siguientes acciones.",
+        "/pos/ventas" => "Venta rapida en mostrador con cliente, caja abierta, busqueda de productos y resumen de cobro.",
+        "/pos/caja" => "Apertura, cierre, entradas, salidas, arqueos y control diario de movimientos de efectivo.",
+        "/pos/tickets" => "Consulta, reimpresion y rastreo de tickets por folio, fecha, caja y cajero.",
+        "/route/clientes-ruta" => "Listado operativo de clientes asignados a una ruta, orden de visita, saldo y estado comercial.",
+        "/route/planeacion-visitas" => "Programacion diaria o semanal de clientes por visitar con prioridades, dias y cobertura.",
+        "/route/liquidacion-ruta" => "Conciliacion de ventas, cobranza, efectivo, inventario entregado y diferencias de ruta.",
         "/route/escenarios-comerciales" => "Catalogo de objeciones, escenarios de venta, tono y prioridad para uso en ruta.",
         "/ia-comercial/respuestas-vendedores" => "Banco de respuestas recomendadas, variantes y apoyos comerciales para vendedores.",
         "/route/sincronizacion-app" => "Estado de descarga, pendientes, errores, lotes sincronizados y control operativo de app movil.",
+        "/erp/compras" => "Control de adquisiciones, proveedores, ordenes de compra, recepcion y seguimiento de costos.",
+        "/erp/promociones-campanas" => "Configuracion de promociones por cliente, ruta, producto, vigencia y resultado comercial.",
+        "/erp/rh" => "Operación administrativa de empleados, puestos, incidencias y control organizacional.",
+        "/erp/proveedores" => "Administracion de proveedores, condiciones comerciales, documentos y relacion operativa.",
+        "/erp/ordenes-compra" => "Registro y seguimiento de ordenes de compra con autorizacion, recepcion y control de estatus.",
+        "/erp/recepcion-mercancia" => "Control de recepcion de mercancia, diferencias, validacion y afectacion operativa.",
+        "/finanzas/cxc" => "Administracion de saldos, vencimientos, cartera y cobranza por cliente, ruta y vendedor.",
+        "/finanzas/cxp" => "Seguimiento de obligaciones con proveedores, vencimientos, pagos y programación financiera.",
+        "/finanzas/bancos" => "Control de cuentas bancarias, saldos operativos, movimientos y referencia de depósitos.",
+        "/finanzas/conciliacion" => "Cruce de movimientos bancarios contra cobranza, pagos, pólizas y diferencias detectadas.",
+        "/finanzas/reportes-financieros" => "Consulta ejecutiva de flujos, cobranza, pagos, saldos y comportamiento financiero.",
+        "/facturacion/ventas" => "Emisión de CFDI, relación venta-factura, datos fiscales y seguimiento de timbrado.",
+        "/facturacion/global" => "Generación de facturación global por periodo con integración de tickets y validación fiscal.",
+        "/facturacion/cancelaciones" => "Solicitud, estatus y control de cancelaciones de comprobantes emitidos.",
+        "/reportes/ruta" => "Buscador operativo por ruta con métricas, cumplimiento, venta, cobranza y exportación.",
+        "/reportes/utilidad-margen" => "Consulta analítica de utilidad, margen, costo, descuento y rentabilidad por operación.",
+        "/config/reglas-comerciales" => "Parámetros de negocio para descuentos, validaciones, políticas y comportamiento comercial.",
+        "/config/alertas-sistema" => "Definición de alertas, disparadores, prioridad, canales y seguimiento interno.",
+        "/config/app-movil" => "Ajustes funcionales para la app de ruta: sincronización, captura, visibilidad y operación.",
+        "/config/audio" => "Configuración de audios, locuciones, tonos y ayudas sonoras para operación comercial.",
+        "/config/ia" => "Parámetros de respuestas, escenarios, curación y uso interno de apoyo comercial con IA.",
+        "/config/datos-empresa" => "Datos institucionales, fiscales y operativos de la empresa para uso transversal del sistema.",
+        "/config/parametros-generales" => "Configuracion general de comportamiento base, visibilidad, reglas maestras y operacion comun.",
+        "/config/parametros-venta" => "Definicion de reglas de venta, descuentos, validaciones y controles comerciales.",
+        "/config/parametros-ruta" => "Configuracion de cobertura, visitas, sincronizacion y parametros clave de la operacion en ruta.",
+        "/config/parametros-inventario" => "Ajustes de stock, movimientos, minimos, maximos y controles de almacen.",
+        "/config/parametros-credito" => "Politicas de credito, limites, dias, validaciones y seguimiento preventivo.",
+        "/config/parametros-facturacion" => "Configuracion de series, CFDI, validaciones fiscales y flujo documental.",
+        "/config/catalogos-generales" => "Administracion de catalogos auxiliares, referencias y listas maestras del sistema.",
+        "/admin/dispositivos-moviles" => "Consulta de dispositivos, asignaciones, sesiones activas y estado de sincronizacion movil.",
+        "/admin/auditoria" => "Rastreo de acciones administrativas, eventos criticos y cambios relevantes del sistema.",
+        "/admin/bitacora-errores" => "Bitacora de errores tecnicos y operativos para soporte, seguimiento y correccion.",
         _ => "Vista base."
     };
 
@@ -160,9 +312,47 @@
     {
         "/crm/prospectos" => "Nuevo prospecto",
         "/crm/seguimiento-comercial" => "Nueva actividad",
+        "/pos/ventas" => "Nueva venta",
+        "/pos/caja" => "Abrir caja",
+        "/pos/tickets" => "Buscar ticket",
+        "/route/clientes-ruta" => "Asignar cliente",
+        "/route/planeacion-visitas" => "Nueva planeación",
+        "/route/liquidacion-ruta" => "Cerrar liquidación",
         "/route/escenarios-comerciales" => "Nuevo escenario",
         "/ia-comercial/respuestas-vendedores" => "Nueva respuesta",
         "/route/sincronizacion-app" => "Sincronizar ahora",
+        "/erp/compras" => "Nueva compra",
+        "/erp/promociones-campanas" => "Nueva promoción",
+        "/erp/rh" => "Nuevo empleado",
+        "/erp/proveedores" => "Nuevo proveedor",
+        "/erp/ordenes-compra" => "Nueva orden",
+        "/erp/recepcion-mercancia" => "Registrar recepcion",
+        "/finanzas/cxc" => "Registrar abono",
+        "/finanzas/cxp" => "Registrar pago",
+        "/finanzas/bancos" => "Nueva cuenta",
+        "/finanzas/conciliacion" => "Conciliar movimientos",
+        "/finanzas/reportes-financieros" => "Generar reporte",
+        "/facturacion/ventas" => "Emitir factura",
+        "/facturacion/global" => "Generar global",
+        "/facturacion/cancelaciones" => "Solicitar cancelación",
+        "/reportes/ruta" => "Consultar reporte",
+        "/reportes/utilidad-margen" => "Analizar margen",
+        "/config/reglas-comerciales" => "Nueva regla",
+        "/config/alertas-sistema" => "Nueva alerta",
+        "/config/app-movil" => "Guardar configuración",
+        "/config/audio" => "Subir audio",
+        "/config/ia" => "Actualizar IA",
+        "/config/datos-empresa" => "Guardar datos",
+        "/config/parametros-generales" => "Guardar parametros",
+        "/config/parametros-venta" => "Actualizar venta",
+        "/config/parametros-ruta" => "Actualizar ruta",
+        "/config/parametros-inventario" => "Actualizar inventario",
+        "/config/parametros-credito" => "Actualizar credito",
+        "/config/parametros-facturacion" => "Actualizar facturacion",
+        "/config/catalogos-generales" => "Nuevo catalogo",
+        "/admin/dispositivos-moviles" => "Registrar dispositivo",
+        "/admin/auditoria" => "Consultar auditoria",
+        "/admin/bitacora-errores" => "Revisar incidencia",
         _ => "Nuevo"
     };
 
@@ -180,6 +370,42 @@
             new("Hoy", "18", "Agenda actual"),
             new("Cerradas", "67%", "Cumplimiento")
         ],
+        "/pos/ventas" => [
+            new("Caja", "Abierta", "Sucursal matriz"),
+            new("Productos", "39", "Disponibles"),
+            new("Ticket promedio", "$428", "Hoy"),
+            new("Ventas del día", "57", "Operación")
+        ],
+        "/pos/caja" => [
+            new("Cajas abiertas", "3", "Operando"),
+            new("Entradas", "$18,240", "Turno actual"),
+            new("Salidas", "$2,140", "Registradas"),
+            new("Diferencia", "$0", "Sin incidencias")
+        ],
+        "/pos/tickets" => [
+            new("Tickets hoy", "154", "Emitidos"),
+            new("Reimpresiones", "8", "Solicitadas"),
+            new("Cancelados", "3", "Revisar"),
+            new("Último folio", "TK-01824", "Actual")
+        ],
+        "/route/clientes-ruta" => [
+            new("Clientes", "184", "Asignados"),
+            new("Activos", "171", "Operando"),
+            new("Con saldo", "63", "Cobranza"),
+            new("Sin visitar", "28", "Semana actual")
+        ],
+        "/route/planeacion-visitas" => [
+            new("Planeaciones", "22", "Abiertas"),
+            new("Rutas", "12", "Con agenda"),
+            new("Cobertura", "86%", "Meta semanal"),
+            new("Urgentes", "9", "Alta prioridad")
+        ],
+        "/route/liquidacion-ruta" => [
+            new("Rutas por cerrar", "6", "Pendientes"),
+            new("Diferencias", "$1,240", "Detectadas"),
+            new("Cobranza", "$32,880", "Reportada"),
+            new("Ventas", "$74,510", "Del día")
+        ],
         "/route/escenarios-comerciales" => [
             new("Escenarios", "58", "Activos"),
             new("Categorias", "9", "Configuradas"),
@@ -191,6 +417,114 @@
             new("Favoritas", "37", "Marcadas"),
             new("Con audio", "19", "Preparadas"),
             new("Sin revisar", "11", "Pendientes")
+        ],
+        "/erp/compras" => [
+            new("OC abiertas", "14", "Por recibir"),
+            new("Proveedores", "29", "Activos"),
+            new("Recepciones", "7", "En tránsito"),
+            new("Costo estimado", "$218,400", "Periodo")
+        ],
+        "/erp/promociones-campanas" => [
+            new("Promociones", "18", "Activas"),
+            new("Campañas", "6", "Vigentes"),
+            new("Rutas ligadas", "11", "Aplicando"),
+            new("Clientes objetivo", "420", "Segmentados")
+        ],
+        "/erp/rh" => [
+            new("Empleados", "42", "Activos"),
+            new("Incidencias", "5", "Hoy"),
+            new("Puestos", "14", "Configurados"),
+            new("Pendientes", "7", "Revisión")
+        ],
+        "/finanzas/cxc" => [
+            new("Saldo total", "$428,900", "Cartera"),
+            new("Vencido", "$118,400", "Requiere acción"),
+            new("Clientes", "97", "Con saldo"),
+            new("Abonos hoy", "$12,800", "Aplicados")
+        ],
+        "/finanzas/cxp" => [
+            new("Saldo total", "$312,540", "Obligaciones"),
+            new("Vencido", "$44,200", "Prioridad"),
+            new("Proveedores", "31", "Con saldo"),
+            new("Pagos hoy", "$18,350", "Programados")
+        ],
+        "/finanzas/bancos" => [
+            new("Cuentas", "7", "Activas"),
+            new("Saldo disponible", "$684,200", "Operación"),
+            new("Movimientos hoy", "23", "Registrados"),
+            new("Depósitos por aplicar", "4", "Pendientes")
+        ],
+        "/finanzas/conciliacion" => [
+            new("Movimientos", "186", "Periodo"),
+            new("Conciliados", "162", "Correctos"),
+            new("Diferencias", "9", "Revisar"),
+            new("Pendientes", "15", "Por cerrar")
+        ],
+        "/finanzas/reportes-financieros" => [
+            new("Flujo neto", "$82,140", "Periodo"),
+            new("Cobranza", "$214,880", "Acumulada"),
+            new("Pagos", "$132,740", "Aplicados"),
+            new("Alertas", "6", "Seguimiento")
+        ],
+        "/facturacion/ventas" => [
+            new("Facturas", "38", "Emitidas hoy"),
+            new("Pendientes", "9", "Por timbrar"),
+            new("Clientes fiscales", "126", "Configurados"),
+            new("Errores", "2", "Validar")
+        ],
+        "/facturacion/global" => [
+            new("Tickets", "214", "Por integrar"),
+            new("Periodos", "3", "Abiertos"),
+            new("Globales emitidas", "12", "Mes actual"),
+            new("Incidencias", "1", "Fiscal")
+        ],
+        "/facturacion/cancelaciones" => [
+            new("Solicitudes", "11", "Abiertas"),
+            new("Aceptadas", "6", "SAT"),
+            new("Pendientes", "4", "En proceso"),
+            new("Rechazadas", "1", "Revisar")
+        ],
+        "/reportes/ruta" => [
+            new("Rutas", "12", "Monitoreadas"),
+            new("Visitas", "286", "Periodo"),
+            new("Cobranza", "$74,210", "Acumulada"),
+            new("Exportaciones", "18", "Semana")
+        ],
+        "/reportes/utilidad-margen" => [
+            new("Margen promedio", "22.4%", "Periodo"),
+            new("Utilidad", "$126,940", "Acumulada"),
+            new("Productos críticos", "14", "Bajo margen"),
+            new("Clientes top", "27", "Rentables")
+        ],
+        "/config/reglas-comerciales" => [
+            new("Reglas", "34", "Activas"),
+            new("Rutas ligadas", "12", "Con política"),
+            new("Excepciones", "6", "Aprobadas"),
+            new("Pendientes", "3", "Revisión")
+        ],
+        "/config/alertas-sistema" => [
+            new("Alertas", "28", "Configuradas"),
+            new("Críticas", "5", "Alta prioridad"),
+            new("Canales", "4", "Notificación"),
+            new("Sin atender", "7", "Pendientes")
+        ],
+        "/config/app-movil" => [
+            new("Perfiles", "3", "Configurados"),
+            new("Parámetros", "21", "Aplicados"),
+            new("Rutas activas", "12", "Con app"),
+            new("Cambios pendientes", "2", "Por publicar")
+        ],
+        "/config/audio" => [
+            new("Audios", "19", "Disponibles"),
+            new("Escenarios", "11", "Con apoyo"),
+            new("Idiomas", "2", "Configurados"),
+            new("Pendientes", "4", "Por revisar")
+        ],
+        "/config/ia" => [
+            new("Escenarios", "58", "Entrenados"),
+            new("Respuestas", "214", "Curadas"),
+            new("Versiones", "5", "Publicadas"),
+            new("Revisión", "8", "Pendientes")
         ],
         _ => [
             new("Dispositivos", "53", "Registrados"),
@@ -204,8 +538,32 @@
     {
         "/crm/prospectos" => ["Nombre comercial", "Contacto", "Telefono", "Ruta sugerida", "Interes detectado", "Vendedor responsable"],
         "/crm/seguimiento-comercial" => ["Cliente o prospecto", "Tipo de actividad", "Fecha compromiso", "Responsable", "Estado", "Proxima accion"],
+        "/pos/ventas" => ["Cliente", "Producto o código", "Lista de precio", "Cantidad", "Descuento", "Forma de pago"],
+        "/pos/caja" => ["Caja", "Sucursal", "Usuario", "Monto inicial", "Turno", "Estado"],
+        "/pos/tickets" => ["Folio", "Fecha", "Caja", "Cajero", "Cliente", "Estatus"],
+        "/route/clientes-ruta" => ["Ruta", "Cliente", "Orden", "Día de visita", "Saldo", "Estado"],
+        "/route/planeacion-visitas" => ["Ruta", "Fecha", "Vendedor", "Cobertura", "Prioridad", "Estatus"],
+        "/route/liquidacion-ruta" => ["Ruta", "Fecha", "Vendedor", "Ventas", "Cobranza", "Diferencia"],
         "/route/escenarios-comerciales" => ["Escenario", "Categoria", "Tono", "Prioridad", "Ruta aplicable", "Producto relacionado"],
         "/ia-comercial/respuestas-vendedores" => ["Escenario", "Respuesta corta", "Respuesta larga", "Tono sugerido", "Enfasis", "Favorita"],
+        "/erp/compras" => ["Proveedor", "OC", "Recepción", "Condición", "Costo", "Estatus"],
+        "/erp/promociones-campanas" => ["Promoción", "Tipo", "Cliente/Ruta", "Vigencia", "Beneficio", "Estado"],
+        "/erp/rh" => ["Empleado", "Puesto", "Sucursal", "Incidencia", "Responsable", "Estado"],
+        "/finanzas/cxc" => ["Cliente", "Ruta", "Vendedor", "Vencimiento", "Saldo", "Estado"],
+        "/finanzas/cxp" => ["Proveedor", "Documento", "Vencimiento", "Saldo", "Programación", "Estado"],
+        "/finanzas/bancos" => ["Banco", "Cuenta", "Sucursal", "Referencia", "Saldo", "Estado"],
+        "/finanzas/conciliacion" => ["Banco", "Fecha", "Movimiento", "Referencia", "Monto", "Estado"],
+        "/finanzas/reportes-financieros" => ["Reporte", "Periodo", "Sucursal", "Ruta", "Indicador", "Estado"],
+        "/facturacion/ventas" => ["Cliente", "Venta", "RFC", "Uso CFDI", "Monto", "Estado"],
+        "/facturacion/global" => ["Periodo", "Tickets", "RFC", "Método", "Monto", "Estado"],
+        "/facturacion/cancelaciones" => ["Folio fiscal", "Cliente", "Fecha", "Motivo", "Solicitud", "Estado"],
+        "/reportes/ruta" => ["Ruta", "Fecha", "Visitas", "Venta", "Cobranza", "Estado"],
+        "/reportes/utilidad-margen" => ["Producto", "Cliente", "Costo", "Venta", "Margen", "Estado"],
+        "/config/reglas-comerciales" => ["Regla", "Tipo", "Ámbito", "Prioridad", "Vigencia", "Estado"],
+        "/config/alertas-sistema" => ["Alerta", "Canal", "Disparador", "Prioridad", "Responsable", "Estado"],
+        "/config/app-movil" => ["Parámetro", "Grupo", "Valor", "Ruta", "Versión", "Estado"],
+        "/config/audio" => ["Audio", "Escenario", "Idioma", "Duración", "Formato", "Estado"],
+        "/config/ia" => ["Modelo", "Escenario", "Versión", "Responsable", "Uso", "Estado"],
         _ => ["Dispositivo", "Ruta", "Ultima sincronizacion", "Pendientes", "Version app", "Estado"]
     };
 
@@ -223,6 +581,42 @@
             new("Agenda", "Definir proxima accion y fecha."),
             new("Cumplimiento", "Cerrar, reprogramar o escalar actividad.")
         ],
+        "/pos/ventas" => [
+            new("Inicio", "Seleccionar cliente general o registrado."),
+            new("Captura", "Agregar productos por código o búsqueda."),
+            new("Cobro", "Elegir forma de pago y confirmar."),
+            new("Salida", "Emitir ticket o enviar a facturación.")
+        ],
+        "/pos/caja" => [
+            new("Apertura", "Registrar fondo inicial y usuario."),
+            new("Operación", "Capturar entradas, salidas y gastos."),
+            new("Arqueo", "Conciliar efectivo y movimientos."),
+            new("Cierre", "Bloquear turno y generar corte.")
+        ],
+        "/pos/tickets" => [
+            new("Búsqueda", "Filtrar por folio, fecha o cajero."),
+            new("Consulta", "Ver resumen y detalle de venta."),
+            new("Validación", "Revisar estatus y relación fiscal."),
+            new("Salida", "Reimprimir o escalar incidencia.")
+        ],
+        "/route/clientes-ruta" => [
+            new("Selección", "Elegir ruta, vendedor y día."),
+            new("Orden", "Ajustar secuencia de visita."),
+            new("Contexto", "Ver saldo, historial y estado comercial."),
+            new("Publicación", "Guardar para operación en campo.")
+        ],
+        "/route/planeacion-visitas" => [
+            new("Base", "Partir de clientes asignados a ruta."),
+            new("Priorización", "Marcar urgentes, cobranza o recompra."),
+            new("Agenda", "Programar fechas y responsables."),
+            new("Seguimiento", "Medir cobertura y cumplimiento.")
+        ],
+        "/route/liquidacion-ruta" => [
+            new("Carga", "Traer ventas, cobranza e inventario."),
+            new("Comparación", "Conciliar efectivo y producto."),
+            new("Diferencias", "Registrar faltantes o sobrantes."),
+            new("Cierre", "Liquidar y generar soporte.")
+        ],
         "/route/escenarios-comerciales" => [
             new("Definicion", "Capturar objecion o situacion comercial."),
             new("Clasificacion", "Asignar categoria, tono y prioridad."),
@@ -234,6 +628,114 @@
             new("Contexto", "Definir tono, enfasis y casos de uso."),
             new("Ranking", "Marcar mejores respuestas para vendedores."),
             new("Distribucion", "Enviar a rutas o grupos autorizados.")
+        ],
+        "/erp/compras" => [
+            new("Solicitud", "Capturar proveedor y condiciones."),
+            new("Orden", "Generar OC y detalle de compra."),
+            new("Recepción", "Registrar entrada y costo."),
+            new("Seguimiento", "Vincular con inventario y pagos.")
+        ],
+        "/erp/promociones-campanas" => [
+            new("Diseño", "Definir promoción, vigencia y beneficio."),
+            new("Segmentación", "Asignar clientes, rutas o productos."),
+            new("Activación", "Publicar para POS, ruta o ambos."),
+            new("Resultados", "Medir respuesta y rentabilidad.")
+        ],
+        "/erp/rh" => [
+            new("Catálogo", "Registrar empleados y puesto."),
+            new("Control", "Vincular sucursal, estatus e incidencias."),
+            new("Seguimiento", "Actualizar cambios operativos."),
+            new("Consulta", "Visualizar historial administrativo.")
+        ],
+        "/finanzas/cxc" => [
+            new("Filtro", "Seleccionar cliente, ruta o vencimiento."),
+            new("Consulta", "Ver saldo, movimientos y cartera."),
+            new("Acción", "Registrar abono o emitir estado de cuenta."),
+            new("Seguimiento", "Escalar vencidos y prioridades.")
+        ],
+        "/finanzas/cxp" => [
+            new("Recepción", "Integrar obligaciones de compras."),
+            new("Programación", "Definir fecha y forma de pago."),
+            new("Aplicación", "Registrar pago y soporte."),
+            new("Control", "Monitorear saldos y vencimientos.")
+        ],
+        "/finanzas/bancos" => [
+            new("Alta", "Registrar banco, cuenta, saldo inicial y referencia."),
+            new("Movimiento", "Capturar depósitos, retiros o transferencias."),
+            new("Vinculación", "Relacionar cobranza, pago o traspaso."),
+            new("Control", "Supervisar saldo operativo y estatus.")
+        ],
+        "/finanzas/conciliacion" => [
+            new("Carga", "Importar o capturar estado de cuenta."),
+            new("Cruce", "Relacionar movimientos contra operación."),
+            new("Diferencia", "Marcar faltantes, sobrantes o dudas."),
+            new("Cierre", "Confirmar conciliación y dejar soporte.")
+        ],
+        "/finanzas/reportes-financieros" => [
+            new("Selección", "Elegir tipo de reporte y periodo."),
+            new("Filtro", "Aplicar sucursal, ruta, vendedor o banco."),
+            new("Análisis", "Visualizar indicadores y detalle."),
+            new("Salida", "Exportar reporte o compartir.")
+        ],
+        "/facturacion/ventas" => [
+            new("Selección", "Buscar venta o ticket facturable."),
+            new("Fiscal", "Validar RFC, razón social y uso CFDI."),
+            new("Emisión", "Timbrar comprobante y relacionar documentos."),
+            new("Seguimiento", "Enviar, descargar o corregir incidencia.")
+        ],
+        "/facturacion/global" => [
+            new("Base", "Seleccionar periodo y tickets elegibles."),
+            new("Fiscal", "Validar RFC genérico y régimen."),
+            new("Emisión", "Generar CFDI global con detalle."),
+            new("Cierre", "Guardar acuse y exportables.")
+        ],
+        "/facturacion/cancelaciones" => [
+            new("Solicitud", "Elegir factura y motivo."),
+            new("Validación", "Confirmar relación con venta y pagos."),
+            new("Proceso", "Enviar cancelación y esperar respuesta."),
+            new("Cierre", "Registrar aceptación o rechazo.")
+        ],
+        "/reportes/ruta" => [
+            new("Búsqueda", "Elegir ruta, fechas y responsable."),
+            new("Consulta", "Ver visitas, ventas y cobranza."),
+            new("Comparación", "Contrastar cumplimiento y cobertura."),
+            new("Salida", "Exportar o compartir resultados.")
+        ],
+        "/reportes/utilidad-margen" => [
+            new("Filtro", "Seleccionar periodo, producto o cliente."),
+            new("Cruce", "Traer costo, venta y descuentos."),
+            new("Análisis", "Calcular margen y utilidad."),
+            new("Salida", "Exportar detalle y resumen.")
+        ],
+        "/config/reglas-comerciales" => [
+            new("Definición", "Crear regla de negocio o validación."),
+            new("Ámbito", "Asignar sucursal, ruta, cliente o producto."),
+            new("Prioridad", "Definir vigencia, excepción y orden."),
+            new("Publicación", "Guardar y habilitar en operación.")
+        ],
+        "/config/alertas-sistema" => [
+            new("Diseño", "Capturar alerta, disparador y prioridad."),
+            new("Destino", "Elegir canal y responsables."),
+            new("Prueba", "Validar comportamiento esperado."),
+            new("Activación", "Publicar para monitoreo real.")
+        ],
+        "/config/app-movil" => [
+            new("Perfil", "Seleccionar grupo de configuración."),
+            new("Parámetros", "Definir sync, captura y permisos."),
+            new("Publicación", "Enviar cambios a rutas activas."),
+            new("Seguimiento", "Confirmar recepción en app.")
+        ],
+        "/config/audio" => [
+            new("Carga", "Subir audio o variante de locución."),
+            new("Clasificación", "Asignar escenario e idioma."),
+            new("Prueba", "Revisar volumen, duración y calidad."),
+            new("Publicación", "Habilitar para vendedor o ruta.")
+        ],
+        "/config/ia" => [
+            new("Curación", "Definir modelo, tono y uso permitido."),
+            new("Escenarios", "Vincular respuestas y contexto comercial."),
+            new("Revisión", "Validar contenido y aprobaciones."),
+            new("Publicación", "Activar versión operativa.")
         ],
         _ => [
             new("Lectura", "Ver estado de descargas y cargas pendientes."),
@@ -247,8 +749,32 @@
     {
         "/crm/prospectos" => ["Prospecto", "Contacto", "Ruta", "Interes", "Vendedor", "Estado"],
         "/crm/seguimiento-comercial" => ["Registro", "Relacionado", "Actividad", "Responsable", "Proxima accion", "Estado"],
+        "/pos/ventas" => ["Ticket", "Cliente", "Sucursal", "Total", "Forma de pago", "Estado"],
+        "/pos/caja" => ["Caja", "Usuario", "Apertura", "Entradas", "Salidas", "Estado"],
+        "/pos/tickets" => ["Folio", "Fecha", "Caja", "Cliente", "Monto", "Estatus"],
+        "/route/clientes-ruta" => ["Cliente", "Ruta", "Orden", "Día", "Saldo", "Estado"],
+        "/route/planeacion-visitas" => ["Ruta", "Fecha", "Clientes", "Prioridad", "Responsable", "Estatus"],
+        "/route/liquidacion-ruta" => ["Ruta", "Fecha", "Ventas", "Cobranza", "Diferencia", "Estado"],
         "/route/escenarios-comerciales" => ["Escenario", "Categoria", "Tono", "Ruta", "Prioridad", "Estatus"],
         "/ia-comercial/respuestas-vendedores" => ["Escenario", "Respuesta", "Tono", "Enfasis", "Uso", "Estatus"],
+        "/erp/compras" => ["Proveedor", "OC", "Recepción", "Costo", "Pago", "Estado"],
+        "/erp/promociones-campanas" => ["Promoción", "Tipo", "Vigencia", "Cobertura", "Beneficio", "Estado"],
+        "/erp/rh" => ["Empleado", "Puesto", "Sucursal", "Ingreso", "Responsable", "Estado"],
+        "/finanzas/cxc" => ["Cliente", "Ruta", "Vendedor", "Saldo", "Vencimiento", "Estado"],
+        "/finanzas/cxp" => ["Proveedor", "Documento", "Saldo", "Vencimiento", "Programado", "Estado"],
+        "/finanzas/bancos" => ["Banco", "Cuenta", "Sucursal", "Referencia", "Saldo", "Estado"],
+        "/finanzas/conciliacion" => ["Banco", "Fecha", "Movimiento", "Referencia", "Monto", "Estado"],
+        "/finanzas/reportes-financieros" => ["Reporte", "Periodo", "Sucursal", "Indicador", "Resultado", "Estado"],
+        "/facturacion/ventas" => ["Factura", "Cliente", "RFC", "Monto", "Uso CFDI", "Estado"],
+        "/facturacion/global" => ["Periodo", "Tickets", "RFC", "Monto", "Tipo", "Estado"],
+        "/facturacion/cancelaciones" => ["UUID", "Cliente", "Motivo", "Solicitud", "Respuesta", "Estado"],
+        "/reportes/ruta" => ["Ruta", "Periodo", "Visitas", "Venta", "Cobranza", "Estado"],
+        "/reportes/utilidad-margen" => ["Producto", "Cliente", "Costo", "Venta", "Margen", "Estado"],
+        "/config/reglas-comerciales" => ["Regla", "Tipo", "Ámbito", "Vigencia", "Prioridad", "Estado"],
+        "/config/alertas-sistema" => ["Alerta", "Canal", "Disparador", "Prioridad", "Destino", "Estado"],
+        "/config/app-movil" => ["Parámetro", "Grupo", "Valor", "Ruta", "Versión", "Estado"],
+        "/config/audio" => ["Audio", "Escenario", "Idioma", "Duración", "Formato", "Estado"],
+        "/config/ia" => ["Modelo", "Escenario", "Versión", "Responsable", "Uso", "Estado"],
         _ => ["Dispositivo", "Ruta", "Ultima sync", "Pendientes", "Version", "Estado"]
     };
 
@@ -262,6 +788,30 @@
             new(["SEG-1042", "Abarrotes El Sol", "Visita", "Luis H.", "Enviar propuesta", "Pendiente"]),
             new(["SEG-1043", "Prospecto Maya", "Llamada", "Ana P.", "Agendar demo", "Programada"])
         ],
+        "/pos/ventas" => [
+            new(["TK-01824", "Cliente General", "Matriz", "$428.00", "Efectivo", "Cobrado"]),
+            new(["TK-01825", "Tienda Méndez", "Matriz", "$1,240.00", "Mixto", "Pendiente factura"])
+        ],
+        "/pos/caja" => [
+            new(["Caja 1", "María R.", "08:00", "$12,400", "$1,240", "Abierta"]),
+            new(["Caja 2", "Luis C.", "08:15", "$8,600", "$420", "Arqueo"])
+        ],
+        "/pos/tickets" => [
+            new(["TK-01820", "17/06/2026", "Caja 1", "Cliente General", "$318.00", "Emitido"]),
+            new(["TK-01821", "17/06/2026", "Caja 2", "Farmacia Ruiz", "$824.00", "Reimpreso"])
+        ],
+        "/route/clientes-ruta" => [
+            new(["Abarrotes El Sol", "Ruta Norte", "1", "Lun-Mie-Vie", "$3,200", "Activo"]),
+            new(["Miscelánea López", "Ruta Norte", "2", "Lun-Mie-Vie", "$0", "Sin visita"])
+        ],
+        "/route/planeacion-visitas" => [
+            new(["Ruta Centro", "18/06/2026", "24", "Alta", "Ana P.", "Programada"]),
+            new(["Ruta Norte", "18/06/2026", "31", "Media", "Luis H.", "En revisión"])
+        ],
+        "/route/liquidacion-ruta" => [
+            new(["Ruta Norte", "17/06/2026", "$18,420", "$7,380", "$0", "Lista"]),
+            new(["Ruta Centro", "17/06/2026", "$15,800", "$5,640", "$240", "Con diferencia"])
+        ],
         "/route/escenarios-comerciales" => [
             new(["Cliente pide descuento", "Precio", "Persuasivo", "Todas", "Alta", "Activo"]),
             new(["Cliente reclama merma", "Reclamo", "Empatico", "Ruta Norte", "Media", "Activo"])
@@ -269,6 +819,78 @@
         "/ia-comercial/respuestas-vendedores" => [
             new(["Cliente dice que esta caro", "Resaltar rotacion y margen", "Consultivo", "Convincente", "Frecuente", "Aprobada"]),
             new(["Cliente pide credito", "Validar historial y alternativa", "Profesional", "Firme", "Cobranza", "Revision"])
+        ],
+        "/erp/compras" => [
+            new(["Proveedor ABC", "OC-204", "Pendiente", "$48,200", "30 días", "Abierta"]),
+            new(["Distribuidora Norte", "OC-205", "Recibida", "$16,840", "Contado", "Aplicada"])
+        ],
+        "/erp/promociones-campanas" => [
+            new(["Promo verano", "Cliente", "20/06-30/06", "Ruta Norte", "10% descuento", "Activa"]),
+            new(["Paquete refresco", "Producto", "17/06-01/07", "General", "2x1", "Programada"])
+        ],
+        "/erp/rh" => [
+            new(["María Ruiz", "Cajera", "Matriz", "12/02/2024", "RH", "Activa"]),
+            new(["Luis Herrera", "Vendedor", "Ruta Norte", "05/05/2025", "Supervisor", "Activo"])
+        ],
+        "/finanzas/cxc" => [
+            new(["Abarrotes El Sol", "Ruta Norte", "Luis H.", "$3,200", "24/06/2026", "Vigente"]),
+            new(["Miscelánea López", "Ruta Centro", "Ana P.", "$8,450", "10/06/2026", "Vencido"])
+        ],
+        "/finanzas/cxp" => [
+            new(["Proveedor ABC", "FAC-8821", "$18,200", "21/06/2026", "Sí", "Programado"]),
+            new(["Distribuidora Norte", "FAC-9155", "$7,840", "14/06/2026", "No", "Vencido"])
+        ],
+        "/finanzas/bancos" => [
+            new(["BBVA", "0192-884120", "Matriz", "DEP-1824", "$284,500", "Activa"]),
+            new(["Banorte", "0138-552901", "Centro", "TR-5520", "$102,840", "Operando"])
+        ],
+        "/finanzas/conciliacion" => [
+            new(["BBVA", "17/06/2026", "Depósito", "DEP-1824", "$12,800", "Conciliado"]),
+            new(["Banorte", "17/06/2026", "Transferencia", "TR-5520", "$7,840", "Con diferencia"])
+        ],
+        "/finanzas/reportes-financieros" => [
+            new(["Flujo semanal", "10/06-17/06", "Matriz", "Ingreso neto", "$82,140", "Generado"]),
+            new(["Cobranza por ruta", "Junio 2026", "General", "Recuperación", "78%", "Publicado"])
+        ],
+        "/facturacion/ventas" => [
+            new(["F-1024", "Farmacia Ruiz", "FRU010101AB1", "$1,240", "G03", "Timbrada"]),
+            new(["F-1025", "Abarrotes El Sol", "AES020202CD2", "$824", "P01", "Pendiente"])
+        ],
+        "/facturacion/global" => [
+            new(["17/06/2026", "214", "XAXX010101000", "$28,420", "Global diario", "Emitida"]),
+            new(["Semana 24", "892", "XAXX010101000", "$118,330", "Global semanal", "Borrador"])
+        ],
+        "/facturacion/cancelaciones" => [
+            new(["3FA2-19A", "Farmacia Ruiz", "Error datos", "17/06/2026", "Aceptada", "Cerrada"]),
+            new(["4BC8-22Q", "Abarrotes El Sol", "Duplicada", "17/06/2026", "Pendiente", "Abierta"])
+        ],
+        "/reportes/ruta" => [
+            new(["Ruta Norte", "17/06/2026", "31", "$18,420", "$7,380", "Publicado"]),
+            new(["Ruta Centro", "17/06/2026", "24", "$15,800", "$5,640", "Revisión"])
+        ],
+        "/reportes/utilidad-margen" => [
+            new(["Refresco 2L", "Abarrotes El Sol", "$18.50", "$24.00", "22.9%", "Saludable"]),
+            new(["Botana Mix", "Farmacia Ruiz", "$11.20", "$12.40", "9.7%", "Bajo margen"])
+        ],
+        "/config/reglas-comerciales" => [
+            new(["Descuento máximo ruta", "Validación", "Rutas", "30/06/2026", "Alta", "Activa"]),
+            new(["Venta a crédito condicionada", "Política", "Clientes", "Indefinida", "Media", "Revisión"])
+        ],
+        "/config/alertas-sistema" => [
+            new(["Cliente sin visita", "Panel", "72 horas sin evento", "Alta", "Supervisor", "Activa"]),
+            new(["Saldo vencido alto", "Correo", "Mayor a $10,000", "Crítica", "Cobranza", "Programada"])
+        ],
+        "/config/app-movil" => [
+            new(["Sync por WiFi", "Sincronización", "Solo WiFi", "Todas", "2.5.1", "Activo"]),
+            new(["Captura evidencia", "Operación", "Obligatoria", "Ruta Norte", "2.5.1", "Publicado"])
+        ],
+        "/config/audio" => [
+            new(["Objeción precio", "Venta", "ES-MX", "00:18", "MP3", "Aprobado"]),
+            new(["Recordatorio cobranza", "Cobranza", "ES-MX", "00:12", "WAV", "Borrador"])
+        ],
+        "/config/ia" => [
+            new(["Comercial-v3", "Precio alto", "3.0", "Gerencia", "Ruta", "Activo"]),
+            new(["Asistente-cobranza", "Promesa de pago", "1.4", "Cobranza", "Seguimiento", "Revisión"])
         ],
         _ => [
             new(["Tablet Ruta 01", "Ruta Norte", "17/06/2026 08:32", "3", "2.5.1", "Parcial"]),

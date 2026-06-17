@@ -79,6 +79,20 @@
             </ul>
         </li>
 
+        <li class="nav-item dropdown" data-menu-id="monitor">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/monitor") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('monitor')">
+                <i class="material-icons-outlined fs-5">sensors</i>
+                <span>Monitor</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/monitor/mapa", "map", "Mapa General")</li>
+                <li>@Item("/monitor/rutas", "monitoring", "Monitor Rutas")</li>
+                <li>@Item("/monitor/clientes", "groups", "Monitor Clientes")</li>
+            </ul>
+        </li>
+
         <li class="nav-item dropdown" data-menu-id="pos">
             <a class="nav-link d-flex align-items-center gap-1 @(Activo("/pos") ? "active" : "")"
                href="javascript:;" onclick="NavMenu.toggle('pos')">
@@ -87,36 +101,54 @@
                 <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
             </a>
             <ul class="dropdown-menu">
-                <li>@Item("/pos/ventas", "shopping_cart", "Ventas POS", pronto: true)</li>
-                <li>@Item("/pos/caja", "payments", "Caja", pronto: true)</li>
-                <li>@Item("/pos/tickets", "receipt_long", "Tickets", pronto: true)</li>
+                <li>@Item("/pos/ventas", "shopping_cart", "Ventas POS")</li>
+                <li>@Item("/pos/caja", "payments", "Caja")</li>
+                <li>@Item("/pos/tickets", "receipt_long", "Reimpresión de Ticket")</li>
             </ul>
         </li>
 
         <li class="nav-item dropdown" data-menu-id="route">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/route") || Activo("/monitor") || Activo("/ventas/ruta") ? "active" : "")"
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/route") || Activo("/ventas/ruta") ? "active" : "")"
                href="javascript:;" onclick="NavMenu.toggle('route')">
                 <i class="material-icons-outlined fs-5">route</i>
                 <span>ROUTE</span>
                 <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
             </a>
             <ul class="dropdown-menu">
-                <li>@Item("/monitor/mapa", "map", "Mapa General")</li>
-                <li>@Item("/monitor/rutas", "monitoring", "Monitor Rutas")</li>
-                <li>@Item("/monitor/clientes", "groups", "Monitor Clientes")</li>
                 <li>@Item("/ventas/ruta/recorridos", "directions_car", "Recorridos")</li>
                 <li>@Item("/ventas/ruta/visitas", "location_on", "Visitas")</li>
                 <li>@Item("/ventas/ruta/eventos", "notifications", "Eventos")</li>
+                <li>@Item("/route/clientes-ruta", "groups", "Clientes por Ruta")</li>
+                <li>@Item("/route/planeacion-visitas", "calendar_month", "Planeación de Visitas")</li>
+                <li>@Item("/route/liquidacion-ruta", "task_alt", "Liquidación de Ruta")</li>
                 <li>@Item("/route/escenarios-comerciales", "forum", "Escenarios Comerciales")</li>
                 <li>@Item("/route/sincronizacion-app", "sync", "Sincronización App")</li>
             </ul>
         </li>
 
         <li class="nav-item dropdown" data-menu-id="erp">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/core") || Activo("/erp") ? "active" : "")"
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/erp") || Activo("/ia-comercial") ? "active" : "")"
                href="javascript:;" onclick="NavMenu.toggle('erp')">
                 <i class="material-icons-outlined fs-5">business_center</i>
                 <span>ERP</span>
+                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+            </a>
+            <ul class="dropdown-menu">
+                <li>@Item("/erp/compras", "shopping_bag", "Compras")</li>
+                <li>@Item("/erp/promociones-campanas", "campaign", "Promociones y Campañas")</li>
+                <li>@Item("/erp/rh", "badge", "RH")</li>
+                <li>@Item("/ia-comercial/respuestas-vendedores", "record_voice_over", "Respuestas para Vendedores")</li>
+                <li>@Item("/erp/proveedores", "local_shipping", "Proveedores")</li>
+                <li>@Item("/erp/ordenes-compra", "assignment", "Órdenes de Compra")</li>
+                <li>@Item("/erp/recepcion-mercancia", "inventory_2", "Recepción de Mercancía")</li>
+            </ul>
+        </li>
+
+        <li class="nav-item dropdown" data-menu-id="core">
+            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/core") || Activo("/catalogos") ? "active" : "")"
+               href="javascript:;" onclick="NavMenu.toggle('core')">
+                <i class="material-icons-outlined fs-5">dataset</i>
+                <span>CORE</span>
                 <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
             </a>
             <ul class="dropdown-menu">
@@ -124,8 +156,18 @@
                 <li>@Item("/core/sucursales", "store", "Sucursales")</li>
                 <li>@Item("/core/zonas", "map", "Zonas")</li>
                 <li>@Item("/core/rutas", "route", "Rutas")</li>
-                <li>@Item("/catalogos/productos", "inventory_2", "Productos")</li>
-                <li>@Item("/catalogos/proveedores", "local_shipping", "Proveedores", pronto: true)</li>
+                <li>@Item("/core/productos", "inventory_2", "Productos", pronto: true)</li>
+                <li>@Item("/core/precios", "sell", "Precios", pronto: true)</li>
+                <li>@Item("/core/marcas", "branding_watermark", "Marcas", pronto: true)</li>
+                <li>@Item("/core/presentaciones", "widgets", "Presentaciones", pronto: true)</li>
+                <li>@Item("/core/monedas", "currency_exchange", "Monedas")</li>
+                <li>@Item("/core/series-documento", "tag", "Series de Documento")</li>
+                <li>@Item("/core/parametros", "tune", "Parámetros")</li>
+                <li>@Item("/catalogos/catalogo-tipos", "category", "Catálogos Tipo", pronto: true)</li>
+                <li>@Item("/catalogos/catalogo-items", "list", "Catálogos Item", pronto: true)</li>
+                <li>@Item("/catalogos/clasificaciones", "account_tree", "Clasificaciones", pronto: true)</li>
+                <li>@Item("/catalogos/unidades", "straighten", "Unidades", pronto: true)</li>
+                <li>@Item("/catalogos/impuestos", "receipt_long", "Impuestos", pronto: true)</li>
             </ul>
         </li>
 
@@ -151,22 +193,14 @@
                 <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
             </a>
             <ul class="dropdown-menu">
-                <li>@Item("/finanzas/cxc", "account_balance_wallet", "Cuentas por Cobrar", pronto: true)</li>
-                <li>@Item("/finanzas/cxp", "money_off", "Cuentas por Pagar", pronto: true)</li>
-                <li>@Item("/finanzas/alertas", "warning", "Alertas", pronto: true)</li>
-            </ul>
-        </li>
-
-        <li class="nav-item dropdown" data-menu-id="facturacion">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/facturacion") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('facturacion')">
-                <i class="material-icons-outlined fs-5">receipt</i>
-                <span>Facturación</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/facturacion/ventas", "receipt_long", "Facturación de Ventas", pronto: true)</li>
-                <li>@Item("/facturacion/cancelaciones", "block", "Cancelaciones", pronto: true)</li>
+                <li>@Item("/finanzas/cxc", "account_balance_wallet", "Cuentas por Cobrar")</li>
+                <li>@Item("/finanzas/cxp", "money_off", "Cuentas por Pagar")</li>
+                <li>@Item("/finanzas/bancos", "account_balance", "Bancos")</li>
+                <li>@Item("/finanzas/conciliacion", "balance", "Conciliación")</li>
+                <li>@Item("/finanzas/reportes-financieros", "query_stats", "Reportes Financieros")</li>
+                <li>@Item("/facturacion/ventas", "receipt_long", "Facturación de Ventas")</li>
+                <li>@Item("/facturacion/global", "description", "Facturación Global")</li>
+                <li>@Item("/facturacion/cancelaciones", "block", "Cancelaciones")</li>
             </ul>
         </li>
 
@@ -180,20 +214,9 @@
             <ul class="dropdown-menu">
                 <li>@Item("/reportes/ventas", "trending_up", "Ventas")</li>
                 <li>@Item("/reportes/clientes", "people", "Clientes")</li>
+                <li>@Item("/reportes/ruta", "route", "Reportes de Ruta")</li>
                 <li>@Item("/reportes/inventario/movimientos", "inventory", "Movimientos de Almacén")</li>
-            </ul>
-        </li>
-
-        <li class="nav-item dropdown" data-menu-id="ia">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/ia-comercial") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('ia')">
-                <i class="material-icons-outlined fs-5">psychology</i>
-                <span>IA Comercial</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/ia-comercial/respuestas-vendedores", "record_voice_over", "Respuestas para Vendedores")</li>
-                <li>@Item("/ia-comercial/sugerencias", "lightbulb", "Sugerencias IA", pronto: true)</li>
+                <li>@Item("/reportes/utilidad-margen", "monitoring", "Utilidad y Margen")</li>
             </ul>
         </li>
 
@@ -207,8 +230,12 @@
             <ul class="dropdown-menu">
                 <li>@Item("/seguridad/empleados", "badge", "Empleados")</li>
                 <li>@Item("/seguridad/usuarios", "manage_accounts", "Usuarios")</li>
+                <li>@Item("/seguridad/permisos", "fact_check", "Permisos", pronto: true)</li>
                 <li>@Item("/seguridad/roles", "shield", "Roles", pronto: true)</li>
+                <li>@Item("/admin/dispositivos-moviles", "devices", "Dispositivos Móviles")</li>
                 <li>@Item("/seguridad/sesiones", "sensors", "Sesiones", pronto: true)</li>
+                <li>@Item("/admin/auditoria", "history", "Auditoría")</li>
+                <li>@Item("/admin/bitacora-errores", "bug_report", "Bitácora de Errores")</li>
                 <li>@Item("/suscripcion", "workspace_premium", "Suscripción")</li>
             </ul>
         </li>
@@ -221,11 +248,21 @@
                 <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
             </a>
             <ul class="dropdown-menu">
-                <li>@Item("/core/monedas", "currency_exchange", "Monedas")</li>
-                <li>@Item("/core/series-documento", "tag", "Series de Documento")</li>
-                <li>@Item("/core/parametros", "tune", "Parámetros")</li>
+                <li>@Item("/config/datos-empresa", "domain", "Datos de Empresa")</li>
+                <li>@Item("/config/parametros-generales", "tune", "Parámetros Generales")</li>
+                <li>@Item("/config/parametros-venta", "point_of_sale", "Parámetros de Venta")</li>
+                <li>@Item("/config/parametros-ruta", "route", "Parámetros de Ruta")</li>
+                <li>@Item("/config/parametros-inventario", "inventory", "Parámetros de Inventario")</li>
+                <li>@Item("/config/parametros-credito", "credit_score", "Parámetros de Crédito")</li>
+                <li>@Item("/config/parametros-facturacion", "receipt_long", "Parámetros de Facturación")</li>
+                <li>@Item("/config/reglas-comerciales", "rule", "Reglas Comerciales")</li>
+                <li>@Item("/config/alertas-sistema", "warning", "Alertas del Sistema")</li>
+                <li>@Item("/config/app-movil", "phone_android", "Configuración App Móvil")</li>
                 <li>@Item("/config/app/dispositivos", "phone_android", "Dispositivos App")</li>
                 <li>@Item("/config/pos/dispositivos", "computer", "Dispositivos POS")</li>
+                <li>@Item("/config/audio", "graphic_eq", "Configuración de Audio")</li>
+                <li>@Item("/config/ia", "psychology", "Configuración de IA")</li>
+                <li>@Item("/config/catalogos-generales", "category", "Catálogos Generales")</li>
             </ul>
         </li>
     </text>;
