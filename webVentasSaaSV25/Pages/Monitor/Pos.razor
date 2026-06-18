@@ -1,0 +1,384 @@
+@page "/monitor/pos"
+@using System.Globalization
+
+<PageTitle>Monitor POS - Integra*System</PageTitle>
+
+<div class="pos-monitor-page">
+    <header class="pos-monitor-hero">
+        <div>
+            <div class="hero-chip-row">
+                <span class="hero-chip online">En linea</span>
+                <span class="hero-chip neutral">Actualizado 10:42 AM</span>
+            </div>
+            <h4>Monitor POS</h4>
+            <p>Supervision comercial diaria de sucursales para detectar ritmo de venta, alertas y desempeno comparativo.</p>
+        </div>
+        <div class="pos-monitor-actions">
+            <a class="btn btn-outline-secondary" href="/monitor/mapa">
+                <i class="material-icons-outlined">map</i>
+                Mapa General
+            </a>
+            <a class="btn btn-outline-secondary" href="/monitor/rutas">
+                <i class="material-icons-outlined">route</i>
+                Monitor Recorrido
+            </a>
+            <button class="btn btn-primary" type="button">
+                <i class="material-icons-outlined">insights</i>
+                Vista ejecutiva
+            </button>
+        </div>
+    </header>
+
+    <section class="pos-filter-bar">
+        <div class="filter-field">
+            <label class="form-label">Fecha</label>
+            <input class="form-control" type="date" @bind="_fecha" />
+        </div>
+        <div class="filter-field">
+            <label class="form-label">Zona</label>
+            <select class="form-select" @bind="_zona">
+                @foreach (var zona in _zonas)
+                {
+                    <option value="@zona">@zona</option>
+                }
+            </select>
+        </div>
+        <div class="filter-field">
+            <label class="form-label">Sucursal</label>
+            <select class="form-select" @bind="_sucursal">
+                @foreach (var sucursal in _sucursales)
+                {
+                    <option value="@sucursal">@sucursal</option>
+                }
+            </select>
+        </div>
+        <div class="filter-field">
+            <label class="form-label">Canal</label>
+            <select class="form-select" @bind="_canal">
+                @foreach (var canal in _canales)
+                {
+                    <option value="@canal">@canal</option>
+                }
+            </select>
+        </div>
+        <div class="quick-filter-row">
+            <button type="button" class="@QuickClass("Hoy")" @onclick='@(() => SetQuick("Hoy"))'>Hoy</button>
+            <button type="button" class="@QuickClass("Ayer")" @onclick='@(() => SetQuick("Ayer"))'>Ayer</button>
+            <button type="button" class="@QuickClass("7 dias")" @onclick='@(() => SetQuick("7 dias"))'>7 dias</button>
+        </div>
+    </section>
+
+    <section class="pos-kpi-grid">
+        @foreach (var item in _kpis)
+        {
+            <article class="pos-card kpi-card">
+                <span>@item.Title</span>
+                <strong>@item.Value</strong>
+                <small class="@DeltaClass(item.Positive)">@item.Delta</small>
+            </article>
+        }
+    </section>
+
+    <section class="pos-main-grid">
+        <article class="pos-card chart-card">
+            <div class="panel-head">
+                <div>
+                    <h5>Venta por hora</h5>
+                    <small>Comparativo operativo del dia contra referencia.</small>
+                </div>
+                <div class="legend-row">
+                    <span><i class="legend-dot today"></i>Hoy</span>
+                    <span><i class="legend-dot yesterday"></i>Ayer</span>
+                    <span><i class="legend-dot average"></i>Promedio semanal</span>
+                </div>
+            </div>
+
+            <div class="chart-shell">
+                <div class="chart-y-axis">
+                    <span>$240k</span>
+                    <span>$180k</span>
+                    <span>$120k</span>
+                    <span>$60k</span>
+                    <span>$0</span>
+                </div>
+
+                <div class="chart-stage">
+                    <div class="chart-grid-lines">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <svg viewBox="0 0 680 240" class="chart-svg" preserveAspectRatio="none">
+                        <polyline class="line average" points="20,188 90,176 160,168 230,154 300,146 370,132 440,124 510,116 580,104 650,96" />
+                        <polyline class="line yesterday" points="20,194 90,182 160,170 230,160 300,150 370,146 440,136 510,126 580,110 650,104" />
+                        <polyline class="line today" points="20,200 90,186 160,176 230,148 300,138 370,118 440,98 510,88 580,72 650,58" />
+                    </svg>
+                    <div class="chart-x-axis">
+                        @foreach (var label in _horas)
+                        {
+                            <span>@label</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <article class="pos-card ranking-card">
+            <div class="panel-head">
+                <div>
+                    <h5>Ranking de sucursales</h5>
+                    <small>Venta, tickets y ritmo comercial del dia.</small>
+                </div>
+            </div>
+
+            <div class="ranking-list">
+                @foreach (var row in _ranking)
+                {
+                    <div class="ranking-row">
+                        <div class="ranking-main">
+                            <strong>@row.Name</strong>
+                            <small>@row.Zone</small>
+                        </div>
+                        <div class="ranking-metrics">
+                            <span>@row.Sales</span>
+                            <small>@row.Tickets</small>
+                        </div>
+                        <div class="ranking-delta @DeltaClass(row.Positive)">
+                            @row.Delta
+                        </div>
+                        <div class="status-pill @row.StatusClass">
+                            <i></i>@row.Status
+                        </div>
+                    </div>
+                }
+            </div>
+        </article>
+    </section>
+
+    <section class="pos-bottom-grid">
+        <article class="pos-card">
+            <div class="panel-head">
+                <div>
+                    <h5>Top productos</h5>
+                    <small>Mayor rotacion del dia en sucursales.</small>
+                </div>
+            </div>
+            <div class="stack-list">
+                @foreach (var item in _topProductos)
+                {
+                    <div class="stack-row">
+                        <div>
+                            <strong>@item.Title</strong>
+                            <small>@item.Subtitle</small>
+                        </div>
+                        <span>@item.Value</span>
+                    </div>
+                }
+            </div>
+        </article>
+
+        <article class="pos-card">
+            <div class="panel-head">
+                <div>
+                    <h5>Formas de pago</h5>
+                    <small>Distribucion del ingreso por metodo de cobro.</small>
+                </div>
+            </div>
+            <div class="payment-list">
+                @foreach (var item in _formasPago)
+                {
+                    <div class="payment-row">
+                        <div class="payment-title">
+                            <strong>@item.Title</strong>
+                            <small>@item.Subtitle</small>
+                        </div>
+                        <div class="payment-bar">
+                            <span style="width:@item.Percent%"></span>
+                        </div>
+                        <span class="payment-value">@item.Value</span>
+                    </div>
+                }
+            </div>
+        </article>
+
+        <article class="pos-card">
+            <div class="panel-head">
+                <div>
+                    <h5>Alertas operativas</h5>
+                    <small>Puntos que merecen seguimiento inmediato.</small>
+                </div>
+            </div>
+            <div class="alert-list">
+                @foreach (var item in _alertas)
+                {
+                    <div class="alert-row @item.LevelClass">
+                        <div class="alert-icon">
+                            <i class="material-icons-outlined">@item.Icon</i>
+                        </div>
+                        <div>
+                            <strong>@item.Title</strong>
+                            <small>@item.Subtitle</small>
+                        </div>
+                    </div>
+                }
+            </div>
+        </article>
+    </section>
+</div>
+
+<style>
+    .pos-monitor-page{width:calc(100vw - 2rem);margin-left:calc(50% - 50vw + 1rem);min-height:calc(100vh - 150px);padding-bottom:1.5rem}
+    .pos-monitor-hero{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem}
+    .pos-monitor-hero h4{margin:.45rem 0 .3rem;font-size:1.6rem;font-weight:800;color:#1b365d}
+    .pos-monitor-hero p{margin:0;max-width:780px;color:#5b6b84}
+    .hero-chip-row,.pos-monitor-actions{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+    .hero-chip{display:inline-flex;align-items:center;padding:.35rem .75rem;border-radius:999px;font-size:.78rem;font-weight:700;border:1px solid transparent}
+    .hero-chip.online{background:#ecfdf3;color:#166534;border-color:#bbf7d0}
+    .hero-chip.neutral{background:#eff4fb;color:#355070;border-color:#d7e3f4}
+    .pos-monitor-actions .btn{display:inline-flex;align-items:center;gap:.35rem}
+    .pos-filter-bar,.pos-card{background:#fff;border:1px solid #e5edf6;border-radius:18px;box-shadow:0 18px 48px rgba(32,56,85,.08)}
+    .pos-filter-bar{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr)) auto;gap:1rem;padding:1rem 1.15rem;margin-bottom:1rem}
+    .filter-field label{font-size:.82rem;color:#53657d;font-weight:700}
+    .quick-filter-row{display:flex;align-items:end;gap:.55rem;justify-content:flex-end}
+    .quick-filter-row button{border:1px solid #cddaea;background:#f8fbff;color:#355070;border-radius:12px;padding:.72rem .95rem;font-weight:700;min-width:86px}
+    .quick-filter-row button.active{background:#1f6feb;color:#fff;border-color:#1f6feb;box-shadow:0 12px 26px rgba(31,111,235,.22)}
+    .pos-kpi-grid{display:grid;grid-template-columns:repeat(6,minmax(140px,1fr));gap:.85rem;margin-bottom:1rem}
+    .kpi-card{padding:1rem 1rem .95rem}
+    .kpi-card span{display:block;color:#67778f;font-size:.8rem}
+    .kpi-card strong{display:block;margin-top:.2rem;font-size:1.4rem;color:#15314b}
+    .kpi-card small{display:inline-flex;margin-top:.45rem;font-weight:700}
+    .delta-up{color:#0f8a55}
+    .delta-down{color:#b42318}
+    .pos-main-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(320px,.95fr);gap:1rem;margin-bottom:1rem}
+    .pos-bottom-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+    .chart-card,.ranking-card,.pos-bottom-grid .pos-card{padding:1rem 1.1rem}
+    .panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem}
+    .panel-head h5{margin:0;color:#15314b;font-size:1.02rem;font-weight:800}
+    .panel-head small{color:#6c7b90}
+    .legend-row{display:flex;gap:.9rem;flex-wrap:wrap;font-size:.8rem;color:#607088}
+    .legend-row span{display:inline-flex;align-items:center;gap:.35rem}
+    .legend-dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+    .legend-dot.today{background:#1f6feb}
+    .legend-dot.yesterday{background:#8fb8ff}
+    .legend-dot.average{background:#b8c3d6}
+    .chart-shell{display:grid;grid-template-columns:64px 1fr;gap:.75rem;align-items:stretch}
+    .chart-y-axis{display:flex;flex-direction:column;justify-content:space-between;padding:.35rem 0 1.8rem;color:#8a97ab;font-size:.78rem}
+    .chart-stage{position:relative;min-height:290px}
+    .chart-grid-lines{position:absolute;inset:0 0 1.8rem 0;display:grid;grid-template-rows:repeat(4,1fr)}
+    .chart-grid-lines span{border-bottom:1px dashed #dce6f2}
+    .chart-svg{position:absolute;inset:0 0 1.8rem 0;width:100%;height:calc(100% - 1.8rem)}
+    .chart-svg .line{fill:none;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+    .chart-svg .line.today{stroke:#1f6feb}
+    .chart-svg .line.yesterday{stroke:#8fb8ff}
+    .chart-svg .line.average{stroke:#bcc7d9}
+    .chart-x-axis{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(10,1fr);gap:.25rem;color:#8090a6;font-size:.78rem}
+    .chart-x-axis span{text-align:center}
+    .ranking-list,.stack-list,.alert-list{display:flex;flex-direction:column;gap:.7rem}
+    .ranking-row,.stack-row,.alert-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.8rem .85rem;border:1px solid #e7edf5;border-radius:14px;background:#fbfdff}
+    .ranking-main,.payment-title{display:flex;flex-direction:column}
+    .ranking-main strong,.stack-row strong,.alert-row strong{color:#17324d}
+    .ranking-main small,.stack-row small,.alert-row small,.payment-title small{color:#7a899d}
+    .ranking-metrics{text-align:right;min-width:88px}
+    .ranking-metrics span,.stack-row span,.payment-value{font-weight:800;color:#17324d}
+    .ranking-metrics small{display:block;color:#75859b}
+    .ranking-delta{font-weight:800;min-width:72px;text-align:right}
+    .status-pill{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;padding:.38rem .65rem;font-size:.76rem;font-weight:800}
+    .status-pill i{width:8px;height:8px;border-radius:999px;display:inline-block}
+    .status-good{background:#ecfdf3;color:#166534}
+    .status-good i{background:#22c55e}
+    .status-watch{background:#fff7ed;color:#9a3412}
+    .status-watch i{background:#f59e0b}
+    .status-critical{background:#fef2f2;color:#b42318}
+    .status-critical i{background:#ef4444}
+    .payment-list{display:flex;flex-direction:column;gap:.95rem}
+    .payment-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(120px,1.3fr) auto;gap:.8rem;align-items:center}
+    .payment-bar{height:10px;border-radius:999px;background:#ebf1f8;overflow:hidden}
+    .payment-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#1f6feb,#6aa6ff)}
+    .alert-row{justify-content:flex-start;align-items:flex-start}
+    .alert-icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto}
+    .alert-row.warning .alert-icon{background:#fff7ed;color:#b45309}
+    .alert-row.danger .alert-icon{background:#fef2f2;color:#b42318}
+    .alert-row.info .alert-icon{background:#eff6ff;color:#1d4ed8}
+    @@media (max-width: 1200px){
+        .pos-filter-bar{grid-template-columns:repeat(2,minmax(160px,1fr))}
+        .quick-filter-row{justify-content:flex-start}
+        .pos-kpi-grid{grid-template-columns:repeat(3,minmax(140px,1fr))}
+        .pos-main-grid,.pos-bottom-grid{grid-template-columns:1fr}
+    }
+    @@media (max-width: 768px){
+        .pos-monitor-page{width:auto;margin-left:0}
+        .pos-monitor-hero{flex-direction:column}
+        .pos-filter-bar{grid-template-columns:1fr}
+        .pos-kpi-grid{grid-template-columns:repeat(2,minmax(130px,1fr))}
+        .chart-shell{grid-template-columns:1fr}
+        .chart-y-axis{display:none}
+        .payment-row{grid-template-columns:1fr}
+    }
+</style>
+
+@code {
+    private readonly CultureInfo _mx = new("es-MX");
+    private DateTime _fecha = DateTime.Today;
+    private string _zona = "Todas";
+    private string _sucursal = "Todas";
+    private string _canal = "General";
+    private string _quick = "Hoy";
+
+    private readonly string[] _zonas = ["Todas", "Centro", "Norte", "Sur", "Foraneas"];
+    private readonly string[] _sucursales = ["Todas", "Centro 1", "Centro 2", "Mercado Norte", "Plaza Sur", "Matriz"];
+    private readonly string[] _canales = ["General", "Mostrador", "Entrega", "Mostrador web"];
+    private readonly string[] _horas = ["8 AM", "9 AM", "10 AM", "11 AM", "12 PM", "1 PM", "2 PM", "3 PM", "4 PM", "5 PM"];
+
+    private readonly List<KpiCardModel> _kpis =
+    [
+        new("Venta total del dia", "$428,560", "+12.4% vs ayer", true),
+        new("Tickets", "1,286", "+8.1% volumen", true),
+        new("Ticket promedio", "$333", "-2.1% mezcla", false),
+        new("Articulos vendidos", "4,912", "+9.7% unidades", true),
+        new("Sucursales activas", "14 / 16", "2 con alerta", false),
+        new("Proyeccion de cierre", "$612,000", "+6.8% objetivo", true)
+    ];
+
+    private readonly List<RankingRowModel> _ranking =
+    [
+        new("Matriz", "Zona Centro", "$86,240", "264 tickets", "+14.2%", true, "Excelente", "status-good"),
+        new("Centro 1", "Zona Centro", "$71,980", "218 tickets", "+9.4%", true, "Bueno", "status-good"),
+        new("Mercado Norte", "Zona Norte", "$58,430", "190 tickets", "+3.6%", true, "Bueno", "status-watch"),
+        new("Plaza Sur", "Zona Sur", "$42,810", "161 tickets", "-6.8%", false, "Regular", "status-watch"),
+        new("Centro 2", "Zona Centro", "$28,200", "109 tickets", "-18.4%", false, "Critico", "status-critical")
+    ];
+
+    private readonly List<MetricRowModel> _topProductos =
+    [
+        new("Agua 1L", "742 piezas vendidas", "$58,400"),
+        new("Refresco 600ml", "689 piezas vendidas", "$46,180"),
+        new("Botana surtida", "421 piezas vendidas", "$31,740"),
+        new("Pan dulce", "398 piezas vendidas", "$24,980")
+    ];
+
+    private readonly List<PaymentRowModel> _formasPago =
+    [
+        new("Efectivo", "52% del ingreso", "$222,851", 52),
+        new("Tarjeta", "31% del ingreso", "$132,853", 31),
+        new("Transferencia", "11% del ingreso", "$47,142", 11),
+        new("Vales / otros", "6% del ingreso", "$25,714", 6)
+    ];
+
+    private readonly List<AlertRowModel> _alertas =
+    [
+        new("Centro 2 sin venta en 48 min", "Conviene validar flujo de tickets, caja o afluencia en piso.", "warning", "schedule"),
+        new("Plaza Sur con ticket promedio bajo", "Va 18% debajo de su referencia del mismo horario.", "danger", "trending_down"),
+        new("Matriz con descuentos altos", "El descuento acumulado rebasa el umbral operativo esperado.", "info", "sell")
+    ];
+
+    private void SetQuick(string value) => _quick = value;
+    private string QuickClass(string value) => string.Equals(_quick, value, StringComparison.OrdinalIgnoreCase) ? "active" : string.Empty;
+    private static string DeltaClass(bool positive) => positive ? "delta-up" : "delta-down";
+
+    private sealed record KpiCardModel(string Title, string Value, string Delta, bool Positive);
+    private sealed record RankingRowModel(string Name, string Zone, string Sales, string Tickets, string Delta, bool Positive, string Status, string StatusClass);
+    private sealed record MetricRowModel(string Title, string Subtitle, string Value);
+    private sealed record PaymentRowModel(string Title, string Subtitle, string Value, int Percent);
+    private sealed record AlertRowModel(string Title, string Subtitle, string LevelClass, string Icon);
+}
