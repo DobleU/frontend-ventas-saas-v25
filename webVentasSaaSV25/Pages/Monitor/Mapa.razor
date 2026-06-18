@@ -20,10 +20,6 @@
                 <i class="material-icons-outlined">groups</i>
                 Monitor clientes
             </a>
-            <button class="btn btn-outline-secondary" type="button" @onclick="LoadDemo">
-                <i class="material-icons-outlined">science</i>
-                Demo
-            </button>
             <button class="btn btn-outline-primary" type="button" @onclick="ReloadRouteAsync" disabled="@(_routeId <= 0 || _loading)">
                 <i class="material-icons-outlined">refresh</i>
                 Recargar
@@ -41,10 +37,10 @@
     }
 
     <section class="map-metrics" aria-label="Resumen de mapa">
-        <div><span>Clientes</span><strong>@VisibleStops.Count</strong></div>
-        <div><span>Visitados</span><strong>@VisibleStops.Count(s => s.Status == VisitStatus.Done)</strong></div>
-        <div><span>Pendientes</span><strong>@VisibleStops.Count(s => s.Status == VisitStatus.Pending)</strong></div>
-        <div><span>Alertas</span><strong>@VisibleStops.Count(s => s.Status == VisitStatus.Alert)</strong></div>
+        <div><span>Total clientes en ruta</span><strong>@VisibleStops.Count</strong></div>
+        <div><span>Programados del dia</span><strong>@VisibleStops.Count</strong></div>
+        <div><span>Con imagen</span><strong>@ClientesConImagenTexto</strong></div>
+        <div><span>Ultima visita +15 dias</span><strong>@ClientesConVisitaVencidaTexto</strong></div>
     </section>
 
     <section class="route-map-shell">
@@ -71,28 +67,29 @@
                     </select>
                 }
 
-                <label class="form-label mt-3">Buscar</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-white">
-                        <i class="material-icons-outlined">search</i>
-                    </span>
-                    <input class="form-control" placeholder="Cliente, RFC, telefono" @bind="_search" @bind:event="oninput" />
-                </div>
-            </div>
+                <label class="form-label mt-3">Fecha de trabajo</label>
+                <input class="form-control" type="date" value="@_fechaTrabajo.ToString("yyyy-MM-dd")" @onchange="OnFechaTrabajoChangedAsync" />
 
-            <div class="control-card compact">
-                <label class="form-label">Estado</label>
-                <div class="status-filter">
-                    <button type="button" class="@FilterClass(null)" @onclick="() => SetFilter(null)">Todos</button>
-                    <button type="button" class="@FilterClass(VisitStatus.Pending)" @onclick="() => SetFilter(VisitStatus.Pending)">Pendientes</button>
-                    <button type="button" class="@FilterClass(VisitStatus.Done)" @onclick="() => SetFilter(VisitStatus.Done)">Visitados</button>
-                    <button type="button" class="@FilterClass(VisitStatus.Alert)" @onclick="() => SetFilter(VisitStatus.Alert)">Alertas</button>
+                <label class="form-label mt-3">Dia de la semana</label>
+                <div class="chip-filter-grid">
+                    @foreach (var dia in _diasSemana)
+                    {
+                        <button type="button" class="@DayClass(dia.Numero)" @onclick='@(() => SetDayAsync(dia.Numero))'>@dia.Nombre</button>
+                    }
+                </div>
+
+                <label class="form-label mt-3">Frecuencia</label>
+                <div class="chip-filter-grid">
+                    @foreach (var frecuencia in _frecuencias)
+                    {
+                        <button type="button" class="@FrequencyClass(frecuencia)" @onclick='@(() => SetFrequencyAsync(frecuencia))'>@frecuencia</button>
+                    }
                 </div>
             </div>
 
             <div class="stop-list">
                 <div class="stop-list-title">
-                    <h6>Itinerario</h6>
+                    <h6>Clientes del dia</h6>
                     <span>@VisibleStops.Count</span>
                 </div>
 
@@ -102,7 +99,7 @@
                 }
                 else if (!VisibleStops.Any())
                 {
-                    <div class="empty-state small">Selecciona una ruta o usa Demo.</div>
+                    <div class="empty-state small">Selecciona ruta y fecha para consultar clientes programados.</div>
                 }
                 else
                 {
@@ -124,7 +121,7 @@
         <main class="map-stage">
             <div class="map-topbar">
                 <div>
-                    <span class="source-pill">@(_demoMode ? "Demo local" : "Datos API")</span>
+                    <span class="source-pill">Datos programados</span>
                     <span class="text-muted">@MapStatusText</span>
                 </div>
                 <div class="map-tools">
@@ -142,7 +139,7 @@
                     <div class="empty-state">
                         <i class="material-icons-outlined">map</i>
                         <strong>Sin puntos en el mapa</strong>
-                        <span>Elige una ruta o presiona Demo para probar la operacion.</span>
+                        <span>Elige una ruta y fecha para revisar la programacion del dia.</span>
                     </div>
                 }
                 else
@@ -188,22 +185,30 @@
                     </div>
                 </div>
 
+                <div class="client-photo-card">
+                    @if (!string.IsNullOrWhiteSpace(_selected.ImageUrl))
+                    {
+                        <img src="@_selected.ImageUrl" alt="Foto de cliente" />
+                    }
+                    else
+                    {
+                        <div class="photo-empty">No tiene imagen</div>
+                    }
+                </div>
+
                 <div class="detail-grid">
                     <span>Orden</span><strong>@_selected.Order</strong>
                     <span>Estado</span><strong>@StatusText(_selected.Status)</strong>
                     <span>Telefono</span><strong>@TextOrDash(_selected.Phone)</strong>
                     <span>RFC</span><strong>@TextOrDash(_selected.Rfc)</strong>
                     <span>Credito</span><strong>@_selected.CreditText</strong>
-                    <span>Ultima visita</span><strong>@_selected.LastVisit</strong>
+                    <span>Ultima visita</span><strong class="@VisitAgeClass(_selected)">@_selected.LastVisit</strong>
+                    <span>Frecuencia</span><strong>@FrequencyLabel(_selected.FrequencyWeeks)</strong>
                     <span>GPS</span><strong>@GeoText(_selected.GeoSource)</strong>
+                    <span>Monto historico</span><strong>@Money(_selected.TotalSalesAmount)</strong>
+                    <span>Facturacion</span><strong>@(_selected.HasBilling ? TextOrDash(_selected.BillingName) : "No factura")</strong>
                     <span>Top productos</span><strong class="preline">@TextOrDash(_selected.ProductTop)</strong>
                     <span>Direccion</span><strong>@_selected.Address</strong>
-                </div>
-
-                <div class="detail-actions">
-                    <button class="btn btn-sm btn-primary" type="button" @onclick="MarkDone">Marcar visitado</button>
-                    <button class="btn btn-sm btn-outline-danger" type="button" @onclick="MarkAlert">Marcar alerta</button>
-                    <button class="btn btn-sm btn-outline-secondary" type="button" @onclick="MarkPending">Pendiente</button>
                 </div>
             }
         </aside>
@@ -258,9 +263,10 @@
     .route-sidebar{display:flex;flex-direction:column;gap:.75rem;min-height:calc(100vh - 300px)}
     .control-card{padding:1rem}
     .control-card.compact{padding:.85rem 1rem}
-    .status-filter{display:grid;grid-template-columns:1fr 1fr;gap:.45rem}
-    .status-filter button{border:1px solid #d7dde6;background:#fff;color:#475467;border-radius:7px;padding:.45rem .55rem;font-size:.86rem}
-    .status-filter button.active{border-color:#0d6efd;background:#eaf2ff;color:#0d6efd;font-weight:650}
+    .chip-filter-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}
+    .chip-filter-grid button{border:1px solid #d7dde6;background:#fff;color:#475467;border-radius:7px;padding:.45rem .55rem;font-size:.86rem}
+    .chip-filter-grid button.active{border-color:#0d6efd;background:#eaf2ff;color:#0d6efd;font-weight:650}
+    .chip-filter-grid button:disabled{background:#f8fafc;color:#98a2b3;border-color:#e5e7eb;cursor:not-allowed}
     .stop-list{background:#fff;border:1px solid #e6eaf0;border-radius:8px;overflow:auto;max-height:calc(100vh - 455px)}
     .stop-list-title{position:sticky;top:0;background:#fff;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:.9rem 1rem;border-bottom:1px solid #eef2f7}
     .stop-list-title h6{margin:0;font-weight:700}
@@ -299,9 +305,13 @@
     .detail-head{display:flex;align-items:flex-start;gap:.65rem;padding-bottom:1rem;border-bottom:1px solid #eef2f7;margin-bottom:1rem}
     .detail-head h5{margin:0;font-weight:700;color:#344054}
     .detail-head small{color:#667085}
+    .client-photo-card{margin-bottom:1rem}
+    .client-photo-card img{width:100%;height:190px;object-fit:cover;border-radius:10px;border:1px solid #e6eaf0;background:#f8fafc}
+    .photo-empty{height:190px;border:1px dashed #d0d8e2;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#667085;background:#f8fafc;font-weight:600}
     .detail-grid{display:grid;grid-template-columns:105px 1fr;gap:.65rem .75rem;font-size:.9rem}
     .detail-grid span{color:#667085}
     .detail-grid strong{font-weight:650;color:#344054}
+    .visit-late{color:#b42318 !important}
     .preline{white-space:pre-line}
     .detail-actions{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:1.25rem}
     .monitor-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;margin-top:.85rem}
@@ -328,33 +338,44 @@
     private enum VisitStatus { Pending, Done, Alert }
 
     private MapMode _mode = MapMode.Route;
-    private VisitStatus? _statusFilter;
     private int _routeId;
     private long _recorridoId;
-    private string? _search;
     private string? _error;
     private bool _loading;
-    private bool _demoMode;
     private decimal _zoom = 1m;
     private int _panX;
     private int _panY;
     private bool _restored;
+    private DateTime _fechaTrabajo = DateTime.Today;
+    private string _frecuenciaSeleccionada = "Todas";
     private List<MapaRutaOptionResponse> _routes = [];
     private List<MapaRecorridoOptionResponse> _recorridos = [];
     private List<MapStop> _stops = [];
     private MapStop? _selected;
+    private readonly (int Numero, string Nombre)[] _diasSemana =
+    [
+        (1, "Lunes"),
+        (2, "Martes"),
+        (3, "Miercoles"),
+        (4, "Jueves"),
+        (5, "Viernes"),
+        (6, "Sabado"),
+        (7, "Domingo")
+    ];
+    private readonly string[] _frecuencias = ["Todas", "Cada semana", "Cada 2 semanas", "Cada 3 semanas", "Cada 4 semanas"];
 
     private List<MapStop> VisibleStops => _stops
-        .Where(s => _statusFilter is null || s.Status == _statusFilter)
-        .Where(MatchesSearch)
+        .Where(MatchesFrequency)
         .OrderBy(s => s.Order)
         .ToList();
 
     private string RoutePath => string.Join(" ", VisibleStops.Select(s => $"{s.X},{s.Y}"));
 
     private string MapStatusText => VisibleStops.Any()
-        ? $"{VisibleStops.Count} punto(s) listos para operar."
-        : "Sin clientes cargados para esta ruta.";
+        ? $"{VisibleStops.Count} cliente(s) programado(s) para {_fechaTrabajo:dd/MM/yyyy}."
+        : "Sin clientes programados para la fecha seleccionada.";
+    private string ClientesConImagenTexto => VisibleStops.Count == 0 ? "0" : VisibleStops.Count(x => x.HasImage).ToString("N0");
+    private string ClientesConVisitaVencidaTexto => VisibleStops.Count == 0 ? "0" : VisibleStops.Count(x => x.DaysSinceLastVisit.HasValue && x.DaysSinceLastVisit.Value > 15).ToString("N0");
 
     private string RutasRouteUrl => _routeId > 0 ? $"/monitor/rutas?ruta={_routeId}" : "/monitor/rutas";
     private string ClientesRouteUrl => _routeId > 0 ? $"/monitor/clientes?ruta={_routeId}" : "/monitor/clientes";
@@ -407,6 +428,14 @@
         await LoadRouteAsync();
     }
 
+    private async Task OnFechaTrabajoChangedAsync(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var fecha))
+            _fechaTrabajo = fecha.Date;
+        await SaveStateAsync();
+        await LoadRouteAsync();
+    }
+
     private async Task ReloadRouteAsync() => await LoadRouteAsync();
 
     private async Task LoadRecorridosAsync()
@@ -420,7 +449,6 @@
 
     private async Task LoadRouteAsync()
     {
-        _demoMode = false;
         _selected = null;
         _stops = [];
         _error = null;
@@ -438,7 +466,7 @@
         {
             IdRuta = _routeId,
             IdRecorrido = _mode == MapMode.Tour ? _recorridoId : null,
-            Search = _search,
+            FechaTrabajo = _fechaTrabajo,
             Modo = _mode == MapMode.Tour ? "recorrido" : "ruta"
         });
         _loading = false;
@@ -453,35 +481,6 @@
         await SaveStateAsync();
     }
 
-    private void LoadDemo()
-    {
-        _demoMode = true;
-        _error = null;
-        _routeId = _routeId <= 0 ? -1 : _routeId;
-        var routeName = _routeId > 0 ? _routes.FirstOrDefault(r => r.IdRuta == _routeId)?.Nombre ?? "Ruta seleccionada" : "Ruta demo norte";
-
-        _stops = Enumerable.Range(1, 18)
-            .Select(i => new MapStop(
-                Id: i,
-                Order: i,
-                Name: $"Cliente demo {i:00}",
-                RouteName: routeName,
-                Address: $"Zona {((i - 1) % 6) + 1}, manzana {20 + i}",
-                Phone: $"555-02{i:000}",
-                Rfc: $"DEMO{i:000}0101AA{i % 10}",
-                CreditText: i % 4 == 0 ? $"Limite {(3000 + i * 250):C0}" : "Sin credito",
-                LastVisit: i % 3 == 0 ? "Ayer" : "Sin visita reciente",
-                Status: i % 7 == 0 ? VisitStatus.Alert : i % 5 == 0 ? VisitStatus.Done : VisitStatus.Pending,
-                X: PositionX(i),
-                Y: PositionY(i),
-                GeoSource: i % 6 == 0 ? "CLIENTE_DIR" : "REAL_FIN",
-                ProductTop: "BOT|000100\nBTP|000058\nCAUTR|000002"))
-            .ToList();
-
-        _selected = _stops.FirstOrDefault();
-        ResetView();
-    }
-
     private static MapStop FromApiPoint(MapaClientePuntoResponse point)
         => new(
             Id: point.IdCliente,
@@ -492,9 +491,17 @@
             Phone: point.Telefono,
             Rfc: point.Rfc,
             CreditText: point.Credito,
-            LastVisit: point.UltimaVisita,
+            LastVisit: BuildLastVisitText(point.UltimaVisitaUtc, point.DiasSinVisita, point.UltimaVisita),
             GeoSource: point.GeoSource,
             ProductTop: point.ProductoTop,
+            FrequencyWeeks: point.FrecuenciaSemanas <= 0 ? 1 : point.FrecuenciaSemanas,
+            HasImage: point.TieneImagen,
+            ImageUrl: point.UrlImagen,
+            LastVisitUtc: point.UltimaVisitaUtc,
+            DaysSinceLastVisit: point.DiasSinVisita,
+            TotalSalesAmount: point.MontoHistoricoTotal,
+            HasBilling: point.TieneFacturacion,
+            BillingName: point.RazonSocialFacturacion,
             Status: point.Estado?.ToLowerInvariant() switch
             {
                 "visitado" => VisitStatus.Done,
@@ -504,13 +511,19 @@
             X: (int)Math.Clamp(point.X, 8, 92),
             Y: (int)Math.Clamp(point.Y, 10, 90));
 
-    private bool MatchesSearch(MapStop stop)
+    private bool MatchesFrequency(MapStop stop)
     {
-        if (string.IsNullOrWhiteSpace(_search)) return true;
-        return stop.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)
-            || stop.Address.Contains(_search, StringComparison.OrdinalIgnoreCase)
-            || (stop.Phone?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
-            || (stop.Rfc?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+        if (string.Equals(_frecuenciaSeleccionada, "Todas", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return _frecuenciaSeleccionada switch
+        {
+            "Cada semana" => stop.FrequencyWeeks == 1,
+            "Cada 2 semanas" => stop.FrequencyWeeks == 2,
+            "Cada 3 semanas" => stop.FrequencyWeeks == 3,
+            "Cada 4 semanas" => stop.FrequencyWeeks == 4,
+            _ => true
+        };
     }
 
     private void SelectStop(MapStop stop)
@@ -529,12 +542,20 @@
         await LoadRouteAsync();
     }
     private string ModeClass(MapMode mode) => _mode == mode ? "btn-primary" : "btn-outline-primary";
-    private async void SetFilter(VisitStatus? status)
+    private async Task SetDayAsync(int diaSemana)
     {
-        _statusFilter = status;
+        var currentDay = DiaSemanaNumero(_fechaTrabajo);
+        _fechaTrabajo = _fechaTrabajo.AddDays(diaSemana - currentDay);
+        await SaveStateAsync();
+        await LoadRouteAsync();
+    }
+    private string DayClass(int diaSemana) => DiaSemanaNumero(_fechaTrabajo) == diaSemana ? "active" : "";
+    private async Task SetFrequencyAsync(string frecuencia)
+    {
+        _frecuenciaSeleccionada = frecuencia;
         await SaveStateAsync();
     }
-    private string FilterClass(VisitStatus? status) => _statusFilter == status ? "active" : "";
+    private string FrequencyClass(string frecuencia) => string.Equals(_frecuenciaSeleccionada, frecuencia, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     private string SelectedClass(MapStop stop) => _selected?.Id == stop.Id ? "selected" : "";
     private static string StatusClass(VisitStatus status) => status switch { VisitStatus.Done => "done", VisitStatus.Alert => "alert", _ => "pending" };
     private static string StatusText(VisitStatus status) => status switch { VisitStatus.Done => "Visitado", VisitStatus.Alert => "Alerta", _ => "Pendiente" };
@@ -548,20 +569,6 @@
         _ => "Sin coordenada confiable"
     };
 
-    private void MarkDone() => UpdateSelectedStatus(VisitStatus.Done);
-    private void MarkAlert() => UpdateSelectedStatus(VisitStatus.Alert);
-    private void MarkPending() => UpdateSelectedStatus(VisitStatus.Pending);
-
-    private void UpdateSelectedStatus(VisitStatus status)
-    {
-        if (_selected is null) return;
-        var index = _stops.FindIndex(s => s.Id == _selected.Id);
-        if (index < 0) return;
-        _stops[index] = _stops[index] with { Status = status };
-        _selected = _stops[index];
-        _ = SaveStateAsync();
-    }
-
     private void ZoomIn() => _zoom = Math.Min(2.4m, _zoom + .2m);
     private void ZoomOut() => _zoom = Math.Max(.8m, _zoom - .2m);
     private void ResetView()
@@ -570,6 +577,27 @@
         _panX = 0;
         _panY = 0;
     }
+
+    private static string Money(decimal amount) => amount.ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("es-MX"));
+    private static string BuildLastVisitText(DateTime? ultimaVisitaUtc, int? diasSinVisita, string? fallback)
+    {
+        if (ultimaVisitaUtc.HasValue)
+        {
+            var fecha = ultimaVisitaUtc.Value.ToLocalTime().ToString("dd/MM/yyyy");
+            return diasSinVisita.HasValue ? $"{fecha} · {diasSinVisita.Value} dia(s)" : fecha;
+        }
+
+        return string.IsNullOrWhiteSpace(fallback) ? "Sin visita reciente" : fallback;
+    }
+    private static string FrequencyLabel(int weeks) => weeks switch
+    {
+        <= 1 => "Cada semana",
+        2 => "Cada 2 semanas",
+        3 => "Cada 3 semanas",
+        4 => "Cada 4 semanas",
+        _ => $"Cada {weeks} semanas"
+    };
+    private static string VisitAgeClass(MapStop stop) => stop.DaysSinceLastVisit.HasValue && stop.DaysSinceLastVisit.Value > 15 ? "visit-late" : string.Empty;
 
     private async Task RestoreStateAsync()
     {
@@ -593,10 +621,9 @@
             }
 
             _recorridoId = state.RecorridoId;
-            _search = state.Search;
-            _demoMode = state.DemoMode;
+            _fechaTrabajo = state.FechaTrabajo == default ? DateTime.Today : state.FechaTrabajo;
+            _frecuenciaSeleccionada = string.IsNullOrWhiteSpace(state.Frecuencia) ? "Todas" : state.Frecuencia;
             _mode = Enum.TryParse<MapMode>(state.Mode, out var mode) ? mode : MapMode.Route;
-            _statusFilter = Enum.TryParse<VisitStatus>(state.Filter, out var filter) ? filter : null;
         }
         catch
         {
@@ -605,9 +632,21 @@
 
     private async Task SaveStateAsync()
     {
-        var payload = new MonitorMapState(_routeId, _recorridoId, _search, _mode.ToString(), _statusFilter?.ToString(), _selected?.Id, _demoMode);
+        var payload = new MonitorMapState(_routeId, _recorridoId, _fechaTrabajo, _frecuenciaSeleccionada, _mode.ToString(), _selected?.Id);
         await JS.InvokeVoidAsync("AppInterop.localStorageSet", StorageKey, System.Text.Json.JsonSerializer.Serialize(payload));
     }
+
+    private static int DiaSemanaNumero(DateTime fecha)
+        => fecha.DayOfWeek switch
+        {
+            DayOfWeek.Monday => 1,
+            DayOfWeek.Tuesday => 2,
+            DayOfWeek.Wednesday => 3,
+            DayOfWeek.Thursday => 4,
+            DayOfWeek.Friday => 5,
+            DayOfWeek.Saturday => 6,
+            _ => 7
+        };
 
     private static int PositionX(int order)
     {
@@ -633,11 +672,19 @@
         string? Rfc,
         string CreditText,
         string LastVisit,
+        int FrequencyWeeks,
+        bool HasImage,
+        string? ImageUrl,
+        DateTime? LastVisitUtc,
+        int? DaysSinceLastVisit,
+        decimal TotalSalesAmount,
+        bool HasBilling,
+        string? BillingName,
         VisitStatus Status,
         int X,
         int Y,
         string GeoSource,
         string? ProductTop);
 
-    private sealed record MonitorMapState(int RouteId, long RecorridoId, string? Search, string Mode, string? Filter, int? SelectedClientId, bool DemoMode);
+    private sealed record MonitorMapState(int RouteId, long RecorridoId, DateTime FechaTrabajo, string Frecuencia, string Mode, int? SelectedClientId);
 }

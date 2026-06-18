@@ -18,6 +18,7 @@ public sealed class MonitorMapaService(ApiClient api)
         var query = $"modo={Uri.EscapeDataString(request.Modo ?? "ruta")}";
         if (request.IdRuta.HasValue) query += $"&idRuta={request.IdRuta.Value}";
         if (request.IdRecorrido.HasValue) query += $"&idRecorrido={request.IdRecorrido.Value}";
+        if (request.FechaTrabajo.HasValue) query += $"&fechaTrabajo={request.FechaTrabajo.Value:yyyy-MM-dd}";
         if (!string.IsNullOrWhiteSpace(request.Search)) query += $"&search={Uri.EscapeDataString(request.Search)}";
         return api.GetAsync<MapaRutaResponse>($"api/v1/mapa/ruta?{query}");
     }
@@ -84,6 +85,7 @@ public sealed class MapaRutaRequest
 {
     public int? IdRuta { get; set; }
     public long? IdRecorrido { get; set; }
+    public DateTime? FechaTrabajo { get; set; }
     public string? Search { get; set; }
     public string? Modo { get; set; } = "ruta";
 }
@@ -120,6 +122,14 @@ public sealed class MapaClientePuntoResponse
     public string GeoSource { get; init; } = "SIN_COORDENADA";
     public int GeoQuality { get; init; }
     public string? ProductoTop { get; init; }
+    public int FrecuenciaSemanas { get; init; }
+    public bool TieneImagen { get; init; }
+    public string? UrlImagen { get; init; }
+    public DateTime? UltimaVisitaUtc { get; init; }
+    public int? DiasSinVisita { get; init; }
+    public decimal MontoHistoricoTotal { get; init; }
+    public bool TieneFacturacion { get; init; }
+    public string? RazonSocialFacturacion { get; init; }
 }
 
 public sealed class MapaRutaOptionResponse

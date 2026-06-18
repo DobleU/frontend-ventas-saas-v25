@@ -8,7 +8,7 @@
     <header class="monitor-hero">
         <div>
             <h4>Monitor de Recorrido</h4>
-            <p>Consulta operativa por ruta y fecha con foco en cobertura, tiempos de traslado, visitas y venta.</p>
+            <p>Consulta operativa por ruta y fecha con foco en recorrido, cobertura, tiempos de traslado, visitas y venta.</p>
         </div>
         <div class="monitor-hero-actions">
             <a class="btn btn-outline-secondary" href="@MapaRouteUrl">
@@ -59,37 +59,6 @@
             <div><span>Pendientes</span><strong>@Pendientes</strong></div>
             <div><span>Venta</span><strong>@_visitas.Kpi.MontoVentas.ToString("C0", _mx)</strong></div>
         </article>
-    </section>
-
-    <section class="monitor-shortcuts">
-        <a class="shortcut-card" href="@MapaRouteUrl">
-            <span class="material-icons-outlined">map</span>
-            <div>
-                <strong>Mapa general</strong>
-                <small>Ubicacion visual y secuencia de clientes.</small>
-            </div>
-        </a>
-        <a class="shortcut-card" href="@VisitasRouteUrl">
-            <span class="material-icons-outlined">location_on</span>
-            <div>
-                <strong>Visitas</strong>
-                <small>Auditoria tabular y exportable.</small>
-            </div>
-        </a>
-        <a class="shortcut-card" href="@RecorridosRouteUrl">
-            <span class="material-icons-outlined">route</span>
-            <div>
-                <strong>Recorridos</strong>
-                <small>Historial de cierres y efectividad.</small>
-            </div>
-        </a>
-        <a class="shortcut-card" href="@ClientesRouteUrl">
-            <span class="material-icons-outlined">groups</span>
-            <div>
-                <strong>Monitor clientes</strong>
-                <small>Contexto comercial por cliente de ruta.</small>
-            </div>
-        </a>
     </section>
 
     <section class="monitor-route-layout">
@@ -170,6 +139,37 @@
                         <span>Se detectaron @_recorrido.TotalRecargas bloque(s) de recarga registrados en el cierre operativo.</span>
                     </div>
                 }
+
+                <div class="route-focus-card">
+                    <div class="panel-head compact-head">
+                        <div>
+                            <h5>Ficha principal del recorrido</h5>
+                            <small>Prioridad visual para datos operativos del cierre.</small>
+                        </div>
+                    </div>
+
+                    @if (_recorrido is null)
+                    {
+                        <div class="monitor-empty small">No hay datos del recorrido para esta ruta y fecha.</div>
+                    }
+                    else
+                    {
+                        <div class="detail-grid route-focus-grid">
+                            <span>Ruta</span><strong>@_recorrido.Ruta</strong>
+                            <span>Vendedor</span><strong>@Texto(_recorrido.Vendedor)</strong>
+                            <span>Inicio</span><strong>@FechaHora(_recorrido.FechaInicioUtc)</strong>
+                            <span>Fin</span><strong>@FechaHora(_recorrido.FechaFinUtc)</strong>
+                            <span>Estatus</span><strong>@Texto(_recorrido.Estatus)</strong>
+                            <span>Efectividad</span><strong>@_recorrido.Efectividad.ToString("N1", _mx)%</strong>
+                            <span>Monto efectivo</span><strong>@_recorrido.MontoEfectivo.ToString("C2", _mx)</strong>
+                            <span>Monto credito</span><strong>@_recorrido.MontoCredito.ToString("C2", _mx)</strong>
+                            <span>Cancelaciones</span><strong>@_recorrido.MontoCancelaciones.ToString("C2", _mx)</strong>
+                            <span>Recargas</span><strong>@(_recorrido.TieneRecargas ? $"{_recorrido.TotalRecargas} evento(s)" : "Sin recargas")</strong>
+                            <span>Traslado total</span><strong>@_visitas.Kpi.TiempoMuertoMinutos min</strong>
+                            <span>QR leidos</span><strong>@_visitas.Kpi.LecturasQr</strong>
+                        </div>
+                    }
+                </div>
             }
         </article>
 
@@ -192,12 +192,12 @@
             else
             {
                 <div class="route-client-list">
-                    @foreach (var visit in _visitas.Visitas)
+                    @foreach (var visit in OrderedVisits)
                     {
                         <button type="button" class="route-client-card @SelectedClass(visit)" @onclick="() => SelectVisit(visit)">
                             <span class="status-dot @StatusClass(visit)"></span>
                             <div class="route-client-main">
-                                <strong>@(visit.Sucursal ?? visit.Cliente)</strong>
+                                <strong>#@VisitOrder(visit) @(visit.Sucursal ?? visit.Cliente)</strong>
                                 <small>@visit.Cliente</small>
                                 <small>@Texto(visit.Direccion)</small>
                             </div>
@@ -211,8 +211,8 @@
         <article class="monitor-panel">
             <div class="panel-head">
                 <div>
-                    <h5>Detalle de visita</h5>
-                    <small>Tiempo, venta y estatus del punto seleccionado</small>
+                    <h5>Detalle del cliente visitado</h5>
+                    <small>Venta, productos y datos generales del punto seleccionado.</small>
                 </div>
             </div>
 
@@ -225,6 +225,7 @@
                 <div class="detail-grid">
                     <span>Cliente</span><strong>@_selectedVisit.Cliente</strong>
                     <span>Sucursal</span><strong>@Texto(_selectedVisit.Sucursal)</strong>
+                    <span>Direccion</span><strong>@Texto(_selectedVisit.Direccion)</strong>
                     <span>Estatus</span><strong>@Texto(_selectedVisit.Estatus)</strong>
                     <span>Motivo</span><strong>@Texto(_selectedVisit.MotivoNoVenta)</strong>
                     <span>Inicio</span><strong>@FechaHora(_selectedVisit.FechaInicioUtc)</strong>
@@ -236,6 +237,7 @@
                     <span>GPS</span><strong>@GpsTexto(_selectedVisit)</strong>
                     <span>Ventas</span><strong>@_selectedVisit.Ventas</strong>
                     <span>Monto</span><strong>@_selectedVisit.MontoVentas.ToString("C2", _mx)</strong>
+                    <span>Resultado</span><strong>@(_selectedVisit.Ventas > 0 ? "Con venta" : "Sin venta")</strong>
                     <span>Productos</span><strong class="preline">@Texto(_selectedVisit.ProductosVendidos)</strong>
                     <span>Observaciones</span><strong>@Texto(_selectedVisit.Observaciones)</strong>
                 </div>
@@ -243,6 +245,46 @@
                 <div class="detail-actions">
                     <a class="btn btn-sm btn-primary" href="@($"/monitor/clientes?ruta={_routeId}&cliente={_selectedVisit.IdCliente}")">Ir a monitor cliente</a>
                     <a class="btn btn-sm btn-outline-secondary" href="@($"/monitor/mapa?ruta={_routeId}&cliente={_selectedVisit.IdCliente}")">Ver en mapa</a>
+                </div>
+            }
+        </article>
+
+        <article class="monitor-panel">
+            <div class="panel-head">
+                <div>
+                    <h5>Mapa del recorrido</h5>
+                    <small>Orden real de visita sobre el recorrido seleccionado.</small>
+                </div>
+            </div>
+
+            @if (_loading)
+            {
+                <div class="monitor-empty small">Cargando mapa del recorrido...</div>
+            }
+            else if (!OrderedMapStops.Any())
+            {
+                <div class="monitor-empty small">Sin puntos disponibles para dibujar el recorrido.</div>
+            }
+            else
+            {
+                <div class="route-map-canvas">
+                    <div class="route-map-grid"></div>
+                    <div class="route-map-layer">
+                        <svg class="route-map-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <polyline points="@RouteMapPath" />
+                        </svg>
+
+                        @foreach (var stop in OrderedMapStops)
+                        {
+                            <button type="button"
+                                    class="route-map-pin @RoutePinClass(stop)"
+                                    style="left:@stop.X%;top:@stop.Y%"
+                                    title="@stop.Nombre"
+                                    @onclick="() => SelectVisitByClient(stop.IdCliente)">
+                                <span>@stop.Orden</span>
+                            </button>
+                        }
+                    </div>
                 </div>
             }
         </article>
@@ -300,18 +342,15 @@
     .monitor-kpis div,.summary-card{background:#f8fafc;border:1px solid #edf2f7;border-radius:9px;padding:.9rem}
     .monitor-kpis span,.summary-card span{display:block;color:#667085;font-size:.8rem}
     .monitor-kpis strong,.summary-card strong{font-size:1.2rem;color:#344054}
-    .monitor-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}
-    .shortcut-card{text-decoration:none;padding:.95rem 1rem;border-radius:10px;border:1px solid #e6eaf0;background:linear-gradient(180deg,#fff,#f8fbff);box-shadow:0 4px 18px rgba(18,38,63,.04);color:#344054}
-    .shortcut-card:hover{border-color:#bfd7ff;background:#eef5ff}
-    .shortcut-card span{font-size:22px;color:#0d6efd}
-    .shortcut-card strong,.shortcut-card small{display:block}
-    .shortcut-card small{color:#667085}
-    .monitor-route-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,.95fr) minmax(320px,.85fr);gap:1rem}
+    .monitor-route-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr) minmax(320px,.85fr);gap:1rem}
     .route-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
     .route-summary-grid-hero{margin-top:.5rem}
     .recarga-banner{margin-top:1rem;border:1px solid #dbe5ef;background:#f8fbff;border-radius:10px;padding:.9rem 1rem;display:grid;gap:.2rem}
     .recarga-banner strong{color:#0d6efd}
     .recarga-banner span{color:#667085}
+    .route-focus-card{margin-top:1rem;border:1px solid #dbe5ef;background:linear-gradient(180deg,#fff,#f8fbff);border-radius:12px;padding:1rem}
+    .compact-head{margin-bottom:.75rem}
+    .route-focus-grid{grid-template-columns:140px 1fr}
     .route-client-list{display:grid;gap:.6rem;max-height:620px;overflow:auto}
     .route-client-card{width:100%;border:1px solid #edf2f7;background:#fff;border-radius:10px;padding:.75rem;gap:.75rem;align-items:flex-start;text-align:left}
     .route-client-card.active-card,.route-client-card:hover{background:#eef5ff;border-color:#bfd7ff}
@@ -322,6 +361,16 @@
     .route-client-order{display:inline-flex;align-items:center;justify-content:center;min-width:58px;height:34px;border-radius:999px;background:#eef2f7;font-weight:700;font-size:.8rem;color:#344054;padding:0 .55rem}
     .status-dot{width:12px;height:12px;border-radius:50%;background:#98a2b3;flex:0 0 auto;margin-top:.25rem}
     .status-dot.pending{background:#0d6efd}.status-dot.done{background:#198754}.status-dot.alert{background:#dc3545}
+    .route-map-canvas{position:relative;min-height:380px;border:1px solid #dbe5ef;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#d9efe2,#f4f8fb 45%,#d8e7f8)}
+    .route-map-grid{position:absolute;inset:0;background:linear-gradient(90deg,transparent 49%,rgba(255,255,255,.55) 50%,transparent 51%),linear-gradient(0deg,transparent 49%,rgba(255,255,255,.55) 50%,transparent 51%);background-size:90px 90px}
+    .route-map-layer{position:absolute;inset:0}
+    .route-map-svg{position:absolute;inset:0;width:100%;height:100%}
+    .route-map-svg polyline{fill:none;stroke:#0d6efd;stroke-width:.48;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1.2 1;opacity:.82}
+    .route-map-pin{position:absolute;z-index:2;transform:translate(-50%,-100%);width:34px;height:34px;border:2px solid #fff;border-radius:50% 50% 50% 8px;rotate:45deg;color:#fff;box-shadow:0 10px 20px rgba(16,24,40,.2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.74rem;border:none}
+    .route-map-pin span{rotate:-45deg}
+    .route-map-pin.pending{background:#0d6efd}
+    .route-map-pin.done{background:#198754}
+    .route-map-pin.alert{background:#dc3545}
     .detail-grid{display:grid;grid-template-columns:110px 1fr;gap:.7rem .8rem;font-size:.92rem}
     .detail-grid span{color:#667085}.detail-grid strong{color:#344054;font-weight:650}
     .preline{white-space:pre-line}
@@ -329,8 +378,8 @@
     .monitor-empty.small{min-height:120px}
     .source-pill{display:inline-flex;align-items:center;background:#eaf2ff;color:#0d6efd;border-radius:999px;font-size:.78rem;font-weight:700;padding:.22rem .55rem}
     @@media (max-width:1399.98px){.monitor-route-layout{grid-template-columns:1fr 1fr}}
-    @@media (max-width:1199.98px){.monitor-route-layout,.monitor-shortcuts{grid-template-columns:1fr 1fr}.monitor-top-grid{flex-direction:column}}
-    @@media (max-width:767.98px){.monitor-shortcuts,.monitor-route-layout{grid-template-columns:1fr}}
+    @@media (max-width:1199.98px){.monitor-route-layout{grid-template-columns:1fr 1fr}.monitor-top-grid{flex-direction:column}}
+    @@media (max-width:767.98px){.monitor-route-layout{grid-template-columns:1fr}}
 </style>
 
 @code {
@@ -340,6 +389,7 @@
     private List<MapaRutaOptionResponse> _routes = [];
     private ReporteRecorridosResponse _recorridos = new();
     private ReporteVisitasResponse _visitas = new();
+    private List<MapaClientePuntoResponse> _mapStops = [];
     private ReporteRecorridoRowResponse? _recorrido;
     private ReporteVisitaRowResponse? _selectedVisit;
     private int _routeId;
@@ -353,6 +403,14 @@
     private string VisitasRouteUrl => _routeId > 0 ? $"/ventas/ruta/visitas?ruta={_routeId}" : "/ventas/ruta/visitas";
     private string ProgramadosTexto => _recorrido?.VisitasProgramadas.ToString("N0", _mx) ?? "0";
     private int Pendientes => Math.Max((_recorrido?.VisitasProgramadas ?? 0) - _visitas.Kpi.TotalVisitas, 0);
+    private List<ReporteVisitaRowResponse> OrderedVisits => _visitas.Visitas
+        .OrderBy(x => x.FechaInicioUtc ?? DateTime.MaxValue)
+        .ThenBy(x => x.IdVisita)
+        .ToList();
+    private List<MapaClientePuntoResponse> OrderedMapStops => _mapStops
+        .OrderBy(x => x.Orden)
+        .ToList();
+    private string RouteMapPath => string.Join(" ", OrderedMapStops.Select(s => $"{Math.Clamp(s.X, 8m, 92m)},{Math.Clamp(s.Y, 10m, 90m)}"));
     private string ResumenRuta => _recorrido is null
         ? "Sin recorrido cargado"
         : $"{_recorrido.Ruta} · {_fecha:dd/MM/yyyy}";
@@ -383,6 +441,7 @@
         _error = null;
         _recorridos = new();
         _visitas = new();
+        _mapStops = [];
         _recorrido = null;
         _selectedVisit = null;
 
@@ -402,8 +461,17 @@
         {
             var (visitas, visitasError) = await MonitorApi.GetReporteVisitasAsync(_routeId, _fecha, _recorrido.IdRecorrido);
             _visitas = visitas ?? new();
-            _selectedVisit = _visitas.Visitas.FirstOrDefault();
-            _error = visitasError ?? recorridosError;
+            _selectedVisit = OrderedVisits.FirstOrDefault();
+
+            var (mapa, mapaError) = await MonitorApi.GetRutaAsync(new MapaRutaRequest
+            {
+                IdRuta = _routeId,
+                IdRecorrido = _recorrido.IdRecorrido,
+                Modo = "recorrido"
+            });
+            _mapStops = mapa?.Puntos.ToList() ?? [];
+
+            _error = visitasError ?? mapaError ?? recorridosError;
         }
         else
         {
@@ -414,8 +482,18 @@
     }
 
     private void SelectVisit(ReporteVisitaRowResponse visit) => _selectedVisit = visit;
+    private void SelectVisitByClient(int idCliente)
+        => _selectedVisit = OrderedVisits.FirstOrDefault(x => x.IdCliente == idCliente) ?? _selectedVisit;
 
     private string SelectedClass(ReporteVisitaRowResponse visit) => _selectedVisit?.IdVisita == visit.IdVisita ? "active-card" : "";
+    private int VisitOrder(ReporteVisitaRowResponse visit)
+        => OrderedVisits.FindIndex(x => x.IdVisita == visit.IdVisita) + 1;
+    private string RoutePinClass(MapaClientePuntoResponse stop)
+    {
+        var visit = OrderedVisits.FirstOrDefault(x => x.IdCliente == stop.IdCliente);
+        if (visit is null) return "pending";
+        return StatusClass(visit);
+    }
 
     private static string StatusClass(ReporteVisitaRowResponse visit)
     {
