@@ -26,6 +26,10 @@
     {
         <div class="alert alert-warning py-2">@_error</div>
     }
+    @if (!CanShowMap && !string.IsNullOrWhiteSpace(MapConfigMessage))
+    {
+        <div class="alert alert-info py-2">@MapConfigMessage</div>
+    }
 
     <section class="monitor-top-grid">
         <article class="monitor-panel">
@@ -253,7 +257,7 @@
             <div class="panel-head">
                 <div>
                     <h5>Mapa del recorrido</h5>
-                    <small>Google Maps con coordenadas reales del recorrido seleccionado.</small>
+                    <small>Mapa real con puntos numerados del recorrido seleccionado.</small>
                 </div>
             </div>
 
@@ -261,27 +265,42 @@
             {
                 <div class="monitor-empty small">Cargando mapa del recorrido...</div>
             }
-            else if (string.IsNullOrWhiteSpace(RouteGoogleMapsEmbedUrl))
+            else if (!CanShowMap)
+            {
+                <div class="monitor-empty small">@MapConfigMessage</div>
+            }
+            else if (RouteBounds is null || string.IsNullOrWhiteSpace(RouteMapEmbedUrl))
             {
                 <div class="monitor-empty small">Sin puntos con coordenadas validas para dibujar el recorrido.</div>
             }
             else
             {
                 <div class="route-map-actions">
-                    @if (!string.IsNullOrWhiteSpace(RouteGoogleMapsUrl))
+                    @if (!string.IsNullOrWhiteSpace(RouteMapUrl))
                     {
-                        <a class="btn btn-sm btn-outline-secondary" href="@RouteGoogleMapsUrl" target="_blank" rel="noopener noreferrer">
+                        <a class="btn btn-sm btn-outline-secondary" href="@RouteMapUrl" target="_blank" rel="noopener noreferrer">
                             <i class="material-icons-outlined">open_in_new</i>
-                            Abrir en Google Maps
+                            Abrir mapa
                         </a>
                     }
                 </div>
                 <div class="route-map-canvas route-map-canvas-real">
                     <iframe class="google-map-frame"
                             title="Mapa del recorrido"
-                            src="@RouteGoogleMapsEmbedUrl"
-                            loading="lazy"
-                            referrerpolicy="no-referrer-when-downgrade"></iframe>
+                            src="@RouteMapEmbedUrl"
+                            loading="lazy"></iframe>
+                    <div class="route-map-marker-layer">
+                        @foreach (var stop in OrderedMapStops)
+                        {
+                            <button type="button"
+                                    class="route-map-pin @RoutePinClass(stop)"
+                                    style="left:@RouteMarkerLeft(stop);top:@RouteMarkerTop(stop)"
+                                    title="@($"{stop.Orden}. {stop.Nombre}")"
+                                    @onclick="() => SelectVisitByClient(stop.IdCliente)">
+                                <span>@stop.Orden</span>
+                            </button>
+                        }
+                    </div>
                 </div>
             }
         </article>
@@ -362,6 +381,12 @@
     .route-map-canvas{position:relative;min-height:380px;border:1px solid #dbe5ef;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#d9efe2,#f4f8fb 45%,#d8e7f8)}
     .route-map-canvas-real{background:#eef2f7}
     .google-map-frame{width:100%;height:100%;min-height:380px;border:0;display:block}
+    .route-map-marker-layer{position:absolute;inset:0;pointer-events:none}
+    .route-map-pin{position:absolute;transform:translate(-50%,-100%);width:34px;height:34px;border:2px solid #fff;border-radius:50% 50% 50% 8px;rotate:45deg;color:#fff;box-shadow:0 10px 20px rgba(16,24,40,.2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.74rem;border:none;pointer-events:auto}
+    .route-map-pin span{rotate:-45deg}
+    .route-map-pin.pending{background:#0d6efd}
+    .route-map-pin.done{background:#198754}
+    .route-map-pin.alert{background:#dc3545}
     .detail-grid{display:grid;grid-template-columns:110px 1fr;gap:.7rem .8rem;font-size:.92rem}
     .detail-grid span{color:#667085}.detail-grid strong{color:#344054;font-weight:650}
     .preline{white-space:pre-line}
@@ -383,6 +408,7 @@
     private List<MapaClientePuntoResponse> _mapStops = [];
     private ReporteRecorridoRowResponse? _recorrido;
     private ReporteVisitaRowResponse? _selectedVisit;
+    private MapaConfiguracionResponse? _mapConfig;
     private int _routeId;
     private DateTime _fecha = DateTime.Today;
     private bool _loading;
@@ -405,18 +431,25 @@
     private MapaClientePuntoResponse? SelectedMapStop => _selectedVisit is null
         ? OrderedMapStops.FirstOrDefault()
         : OrderedMapStops.FirstOrDefault(x => x.IdCliente == _selectedVisit.IdCliente) ?? OrderedMapStops.FirstOrDefault();
-    private string? RouteGoogleMapsEmbedUrl => BuildRouteGoogleMapsEmbedUrl(OrderedMapStops, SelectedMapStop);
-    private string? RouteGoogleMapsUrl => BuildRouteGoogleMapsUrl(OrderedMapStops, SelectedMapStop);
+    private MapBounds? RouteBounds => BuildBounds(OrderedMapStops, SelectedMapStop);
+    private string? RouteMapEmbedUrl => BuildOpenStreetMapEmbedUrl(RouteBounds);
+    private string? RouteMapUrl => BuildOpenStreetMapUrl(RouteBounds, SelectedMapStop);
     private string ResumenRuta => _recorrido is null
         ? "Sin recorrido cargado"
         : $"{_recorrido.Ruta} · {_fecha:dd/MM/yyyy}";
     private string EstadoRecorrido => Texto(_recorrido?.Estatus);
+    private bool CanShowMap => _mapConfig?.MostrarMapa == true && _mapConfig?.TieneApiKey == true;
+    private string MapConfigMessage => string.IsNullOrWhiteSpace(_mapConfig?.MensajeConfiguracion)
+        ? "Debe dar de alta la configuracion de mapas para esta empresa."
+        : _mapConfig!.MensajeConfiguracion;
 
     protected override async Task OnInitializedAsync()
     {
+        var (config, configError) = await MonitorApi.GetConfiguracionAsync();
+        _mapConfig = config;
         var (routes, error) = await MonitorApi.GetRutasAsync();
         _routes = routes?.ToList() ?? [];
-        _error = error;
+        _error = error ?? configError;
 
         if (QueryRouteId is > 0)
         {
@@ -478,9 +511,17 @@
     }
 
     private void SelectVisit(ReporteVisitaRowResponse visit) => _selectedVisit = visit;
+    private void SelectVisitByClient(int idCliente)
+        => _selectedVisit = OrderedVisits.FirstOrDefault(x => x.IdCliente == idCliente) ?? _selectedVisit;
     private string SelectedClass(ReporteVisitaRowResponse visit) => _selectedVisit?.IdVisita == visit.IdVisita ? "active-card" : "";
     private int VisitOrder(ReporteVisitaRowResponse visit)
         => OrderedVisits.FindIndex(x => x.IdVisita == visit.IdVisita) + 1;
+    private string RoutePinClass(MapaClientePuntoResponse stop)
+    {
+        var visit = OrderedVisits.FirstOrDefault(x => x.IdCliente == stop.IdCliente);
+        if (visit is null) return "pending";
+        return StatusClass(visit);
+    }
 
     private static string StatusClass(ReporteVisitaRowResponse visit)
     {
@@ -497,68 +538,57 @@
         var baseText = $"{visit.DistanciaMetros.Value:N1} m";
         return visit.GpsValido50m ? $"{baseText} · Valido" : $"{baseText} · Fuera de rango";
     }
+    private string RouteMarkerLeft(MapaClientePuntoResponse stop) => $"{ProjectX(stop):0.##}%";
+    private string RouteMarkerTop(MapaClientePuntoResponse stop) => $"{ProjectY(stop):0.##}%";
+    private double ProjectX(MapaClientePuntoResponse stop)
+    {
+        var bounds = RouteBounds;
+        if (bounds is null || !HasValidCoordinates(stop)) return 50d;
+        var min = bounds.MinLon;
+        var max = bounds.MaxLon;
+        var value = (double)stop.Longitud!.Value;
+        return max <= min ? 50d : Math.Clamp((value - min) / (max - min) * 100d, 4d, 96d);
+    }
+    private double ProjectY(MapaClientePuntoResponse stop)
+    {
+        var bounds = RouteBounds;
+        if (bounds is null || !HasValidCoordinates(stop)) return 50d;
+        var min = MercatorY(bounds.MaxLat);
+        var max = MercatorY(bounds.MinLat);
+        var value = MercatorY((double)stop.Latitud!.Value);
+        return max <= min ? 50d : Math.Clamp((value - min) / (max - min) * 100d, 6d, 96d);
+    }
     private static bool HasValidCoordinates(MapaClientePuntoResponse point)
         => point.Latitud.HasValue && point.Longitud.HasValue && point.Latitud.Value != 0 && point.Longitud.Value != 0;
-
-    private static string? BuildRouteGoogleMapsEmbedUrl(List<MapaClientePuntoResponse> points, MapaClientePuntoResponse? selected)
+    private static MapBounds? BuildBounds(List<MapaClientePuntoResponse> points, MapaClientePuntoResponse? selected)
     {
-        var coordinates = BuildCoordinateSequence(points, selected);
-        if (coordinates.Count == 0)
-        {
-            return null;
-        }
+        var items = points.ToList();
+        if (selected is not null && HasValidCoordinates(selected) && items.All(x => x.IdCliente != selected.IdCliente))
+            items.Add(selected);
+        if (!items.Any()) return null;
 
-        if (coordinates.Count == 1)
-        {
-            return $"https://www.google.com/maps?q={coordinates[0]}&z=17&output=embed";
-        }
-
-        var destination = string.Join("+to:", coordinates.Skip(1));
-        return $"https://www.google.com/maps?saddr={coordinates[0]}&daddr={destination}&output=embed";
+        var minLat = (double)items.Min(x => x.Latitud!.Value);
+        var maxLat = (double)items.Max(x => x.Latitud!.Value);
+        var minLon = (double)items.Min(x => x.Longitud!.Value);
+        var maxLon = (double)items.Max(x => x.Longitud!.Value);
+        var latPad = Math.Max((maxLat - minLat) * 0.12d, 0.0035d);
+        var lonPad = Math.Max((maxLon - minLon) * 0.12d, 0.0035d);
+        return new MapBounds(minLat - latPad, maxLat + latPad, minLon - lonPad, maxLon + lonPad);
     }
-
-    private static string? BuildRouteGoogleMapsUrl(List<MapaClientePuntoResponse> points, MapaClientePuntoResponse? selected)
+    private static string? BuildOpenStreetMapEmbedUrl(MapBounds? bounds)
+        => bounds is null
+            ? null
+            : $"https://www.openstreetmap.org/export/embed.html?bbox={bounds.MinLon.ToString(CultureInfo.InvariantCulture)}%2C{bounds.MinLat.ToString(CultureInfo.InvariantCulture)}%2C{bounds.MaxLon.ToString(CultureInfo.InvariantCulture)}%2C{bounds.MaxLat.ToString(CultureInfo.InvariantCulture)}&layer=mapnik";
+    private static string? BuildOpenStreetMapUrl(MapBounds? bounds, MapaClientePuntoResponse? selected)
+        => selected is not null && HasValidCoordinates(selected)
+            ? $"https://www.openstreetmap.org/?mlat={selected.Latitud!.Value.ToString(CultureInfo.InvariantCulture)}&mlon={selected.Longitud!.Value.ToString(CultureInfo.InvariantCulture)}#map=16/{selected.Latitud!.Value.ToString(CultureInfo.InvariantCulture)}/{selected.Longitud!.Value.ToString(CultureInfo.InvariantCulture)}"
+            : bounds is null
+                ? null
+                : $"https://www.openstreetmap.org/?bbox={bounds.MinLon.ToString(CultureInfo.InvariantCulture)}%2C{bounds.MinLat.ToString(CultureInfo.InvariantCulture)}%2C{bounds.MaxLon.ToString(CultureInfo.InvariantCulture)}%2C{bounds.MaxLat.ToString(CultureInfo.InvariantCulture)}";
+    private static double MercatorY(double latitude)
     {
-        var coordinates = BuildCoordinateSequence(points, selected);
-        if (coordinates.Count == 0)
-        {
-            return null;
-        }
-
-        if (coordinates.Count == 1)
-        {
-            return $"https://www.google.com/maps?q={coordinates[0]}";
-        }
-
-        var destination = string.Join("+to:", coordinates.Skip(1));
-        return $"https://www.google.com/maps?saddr={coordinates[0]}&daddr={destination}";
+        var radians = latitude * Math.PI / 180d;
+        return Math.Log(Math.Tan(Math.PI / 4d + radians / 2d));
     }
-
-    private static List<string> BuildCoordinateSequence(List<MapaClientePuntoResponse> points, MapaClientePuntoResponse? selected)
-    {
-        var ordered = points
-            .OrderBy(x => x.Orden)
-            .Take(10)
-            .Select(FormatCoordinate)
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Cast<string>()
-            .ToList();
-
-        if (selected is not null && HasValidCoordinates(selected))
-        {
-            var selectedCoordinate = FormatCoordinate(selected);
-            if (!string.IsNullOrWhiteSpace(selectedCoordinate))
-            {
-                ordered.RemoveAll(x => string.Equals(x, selectedCoordinate, StringComparison.Ordinal));
-                ordered.Insert(0, selectedCoordinate);
-            }
-        }
-
-        return ordered;
-    }
-
-    private static string? FormatCoordinate(MapaClientePuntoResponse point)
-        => HasValidCoordinates(point)
-            ? $"{point.Latitud!.Value.ToString(CultureInfo.InvariantCulture)},{point.Longitud!.Value.ToString(CultureInfo.InvariantCulture)}"
-            : null;
+    private sealed record MapBounds(double MinLat, double MaxLat, double MinLon, double MaxLon);
 }

@@ -4,6 +4,9 @@ namespace webVentasSaaSV25.Services.Monitor;
 
 public sealed class MonitorMapaService(ApiClient api)
 {
+    public Task<(MapaConfiguracionResponse? D, string? E)> GetConfiguracionAsync()
+        => api.GetAsync<MapaConfiguracionResponse>("api/v1/mapa/configuracion");
+
     public Task<(IEnumerable<MapaRutaOptionResponse>? D, string? E)> GetRutasAsync()
         => api.GetAsync<IEnumerable<MapaRutaOptionResponse>>("api/v1/mapa/rutas");
 
@@ -91,6 +94,15 @@ public sealed class MapaRutaRequest
     public DateTime? FechaTrabajo { get; set; }
     public string? Search { get; set; }
     public string? Modo { get; set; } = "ruta";
+}
+
+public sealed class MapaConfiguracionResponse
+{
+    public string ProveedorMapa { get; init; } = "GOOGLE";
+    public bool TieneApiKey { get; init; }
+    public bool MostrarMapa { get; init; }
+    public string? ApiKey { get; init; }
+    public string MensajeConfiguracion { get; init; } = string.Empty;
 }
 
 public sealed class MapaRutaResponse

@@ -35,6 +35,10 @@
     {
         <div class="alert alert-warning py-2">@_error</div>
     }
+    @if (!CanShowMap && !string.IsNullOrWhiteSpace(MapConfigMessage))
+    {
+        <div class="alert alert-info py-2">@MapConfigMessage</div>
+    }
 
     <section class="map-metrics" aria-label="Resumen de mapa">
         <div><span>Total clientes en ruta</span><strong>@VisibleStops.Count</strong></div>
@@ -121,15 +125,15 @@
         <main class="map-stage">
             <div class="map-topbar">
                 <div>
-                    <span class="source-pill">Google Maps real</span>
+                    <span class="source-pill">Mapa real con puntos</span>
                     <span class="text-muted">@MapStatusText</span>
                 </div>
                 <div class="map-tools">
-                    @if (!string.IsNullOrWhiteSpace(CurrentGoogleMapsUrl))
+                    @if (!string.IsNullOrWhiteSpace(CurrentMapUrl))
                     {
-                        <a class="btn btn-outline-secondary btn-sm" href="@CurrentGoogleMapsUrl" target="_blank" rel="noopener noreferrer">
+                        <a class="btn btn-outline-secondary btn-sm" href="@CurrentMapUrl" target="_blank" rel="noopener noreferrer">
                             <i class="material-icons-outlined">open_in_new</i>
-                            Abrir en Google Maps
+                            Abrir mapa
                         </a>
                     }
                 </div>
@@ -144,21 +148,40 @@
                         <span>Elige una ruta y fecha para revisar la programacion del dia.</span>
                     </div>
                 }
-                else if (string.IsNullOrWhiteSpace(CurrentGoogleMapsEmbedUrl))
+                else if (!CanShowMap)
+                {
+                    <div class="empty-state">
+                        <i class="material-icons-outlined">map</i>
+                        <strong>Mapa no configurado</strong>
+                        <span>@MapConfigMessage</span>
+                    </div>
+                }
+                else if (CurrentBounds is null || string.IsNullOrWhiteSpace(CurrentMapEmbedUrl))
                 {
                     <div class="empty-state">
                         <i class="material-icons-outlined">location_off</i>
                         <strong>Sin coordenadas validas</strong>
-                        <span>Los puntos visibles no tienen latitud y longitud confiables para dibujarse en Google Maps.</span>
+                        <span>Los puntos visibles no tienen latitud y longitud confiables para dibujarse en el mapa.</span>
                     </div>
                 }
                 else
                 {
                     <iframe class="google-map-frame"
                             title="Mapa general de ruta"
-                            src="@CurrentGoogleMapsEmbedUrl"
-                            loading="lazy"
-                            referrerpolicy="no-referrer-when-downgrade"></iframe>
+                            src="@CurrentMapEmbedUrl"
+                            loading="lazy"></iframe>
+                    <div class="map-marker-layer">
+                        @foreach (var stop in VisibleStopsWithCoordinates)
+                        {
+                            <button type="button"
+                                    class="map-marker @StatusClass(stop.Status) @SelectedClass(stop)"
+                                    style="left:@MarkerLeft(stop);top:@MarkerTop(stop);"
+                                    title="@($"{stop.Order}. {stop.Name}")"
+                                    @onclick="() => SelectStopAsync(stop)">
+                                <span>@stop.Order</span>
+                            </button>
+                        }
+                    </div>
                 }
             </div>
         </main>
@@ -291,6 +314,13 @@
     .map-canvas{position:relative;flex:1;min-height:620px;border:1px solid #dbe5ef;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,#d9efe2,#f4f8fb 45%,#d8e7f8)}
     .map-canvas-real{background:#eef2f7}
     .google-map-frame{width:100%;height:100%;min-height:620px;border:0;display:block}
+    .map-marker-layer{position:absolute;inset:0;pointer-events:none}
+    .map-marker{position:absolute;transform:translate(-50%,-100%);width:34px;height:34px;border-radius:50% 50% 50% 8px;rotate:45deg;border:2px solid #fff;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.76rem;box-shadow:0 10px 22px rgba(16,24,40,.22);pointer-events:auto}
+    .map-marker span{rotate:-45deg}
+    .map-marker.pending{background:#0d6efd}
+    .map-marker.done{background:#198754}
+    .map-marker.alert{background:#dc3545}
+    .map-marker.selected{scale:1.14;z-index:3;box-shadow:0 12px 28px rgba(13,110,253,.35)}
     .detail-panel{padding:1rem;min-height:calc(100vh - 300px)}
     .detail-head{display:flex;align-items:flex-start;gap:.65rem;padding-bottom:1rem;border-bottom:1px solid #eef2f7;margin-bottom:1rem}
     .detail-head h5{margin:0;font-weight:700;color:#344054}
@@ -341,6 +371,7 @@
     private List<MapStop> _stops = [];
     private MapStop? _selected;
     private string? _selectedImageDataUrl;
+    private MapaConfiguracionResponse? _mapConfig;
     private readonly (int Numero, string Nombre)[] _diasSemana =
     [
         (1, "Lunes"),
@@ -364,8 +395,13 @@
     private string ClientesConImagenTexto => VisibleStops.Count == 0 ? "0" : VisibleStops.Count(x => x.HasImage).ToString("N0");
     private string ClientesConVisitaVencidaTexto => VisibleStops.Count == 0 ? "0" : VisibleStops.Count(x => x.DaysSinceLastVisit.HasValue && x.DaysSinceLastVisit.Value > 15).ToString("N0");
     private List<MapStop> VisibleStopsWithCoordinates => VisibleStops.Where(x => x.HasValidCoordinates).ToList();
-    private string? CurrentGoogleMapsEmbedUrl => BuildGoogleMapsRouteEmbedUrl(VisibleStopsWithCoordinates, _selected);
-    private string? CurrentGoogleMapsUrl => BuildGoogleMapsRouteUrl(VisibleStopsWithCoordinates, _selected);
+    private MapBounds? CurrentBounds => BuildBounds(VisibleStopsWithCoordinates, _selected);
+    private string? CurrentMapEmbedUrl => BuildOpenStreetMapEmbedUrl(CurrentBounds);
+    private string? CurrentMapUrl => BuildOpenStreetMapUrl(CurrentBounds, _selected);
+    private bool CanShowMap => _mapConfig?.MostrarMapa == true && _mapConfig?.TieneApiKey == true;
+    private string MapConfigMessage => string.IsNullOrWhiteSpace(_mapConfig?.MensajeConfiguracion)
+        ? "Debe dar de alta la configuracion de mapas para esta empresa."
+        : _mapConfig!.MensajeConfiguracion;
 
     private string RutasRouteUrl => _routeId > 0 ? $"/monitor/rutas?ruta={_routeId}" : "/monitor/rutas";
     private string ClientesRouteUrl => _routeId > 0 ? $"/monitor/clientes?ruta={_routeId}" : "/monitor/clientes";
@@ -376,9 +412,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var (config, configError) = await MapaApi.GetConfiguracionAsync();
+        _mapConfig = config;
         var (routes, error) = await MapaApi.GetRutasAsync();
         _routes = routes?.ToList() ?? [];
-        _error = error;
+        _error = error ?? configError;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -577,64 +615,56 @@
         _ => $"Cada {weeks} semanas"
     };
     private static string VisitAgeClass(MapStop stop) => stop.DaysSinceLastVisit.HasValue && stop.DaysSinceLastVisit.Value > 15 ? "visit-late" : string.Empty;
-    private static string? BuildGoogleMapsRouteEmbedUrl(List<MapStop> stops, MapStop? selected)
+    private string MarkerLeft(MapStop stop) => $"{ProjectX(stop):0.##}%";
+    private string MarkerTop(MapStop stop) => $"{ProjectY(stop):0.##}%";
+    private double ProjectX(MapStop stop)
     {
-        var coordinates = BuildCoordinateSequence(stops, selected);
-        if (coordinates.Count == 0)
-        {
-            return null;
-        }
-
-        if (coordinates.Count == 1)
-        {
-            return $"https://www.google.com/maps?q={coordinates[0]}&z=17&output=embed";
-        }
-
-        var destination = string.Join("+to:", coordinates.Skip(1));
-        return $"https://www.google.com/maps?saddr={coordinates[0]}&daddr={destination}&output=embed";
+        var bounds = CurrentBounds;
+        if (bounds is null || !stop.HasValidCoordinates) return 50d;
+        var min = bounds.MinLon;
+        var max = bounds.MaxLon;
+        var value = (double)stop.Longitude!.Value;
+        return max <= min ? 50d : Math.Clamp((value - min) / (max - min) * 100d, 4d, 96d);
     }
-    private static string? BuildGoogleMapsRouteUrl(List<MapStop> stops, MapStop? selected)
+    private double ProjectY(MapStop stop)
     {
-        var coordinates = BuildCoordinateSequence(stops, selected);
-        if (coordinates.Count == 0)
-        {
-            return null;
-        }
-
-        if (coordinates.Count == 1)
-        {
-            return $"https://www.google.com/maps?q={coordinates[0]}";
-        }
-
-        var destination = string.Join("+to:", coordinates.Skip(1));
-        return $"https://www.google.com/maps?saddr={coordinates[0]}&daddr={destination}";
+        var bounds = CurrentBounds;
+        if (bounds is null || !stop.HasValidCoordinates) return 50d;
+        var min = MercatorY(bounds.MaxLat);
+        var max = MercatorY(bounds.MinLat);
+        var value = MercatorY((double)stop.Latitude!.Value);
+        return max <= min ? 50d : Math.Clamp((value - min) / (max - min) * 100d, 6d, 96d);
     }
-    private static List<string> BuildCoordinateSequence(List<MapStop> stops, MapStop? selected)
+    private static MapBounds? BuildBounds(List<MapStop> stops, MapStop? selected)
     {
-        var ordered = stops
-            .OrderBy(x => x.Order)
-            .Take(10)
-            .Select(FormatCoordinate)
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Cast<string>()
-            .ToList();
+        var points = stops.ToList();
+        if (selected is not null && selected.HasValidCoordinates && points.All(x => x.Id != selected.Id))
+            points.Add(selected);
+        if (!points.Any()) return null;
 
-        if (selected is not null && selected.HasValidCoordinates)
-        {
-            var selectedCoordinate = FormatCoordinate(selected);
-            if (!string.IsNullOrWhiteSpace(selectedCoordinate))
-            {
-                ordered.RemoveAll(x => string.Equals(x, selectedCoordinate, StringComparison.Ordinal));
-                ordered.Insert(0, selectedCoordinate);
-            }
-        }
-
-        return ordered;
+        var minLat = (double)points.Min(x => x.Latitude!.Value);
+        var maxLat = (double)points.Max(x => x.Latitude!.Value);
+        var minLon = (double)points.Min(x => x.Longitude!.Value);
+        var maxLon = (double)points.Max(x => x.Longitude!.Value);
+        var latPad = Math.Max((maxLat - minLat) * 0.12d, 0.0035d);
+        var lonPad = Math.Max((maxLon - minLon) * 0.12d, 0.0035d);
+        return new MapBounds(minLat - latPad, maxLat + latPad, minLon - lonPad, maxLon + lonPad);
     }
-    private static string? FormatCoordinate(MapStop stop)
-        => stop.HasValidCoordinates
-            ? $"{stop.Latitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)},{stop.Longitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}"
-            : null;
+    private static string? BuildOpenStreetMapEmbedUrl(MapBounds? bounds)
+        => bounds is null
+            ? null
+            : $"https://www.openstreetmap.org/export/embed.html?bbox={bounds.MinLon.ToString(System.Globalization.CultureInfo.InvariantCulture)}%2C{bounds.MinLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}%2C{bounds.MaxLon.ToString(System.Globalization.CultureInfo.InvariantCulture)}%2C{bounds.MaxLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}&layer=mapnik";
+    private static string? BuildOpenStreetMapUrl(MapBounds? bounds, MapStop? selected)
+        => selected is not null && selected.HasValidCoordinates
+            ? $"https://www.openstreetmap.org/?mlat={selected.Latitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}&mlon={selected.Longitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}#map=16/{selected.Latitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}/{selected.Longitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}"
+            : bounds is null
+                ? null
+                : $"https://www.openstreetmap.org/?bbox={bounds.MinLon.ToString(System.Globalization.CultureInfo.InvariantCulture)}%2C{bounds.MinLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}%2C{bounds.MaxLon.ToString(System.Globalization.CultureInfo.InvariantCulture)}%2C{bounds.MaxLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+    private static double MercatorY(double latitude)
+    {
+        var radians = latitude * Math.PI / 180d;
+        return Math.Log(Math.Tan(Math.PI / 4d + radians / 2d));
+    }
 
     private async Task LoadSelectedImageAsync()
     {
@@ -735,5 +765,6 @@
         public bool HasValidCoordinates => Latitude.HasValue && Longitude.HasValue && Latitude.Value != 0 && Longitude.Value != 0;
     }
 
+    private sealed record MapBounds(double MinLat, double MaxLat, double MinLon, double MaxLon);
     private sealed record MonitorMapState(int RouteId, long RecorridoId, DateTime FechaTrabajo, string Frecuencia, string Mode, int? SelectedClientId);
 }
