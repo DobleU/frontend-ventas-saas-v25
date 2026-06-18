@@ -50,6 +50,26 @@ public sealed class ApiClient
         }
     }
 
+    public async Task<(byte[]? Data, string? ContentType, string? Error)> GetBytesAsync(string endpoint)
+    {
+        try
+        {
+            var response = await _http.GetAsync(endpoint);
+            if (!response.IsSuccessStatusCode)
+            {
+                return (null, null, $"Error HTTP {(int)response.StatusCode}.");
+            }
+
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+            var contentType = response.Content.Headers.ContentType?.MediaType;
+            return (bytes, contentType, null);
+        }
+        catch (HttpRequestException)
+        {
+            return (null, null, "Error de conexión con el servidor.");
+        }
+    }
+
     // ─── POST ─────────────────────────────────────────────────────────────
 
     /// <summary>

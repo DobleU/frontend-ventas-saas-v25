@@ -23,6 +23,9 @@ public sealed class MonitorMapaService(ApiClient api)
         return api.GetAsync<MapaRutaResponse>($"api/v1/mapa/ruta?{query}");
     }
 
+    public Task<(byte[]? D, string? ContentType, string? E)> GetClienteFotoAsync(int idCliente)
+        => api.GetBytesAsync($"api/v1/mapa/clientes/{idCliente}/foto");
+
     public Task<(MonitorClienteResponse? D, string? E)> GetMonitorClienteAsync(
         int idCliente,
         int? idDireccion = null,
