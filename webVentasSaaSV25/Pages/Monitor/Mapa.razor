@@ -59,7 +59,7 @@
         }
                 </select>
 
-                @if (_mode == MapMode.Tour)
+                @if (false)
                 {
                     <label class="form-label mt-3">Recorrido</label>
                     <select class="form-select" value="@_recorridoId" @onchange="OnRecorridoChangedAsync">
@@ -70,9 +70,11 @@
                         }
                     </select>
                 }
-
-                <label class="form-label mt-3">Fecha de trabajo</label>
-                <input class="form-control" type="date" value="@_fechaTrabajo.ToString("yyyy-MM-dd")" @onchange="OnFechaTrabajoChangedAsync" />
+                else
+                {
+                    <label class="form-label mt-3">Fecha de trabajo</label>
+                    <input class="form-control" type="date" value="@_fechaTrabajo.ToString("yyyy-MM-dd")" @onchange="OnFechaTrabajoChangedAsync" />
+                }
 
                 <label class="form-label mt-3">Dia de la semana</label>
                 <div class="chip-filter-grid">
@@ -97,7 +99,32 @@
                     <span>@VisibleStops.Count</span>
                 </div>
 
-                @if (_loading)
+                @if (_mode == MapMode.Tour)
+                {
+                    @if (_loading)
+                    {
+                        <div class="empty-state small">Cargando recorridos...</div>
+                    }
+                    else if (!_recorridos.Any())
+                    {
+                        <div class="empty-state small">No hay recorridos para la ruta @RouteNameText en la fecha @_fechaTrabajo.ToString("dd/MM/yyyy").</div>
+                    }
+                    else
+                    {
+                        @foreach (var tour in _recorridos)
+                        {
+                            <button type="button" class="stop-card @SelectedRecorridoClass(tour)" @onclick="() => SelectRecorridoAsync(tour)">
+                                <span class="stop-order">@tour.VisitasRealizadas</span>
+                                <span class="stop-main">
+                                    <strong>@tour.Nombre</strong>
+                                    <small>@tour.FechaRecorrido.ToString("dd/MM/yyyy") · @tour.MontoVentas.ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("es-MX"))</small>
+                                </span>
+                                <span class="status-dot @(tour.IdRecorrido == _recorridoId ? "done" : "pending")"></span>
+                            </button>
+                        }
+                    }
+                }
+                else if (_loading)
                 {
                     <div class="empty-state small">Cargando clientes...</div>
                 }
@@ -156,7 +183,7 @@
                         <span>@MapConfigMessage</span>
                     </div>
                 }
-                else if (CurrentBounds is null || string.IsNullOrWhiteSpace(CurrentMapEmbedUrl))
+                else if (CurrentBounds is null)
                 {
                     <div class="empty-state">
                         <i class="material-icons-outlined">location_off</i>
@@ -166,22 +193,7 @@
                 }
                 else
                 {
-                    <iframe class="google-map-frame"
-                            title="Mapa general de ruta"
-                            src="@CurrentMapEmbedUrl"
-                            loading="lazy"></iframe>
-                    <div class="map-marker-layer">
-                        @foreach (var stop in VisibleStopsWithCoordinates)
-                        {
-                            <button type="button"
-                                    class="map-marker @StatusClass(stop.Status) @SelectedClass(stop)"
-                                    style="left:@MarkerLeft(stop);top:@MarkerTop(stop);"
-                                    title="@($"{stop.Order}. {stop.Name}")"
-                                    @onclick="() => SelectStopAsync(stop)">
-                                <span>@stop.Order</span>
-                            </button>
-                        }
-                    </div>
+                    <div id="@MapElementId" class="google-map-frame" aria-label="Mapa general de ruta"></div>
                 }
             </div>
         </main>
@@ -313,14 +325,7 @@
     .map-tools span{min-width:42px;text-align:center;color:#667085;font-size:.85rem}
     .map-canvas{position:relative;flex:1;min-height:620px;border:1px solid #dbe5ef;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,#d9efe2,#f4f8fb 45%,#d8e7f8)}
     .map-canvas-real{background:#eef2f7}
-    .google-map-frame{width:100%;height:100%;min-height:620px;border:0;display:block}
-    .map-marker-layer{position:absolute;inset:0;pointer-events:none}
-    .map-marker{position:absolute;transform:translate(-50%,-100%);width:34px;height:34px;border-radius:50% 50% 50% 8px;rotate:45deg;border:2px solid #fff;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.76rem;box-shadow:0 10px 22px rgba(16,24,40,.22);pointer-events:auto}
-    .map-marker span{rotate:-45deg}
-    .map-marker.pending{background:#0d6efd}
-    .map-marker.done{background:#198754}
-    .map-marker.alert{background:#dc3545}
-    .map-marker.selected{scale:1.14;z-index:3;box-shadow:0 12px 28px rgba(13,110,253,.35)}
+    .google-map-frame{width:100%;height:100%;min-height:620px;border:0;display:block;border-radius:8px}
     .detail-panel{padding:1rem;min-height:calc(100vh - 300px)}
     .detail-head{display:flex;align-items:flex-start;gap:.65rem;padding-bottom:1rem;border-bottom:1px solid #eef2f7;margin-bottom:1rem}
     .detail-head h5{margin:0;font-weight:700;color:#344054}
@@ -353,6 +358,7 @@
     [SupplyParameterFromQuery(Name = "cliente")] public int? QueryClientId { get; set; }
 
     private const string StorageKey = "monitor-mapa-state";
+    private const string MapElementId = "monitor-mapa-google";
 
     private enum MapMode { Route, Tour }
     private enum VisitStatus { Pending, Done, Alert }
@@ -372,6 +378,8 @@
     private MapStop? _selected;
     private string? _selectedImageDataUrl;
     private MapaConfiguracionResponse? _mapConfig;
+    private DotNetObjectReference<GoogleMapBridge>? _mapBridgeRef;
+    private bool _mapDirty;
     private readonly (int Numero, string Nombre)[] _diasSemana =
     [
         (1, "Lunes"),
@@ -392,12 +400,14 @@
     private string MapStatusText => VisibleStops.Any()
         ? $"{VisibleStops.Count} cliente(s) programado(s) para {_fechaTrabajo:dd/MM/yyyy}."
         : "Sin clientes programados para la fecha seleccionada.";
+    private string RouteNameText => _routes.FirstOrDefault(x => x.IdRuta == _routeId)?.Nombre ?? "seleccionada";
     private string ClientesConImagenTexto => VisibleStops.Count == 0 ? "0" : VisibleStops.Count(x => x.HasImage).ToString("N0");
     private string ClientesConVisitaVencidaTexto => VisibleStops.Count == 0 ? "0" : VisibleStops.Count(x => x.DaysSinceLastVisit.HasValue && x.DaysSinceLastVisit.Value > 15).ToString("N0");
     private List<MapStop> VisibleStopsWithCoordinates => VisibleStops.Where(x => x.HasValidCoordinates).ToList();
     private MapBounds? CurrentBounds => BuildBounds(VisibleStopsWithCoordinates, _selected);
-    private string? CurrentMapEmbedUrl => BuildOpenStreetMapEmbedUrl(CurrentBounds);
-    private string? CurrentMapUrl => BuildOpenStreetMapUrl(CurrentBounds, _selected);
+    private string? CurrentMapUrl => _selected is not null && _selected.HasValidCoordinates
+        ? $"https://www.google.com/maps?q={_selected.Latitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)},{_selected.Longitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}"
+        : null;
     private bool CanShowMap => _mapConfig?.MostrarMapa == true && _mapConfig?.TieneApiKey == true;
     private string MapConfigMessage => string.IsNullOrWhiteSpace(_mapConfig?.MensajeConfiguracion)
         ? "Debe dar de alta la configuracion de mapas para esta empresa."
@@ -421,23 +431,34 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || _restored)
+        if (firstRender && !_restored)
         {
-            return;
+            _restored = true;
+            await RestoreStateAsync();
+            if (QueryRouteId is > 0)
+            {
+                _routeId = QueryRouteId.Value;
+            }
+
+            if (_routeId > 0)
+            {
+                if (_mode == MapMode.Tour)
+                {
+                    await LoadRecorridosAsync();
+                    await LoadRouteAsync();
+                }
+                else
+                {
+                    await LoadRouteAsync();
+                }
+                StateHasChanged();
+            }
         }
 
-        _restored = true;
-        await RestoreStateAsync();
-        if (QueryRouteId is > 0)
+        if (_mapDirty && CanShowMap)
         {
-            _routeId = QueryRouteId.Value;
-        }
-
-        if (_routeId > 0)
-        {
-            await LoadRecorridosAsync();
-            await LoadRouteAsync();
-            StateHasChanged();
+            _mapDirty = false;
+            await RenderGoogleMapAsync();
         }
     }
 
@@ -445,7 +466,13 @@
     {
         _routeId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
         await SaveStateAsync();
-        await LoadRecorridosAsync();
+        if (_mode == MapMode.Tour)
+        {
+            await LoadRecorridosAsync();
+            await LoadRouteAsync();
+            return;
+        }
+
         await LoadRouteAsync();
     }
 
@@ -468,10 +495,27 @@
 
     private async Task LoadRecorridosAsync()
     {
-        var (items, error) = await MapaApi.GetRecorridosAsync(_routeId > 0 ? _routeId : null);
+        _selected = null;
+        _stops = [];
+        _recorridoId = 0;
+        _error = null;
+
+        if (_routeId <= 0)
+        {
+            _recorridos = [];
+            _mapDirty = true;
+            await SaveStateAsync();
+            return;
+        }
+
+        _loading = true;
+        var (items, error) = await MapaApi.GetRecorridosAsync(_routeId);
+        _loading = false;
+        _error = error;
         _recorridos = items?.ToList() ?? [];
-        _error ??= error;
         _recorridoId = _recorridos.FirstOrDefault()?.IdRecorrido ?? 0;
+
+        _mapDirty = true;
         await SaveStateAsync();
     }
 
@@ -484,8 +528,9 @@
         if (_routeId <= 0) return;
         if (_mode == MapMode.Tour && _recorridoId <= 0)
         {
-            await LoadRecorridosAsync();
-            if (_recorridoId <= 0) return;
+            _mapDirty = true;
+            await SaveStateAsync();
+            return;
         }
 
         _loading = true;
@@ -506,6 +551,7 @@
             _selected = _stops.FirstOrDefault(x => x.Id == QueryClientId.Value) ?? _selected;
         }
         await LoadSelectedImageAsync();
+        _mapDirty = true;
         await SaveStateAsync();
     }
 
@@ -558,6 +604,7 @@
     {
         _selected = stop;
         await LoadSelectedImageAsync();
+        _mapDirty = true;
     }
 
     private async Task SetMode(MapMode mode)
@@ -565,7 +612,17 @@
         _mode = mode;
         await SaveStateAsync();
         if (_mode == MapMode.Tour)
+        {
             await LoadRecorridosAsync();
+            await LoadRouteAsync();
+            return;
+        }
+        await LoadRouteAsync();
+    }
+    private async Task SelectRecorridoAsync(MapaRecorridoOptionResponse tour)
+    {
+        _recorridoId = tour.IdRecorrido;
+        await SaveStateAsync();
         await LoadRouteAsync();
     }
     private string ModeClass(MapMode mode) => _mode == mode ? "btn-primary" : "btn-outline-primary";
@@ -584,6 +641,7 @@
     }
     private string FrequencyClass(string frecuencia) => string.Equals(_frecuenciaSeleccionada, frecuencia, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     private string SelectedClass(MapStop stop) => _selected?.Id == stop.Id ? "selected" : "";
+    private string SelectedRecorridoClass(MapaRecorridoOptionResponse tour) => tour.IdRecorrido == _recorridoId ? "selected" : "";
     private static string StatusClass(VisitStatus status) => status switch { VisitStatus.Done => "done", VisitStatus.Alert => "alert", _ => "pending" };
     private static string StatusText(VisitStatus status) => status switch { VisitStatus.Done => "Visitado", VisitStatus.Alert => "Alerta", _ => "Pendiente" };
     private static string TextOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "Sin dato" : value;
@@ -615,26 +673,6 @@
         _ => $"Cada {weeks} semanas"
     };
     private static string VisitAgeClass(MapStop stop) => stop.DaysSinceLastVisit.HasValue && stop.DaysSinceLastVisit.Value > 15 ? "visit-late" : string.Empty;
-    private string MarkerLeft(MapStop stop) => $"{ProjectX(stop):0.##}%";
-    private string MarkerTop(MapStop stop) => $"{ProjectY(stop):0.##}%";
-    private double ProjectX(MapStop stop)
-    {
-        var bounds = CurrentBounds;
-        if (bounds is null || !stop.HasValidCoordinates) return 50d;
-        var min = bounds.MinLon;
-        var max = bounds.MaxLon;
-        var value = (double)stop.Longitude!.Value;
-        return max <= min ? 50d : Math.Clamp((value - min) / (max - min) * 100d, 4d, 96d);
-    }
-    private double ProjectY(MapStop stop)
-    {
-        var bounds = CurrentBounds;
-        if (bounds is null || !stop.HasValidCoordinates) return 50d;
-        var min = MercatorY(bounds.MaxLat);
-        var max = MercatorY(bounds.MinLat);
-        var value = MercatorY((double)stop.Latitude!.Value);
-        return max <= min ? 50d : Math.Clamp((value - min) / (max - min) * 100d, 6d, 96d);
-    }
     private static MapBounds? BuildBounds(List<MapStop> stops, MapStop? selected)
     {
         var points = stops.ToList();
@@ -650,20 +688,48 @@
         var lonPad = Math.Max((maxLon - minLon) * 0.12d, 0.0035d);
         return new MapBounds(minLat - latPad, maxLat + latPad, minLon - lonPad, maxLon + lonPad);
     }
-    private static string? BuildOpenStreetMapEmbedUrl(MapBounds? bounds)
-        => bounds is null
-            ? null
-            : $"https://www.openstreetmap.org/export/embed.html?bbox={bounds.MinLon.ToString(System.Globalization.CultureInfo.InvariantCulture)}%2C{bounds.MinLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}%2C{bounds.MaxLon.ToString(System.Globalization.CultureInfo.InvariantCulture)}%2C{bounds.MaxLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}&layer=mapnik";
-    private static string? BuildOpenStreetMapUrl(MapBounds? bounds, MapStop? selected)
-        => selected is not null && selected.HasValidCoordinates
-            ? $"https://www.openstreetmap.org/?mlat={selected.Latitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}&mlon={selected.Longitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}#map=16/{selected.Latitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}/{selected.Longitude!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}"
-            : bounds is null
-                ? null
-                : $"https://www.openstreetmap.org/?bbox={bounds.MinLon.ToString(System.Globalization.CultureInfo.InvariantCulture)}%2C{bounds.MinLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}%2C{bounds.MaxLon.ToString(System.Globalization.CultureInfo.InvariantCulture)}%2C{bounds.MaxLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
-    private static double MercatorY(double latitude)
+    private async Task RenderGoogleMapAsync()
     {
-        var radians = latitude * Math.PI / 180d;
-        return Math.Log(Math.Tan(Math.PI / 4d + radians / 2d));
+        if (!CanShowMap || string.IsNullOrWhiteSpace(_mapConfig?.ApiKey))
+        {
+            return;
+        }
+
+        _mapBridgeRef ??= DotNetObjectReference.Create(new GoogleMapBridge(HandleMapMarkerClickAsync));
+
+        var payload = new
+        {
+            centerLat = CurrentBounds is null ? 0d : (CurrentBounds.MinLat + CurrentBounds.MaxLat) / 2d,
+            centerLng = CurrentBounds is null ? 0d : (CurrentBounds.MinLon + CurrentBounds.MaxLon) / 2d,
+            zoom = 13,
+            selectedZoom = 17,
+            selectedId = _selected?.Id ?? 0,
+            clickMethod = nameof(GoogleMapBridge.HandleMapMarkerClick),
+            dotNetRef = _mapBridgeRef,
+            markers = VisibleStopsWithCoordinates.Select(x => new
+            {
+                id = x.Id,
+                lat = (double)x.Latitude!.Value,
+                lng = (double)x.Longitude!.Value,
+                label = x.Order.ToString(),
+                title = $"{x.Order}. {x.Name}",
+                status = StatusClass(x.Status)
+            }).ToList()
+        };
+
+        await JS.InvokeVoidAsync("AppInterop.renderMonitorMap", MapElementId, _mapConfig.ApiKey, payload);
+    }
+
+    private async Task HandleMapMarkerClickAsync(int idCliente)
+    {
+        var stop = VisibleStops.FirstOrDefault(x => x.Id == idCliente);
+        if (stop is null)
+        {
+            return;
+        }
+
+        await SelectStopAsync(stop);
+        StateHasChanged();
     }
 
     private async Task LoadSelectedImageAsync()
@@ -767,4 +833,9 @@
 
     private sealed record MapBounds(double MinLat, double MaxLat, double MinLon, double MaxLon);
     private sealed record MonitorMapState(int RouteId, long RecorridoId, DateTime FechaTrabajo, string Frecuencia, string Mode, int? SelectedClientId);
+    private sealed class GoogleMapBridge(Func<int, Task> onMarkerClick)
+    {
+        [JSInvokable]
+        public Task HandleMapMarkerClick(int id) => onMarkerClick(id);
+    }
 }

@@ -234,7 +234,7 @@ window.printTicketHtml = function (html) {
 };
 
 // ─── AppInterop ──────────────────────────────────────────────────────────────
-window.AppInterop = {
+window.AppInterop = Object.assign(window.AppInterop || {}, {
 
     initPlugins: function () {
         var metisEl = document.querySelector(".navbar-nav");
@@ -294,8 +294,150 @@ window.AppInterop = {
 
     localStorageGet: function (key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
     localStorageSet: function (key, value) { try { localStorage.setItem(key, value); } catch (e) { } },
-    localStorageRemove: function (key) { try { localStorage.removeItem(key); } catch (e) { } }
-};
+    localStorageRemove: function (key) { try { localStorage.removeItem(key); } catch (e) { } },
+
+    _googleMapsLoader: null,
+    _googleMapsApiKey: null,
+    _monitorMaps: {},
+
+    ensureGoogleMaps: function (apiKey) {
+        if (!apiKey) {
+            return Promise.reject(new Error("ApiKey de Google Maps no configurada."));
+        }
+
+        if (window.google && window.google.maps && this._googleMapsApiKey === apiKey) {
+            return Promise.resolve(window.google.maps);
+        }
+
+        if (this._googleMapsLoader && this._googleMapsApiKey === apiKey) {
+            return this._googleMapsLoader;
+        }
+
+        this._googleMapsApiKey = apiKey;
+        this._googleMapsLoader = new Promise(function (resolve, reject) {
+            var previous = document.getElementById("google-maps-sdk");
+            if (previous) {
+                previous.remove();
+            }
+
+            window.__ventasSaasGoogleMapsReady = function () {
+                resolve(window.google.maps);
+            };
+
+            var script = document.createElement("script");
+            script.id = "google-maps-sdk";
+            script.async = true;
+            script.defer = true;
+            script.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(apiKey) + "&callback=__ventasSaasGoogleMapsReady";
+            script.onerror = function () {
+                reject(new Error("No se pudo cargar Google Maps."));
+            };
+            document.head.appendChild(script);
+        }).catch(function (error) {
+            window.AppInterop._googleMapsLoader = null;
+            throw error;
+        });
+
+        return this._googleMapsLoader;
+    },
+
+    renderMonitorMap: async function (mapId, apiKey, payload) {
+        var container = document.getElementById(mapId);
+        if (!container) return;
+
+        window.__monitorMapLastError = null;
+
+        try {
+            var maps = await this.ensureGoogleMaps(apiKey);
+            var state = this._monitorMaps[mapId];
+
+            if (!state) {
+                state = {
+                    map: new maps.Map(container, {
+                        center: { lat: payload.centerLat || 16.75, lng: payload.centerLng || -93.12 },
+                        zoom: payload.zoom || 13,
+                        mapTypeControl: false,
+                        streetViewControl: false,
+                        fullscreenControl: true,
+                        mapTypeId: "roadmap"
+                    }),
+                    markers: []
+                };
+                this._monitorMaps[mapId] = state;
+            }
+
+            state.markers.forEach(function (marker) { marker.setMap(null); });
+            state.markers = [];
+
+            var selectedId = payload.selectedId || 0;
+            var dotNetRef = payload.dotNetRef || null;
+            var selectedMarker = null;
+            var bounds = new maps.LatLngBounds();
+
+            (payload.markers || []).forEach(function (item) {
+                if (typeof item.lat !== "number" || typeof item.lng !== "number") return;
+
+                var iconUrl = selectedId === item.id
+                    ? "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
+                    : item.status === "done"
+                        ? "https://maps.google.com/mapfiles/ms/icons/green-dot.png"
+                        : item.status === "alert"
+                            ? "https://maps.google.com/mapfiles/ms/icons/yellow-dot.png"
+                            : "https://maps.google.com/mapfiles/ms/icons/blue-dot.png";
+
+                var marker = new maps.Marker({
+                    map: state.map,
+                    position: { lat: item.lat, lng: item.lng },
+                    title: item.title || "",
+                    label: String(item.label || ""),
+                    icon: {
+                        url: iconUrl,
+                        labelOrigin: new maps.Point(16, 11)
+                    },
+                    zIndex: selectedId === item.id ? 999 : 10
+                });
+
+                if (dotNetRef && item.id) {
+                    marker.addListener("click", function () {
+                        dotNetRef.invokeMethodAsync(payload.clickMethod || "HandleMapMarkerClick", item.id);
+                    });
+                }
+
+                state.markers.push(marker);
+                bounds.extend(marker.getPosition());
+
+                if (selectedId === item.id) {
+                    selectedMarker = marker;
+                }
+            });
+
+            if (selectedMarker) {
+                state.map.panTo(selectedMarker.getPosition());
+                state.map.setZoom(payload.selectedZoom || 17);
+            } else if (state.markers.length === 1) {
+                state.map.setCenter(bounds.getCenter());
+                state.map.setZoom(payload.zoom || 16);
+            } else if (state.markers.length > 1) {
+                state.map.fitBounds(bounds, 48);
+            } else {
+                state.map.setCenter({ lat: payload.centerLat || 16.75, lng: payload.centerLng || -93.12 });
+                state.map.setZoom(payload.zoom || 12);
+            }
+        } catch (error) {
+            var detail = error && error.message ? error.message : "No se pudo inicializar el mapa.";
+            window.__monitorMapLastError = detail;
+            container.innerHTML =
+                '<div style="height:100%;min-height:320px;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;color:#667085;background:#f8fafc;border-radius:12px;">'
+                + '<div><strong style="display:block;color:#344054;margin-bottom:8px;">Error al cargar el mapa</strong>'
+                + '<span>' + detail + '</span></div></div>';
+            console.error("Monitor map error:", error);
+        }
+    },
+
+    getMonitorMapLastError: function () {
+        return window.__monitorMapLastError || "";
+    }
+});
 
 // Aplicar tema guardado inmediatamente
 AppInterop.applyStoredTheme();

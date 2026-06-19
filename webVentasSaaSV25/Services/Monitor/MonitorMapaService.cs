@@ -10,9 +10,12 @@ public sealed class MonitorMapaService(ApiClient api)
     public Task<(IEnumerable<MapaRutaOptionResponse>? D, string? E)> GetRutasAsync()
         => api.GetAsync<IEnumerable<MapaRutaOptionResponse>>("api/v1/mapa/rutas");
 
-    public Task<(IEnumerable<MapaRecorridoOptionResponse>? D, string? E)> GetRecorridosAsync(int? idRuta)
+    public Task<(IEnumerable<MapaRecorridoOptionResponse>? D, string? E)> GetRecorridosAsync(int? idRuta, DateTime? fecha = null)
     {
-        var query = idRuta.HasValue && idRuta > 0 ? $"?idRuta={idRuta.Value}" : "";
+        var queryParts = new List<string>();
+        if (idRuta.HasValue && idRuta > 0) queryParts.Add($"idRuta={idRuta.Value}");
+        if (fecha.HasValue) queryParts.Add($"fecha={fecha.Value:yyyy-MM-dd}");
+        var query = queryParts.Count > 0 ? $"?{string.Join("&", queryParts)}" : "";
         return api.GetAsync<IEnumerable<MapaRecorridoOptionResponse>>($"api/v1/mapa/recorridos{query}");
     }
 
