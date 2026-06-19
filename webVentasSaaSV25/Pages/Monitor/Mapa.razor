@@ -59,7 +59,7 @@
         }
                 </select>
 
-                @if (false)
+                @if (_mode == MapMode.Tour)
                 {
                     <label class="form-label mt-3">Recorrido</label>
                     <select class="form-select" value="@_recorridoId" @onchange="OnRecorridoChangedAsync">
@@ -544,7 +544,17 @@
         _loading = false;
         _error = error;
 
-        _stops = map?.Puntos.Select(FromApiPoint).ToList() ?? [];
+        var loadedStops = map?.Puntos.Select(FromApiPoint).ToList() ?? [];
+        _stops = _mode == MapMode.Route
+            ? loadedStops
+                .GroupBy(x => x.Id)
+                .Select(g => g
+                    .OrderBy(x => x.Order)
+                    .ThenByDescending(x => x.HasValidCoordinates)
+                    .First())
+                .OrderBy(x => x.Order)
+                .ToList()
+            : loadedStops;
         _selected = _stops.FirstOrDefault();
         if (QueryClientId is > 0)
         {
