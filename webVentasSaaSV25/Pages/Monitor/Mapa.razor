@@ -1,4 +1,4 @@
-@page "/monitor/mapa"
+﻿@page "/monitor/mapa"
 @inject MonitorMapaService MapaApi
 @inject IJSRuntime JS
 
@@ -41,10 +41,20 @@
     }
 
     <section class="map-metrics" aria-label="Resumen de mapa">
-        <div><span>Total clientes en ruta</span><strong>@VisibleStops.Count</strong></div>
-        <div><span>Programados del dia</span><strong>@VisibleStops.Count</strong></div>
-        <div><span>Con imagen</span><strong>@ClientesConImagenTexto</strong></div>
-        <div><span>Ultima visita +15 dias</span><strong>@ClientesConVisitaVencidaTexto</strong></div>
+        @if (_mode == MapMode.Tour)
+        {
+            <div><span>Total clientes programados</span><strong>@TourProgramadosTexto</strong></div>
+            <div><span>Clientes visitados</span><strong>@TourVisitadosTexto</strong></div>
+            <div><span>Clientes no visitados</span><strong>@TourNoVisitadosTexto</strong></div>
+            <div><span>Monto total del recorrido</span><strong>@TourMontoTexto</strong></div>
+        }
+        else
+        {
+            <div><span>Total clientes en ruta</span><strong>@VisibleStops.Count</strong></div>
+            <div><span>Programados del dia</span><strong>@VisibleStops.Count</strong></div>
+            <div><span>Con imagen</span><strong>@ClientesConImagenTexto</strong></div>
+            <div><span>Ultima visita +15 dias</span><strong>@ClientesConVisitaVencidaTexto</strong></div>
+        }
     </section>
 
     <section class="route-map-shell">
@@ -61,14 +71,13 @@
 
                 @if (_mode == MapMode.Tour)
                 {
-                    <label class="form-label mt-3">Recorrido</label>
-                    <select class="form-select" value="@_recorridoId" @onchange="OnRecorridoChangedAsync">
-                        <option value="0">Selecciona un recorrido</option>
-                        @foreach (var tour in _recorridos)
-                        {
-                            <option value="@tour.IdRecorrido">@tour.Nombre</option>
-                        }
-                    </select>
+                    <label class="form-label mt-3">Fecha de trabajo</label>
+                    <input class="form-control" type="date" value="@_fechaTrabajo.ToString("yyyy-MM-dd")" @onchange="OnFechaTrabajoChangedAsync" />
+
+                    <button class="btn btn-primary w-100 mt-3" type="button" @onclick="BuscarRecorridoAsync" disabled="@(_routeId <= 0 || _loading)">
+                        <i class="material-icons-outlined">search</i>
+                        Buscar
+                    </button>
                 }
                 else
                 {
@@ -76,21 +85,24 @@
                     <input class="form-control" type="date" value="@_fechaTrabajo.ToString("yyyy-MM-dd")" @onchange="OnFechaTrabajoChangedAsync" />
                 }
 
-                <label class="form-label mt-3">Dia de la semana</label>
-                <div class="chip-filter-grid">
-                    @foreach (var dia in _diasSemana)
-                    {
-                        <button type="button" class="@DayClass(dia.Numero)" @onclick='@(() => SetDayAsync(dia.Numero))'>@dia.Nombre</button>
-                    }
-                </div>
+                @if (_mode == MapMode.Route)
+                {
+                    <label class="form-label mt-3">Dia de la semana</label>
+                    <div class="chip-filter-grid">
+                        @foreach (var dia in _diasSemana)
+                        {
+                            <button type="button" class="@DayClass(dia.Numero)" @onclick='@(() => SetDayAsync(dia.Numero))'>@dia.Nombre</button>
+                        }
+                    </div>
 
-                <label class="form-label mt-3">Frecuencia</label>
-                <div class="chip-filter-grid">
-                    @foreach (var frecuencia in _frecuencias)
-                    {
-                        <button type="button" class="@FrequencyClass(frecuencia)" @onclick='@(() => SetFrequencyAsync(frecuencia))'>@frecuencia</button>
-                    }
-                </div>
+                    <label class="form-label mt-3">Frecuencia</label>
+                    <div class="chip-filter-grid">
+                        @foreach (var frecuencia in _frecuencias)
+                        {
+                            <button type="button" class="@FrequencyClass(frecuencia)" @onclick='@(() => SetFrequencyAsync(frecuencia))'>@frecuencia</button>
+                        }
+                    </div>
+                }
             </div>
 
             <div class="stop-list">
@@ -99,38 +111,17 @@
                     <span>@VisibleStops.Count</span>
                 </div>
 
-                @if (_mode == MapMode.Tour)
-                {
-                    @if (_loading)
-                    {
-                        <div class="empty-state small">Cargando recorridos...</div>
-                    }
-                    else if (!_recorridos.Any())
-                    {
-                        <div class="empty-state small">No hay recorridos para la ruta @RouteNameText en la fecha @_fechaTrabajo.ToString("dd/MM/yyyy").</div>
-                    }
-                    else
-                    {
-                        @foreach (var tour in _recorridos)
-                        {
-                            <button type="button" class="stop-card @SelectedRecorridoClass(tour)" @onclick="() => SelectRecorridoAsync(tour)">
-                                <span class="stop-order">@tour.VisitasRealizadas</span>
-                                <span class="stop-main">
-                                    <strong>@tour.Nombre</strong>
-                                    <small>@tour.FechaRecorrido.ToString("dd/MM/yyyy") · @tour.MontoVentas.ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("es-MX"))</small>
-                                </span>
-                                <span class="status-dot @(tour.IdRecorrido == _recorridoId ? "done" : "pending")"></span>
-                            </button>
-                        }
-                    }
-                }
-                else if (_loading)
+                @if (_loading)
                 {
                     <div class="empty-state small">Cargando clientes...</div>
                 }
+                else if (_mode == MapMode.Tour && !_tourSearchExecuted)
+                {
+                    <div class="empty-state small">Selecciona ruta, fecha y presiona Buscar para cargar el recorrido.</div>
+                }
                 else if (!VisibleStops.Any())
                 {
-                    <div class="empty-state small">Selecciona ruta y fecha para consultar clientes programados.</div>
+                    <div class="empty-state small">@(_mode == MapMode.Tour ? "El recorrido encontrado no devolvio visitas para este monitor." : "Selecciona ruta y fecha para consultar clientes programados.")</div>
                 }
                 else
                 {
@@ -172,7 +163,7 @@
                     <div class="empty-state">
                         <i class="material-icons-outlined">map</i>
                         <strong>Sin puntos en el mapa</strong>
-                        <span>Elige una ruta y fecha para revisar la programacion del dia.</span>
+                        <span>@(_mode == MapMode.Tour ? "Presiona Buscar para revisar el recorrido encontrado." : "Elige una ruta y fecha para revisar la programacion del dia.")</span>
                     </div>
                 }
                 else if (!CanShowMap)
@@ -199,12 +190,128 @@
         </main>
 
         <aside class="detail-panel">
+            @if (_mode == MapMode.Tour)
+            {
+                <div class="route-focus-card mb-3">
+                    <div class="panel-head compact-head">
+                        <div>
+                            <h5>Resumen del recorrido</h5>
+                            <small>@TourResumenTitulo</small>
+                        </div>
+                    </div>
+                    <div class="detail-grid route-focus-grid">
+                        <span>Ruta</span><strong>@RouteNameText</strong>
+                        <span>Fecha</span><strong>@_fechaTrabajo.ToString("dd/MM/yyyy")</strong>
+                        <span>Recorrido</span><strong>@TextOrDash(SelectedRecorridoNombre)</strong>
+                        <span>Programados</span><strong>@TourProgramadosTexto</strong>
+                        <span>Visitados</span><strong>@TourVisitadosTexto</strong>
+                        <span>No visitados</span><strong>@TourNoVisitadosTexto</strong>
+                        <span>Monto venta</span><strong>@TourMontoTexto</strong>
+                    </div>
+                </div>
+
+                <div class="tour-tabs-card mb-3">
+                    <div class="tour-tabs">
+                        <button type="button" class="@TourTabClass("resumen")" @onclick='() => SetTourTab("resumen")'>Resumen</button>
+                        <button type="button" class="@TourTabClass("visitas")" @onclick='() => SetTourTab("visitas")'>Visitas</button>
+                        <button type="button" class="@TourTabClass("pendientes")" @onclick='() => SetTourTab("pendientes")'>No visitados</button>
+                        <button type="button" class="@TourTabClass("cierre")" @onclick='() => SetTourTab("cierre")'>Cierre</button>
+                    </div>
+
+                    @if (_loadingTourDetail)
+                    {
+                        <div class="empty-state small">Cargando detalle del recorrido...</div>
+                    }
+                    else if (_tourTab == "resumen")
+                    {
+                        <div class="detail-grid route-focus-grid">
+                            <span>Vendedor</span><strong>@TextOrDash(_tourTicket?.NombreVendedor)</strong>
+                            <span>Inicio</span><strong>@FormatDateTime(_tourTicket?.FechaInicioUtc)</strong>
+                            <span>Min recorrido</span><strong>@NumberOrDash(_tourTicket?.MinutosRecorrido)</strong>
+                            <span>Visitas con venta</span><strong>@(_tourVisitas?.Kpi.VisitasConVenta ?? _tourTicket?.VisitasConVenta ?? 0)</strong>
+                            <span>Visitas sin venta</span><strong>@(_tourVisitas?.Kpi.VisitasSinVenta ?? _tourTicket?.VisitasSinVenta ?? 0)</strong>
+                            <span>Visitas extra</span><strong>@(_tourVisitas?.Kpi.VisitasExtra ?? _tourTicket?.TotalVisitasExtra ?? 0)</strong>
+                            <span>Lecturas QR</span><strong>@((_tourVisitas?.Kpi.LecturasQr ?? 0).ToString("N0"))</strong>
+                            <span>GPS valido 50m</span><strong>@((_tourVisitas?.Kpi.VisitasGpsValido ?? 0).ToString("N0"))</strong>
+                            <span>Tiempo traslado</span><strong>@((_tourVisitas?.Kpi.TiempoMuertoMinutos ?? 0).ToString("N0")) min</strong>
+                            <span>Efectivo</span><strong>@Money(_tourTicket?.TotalEfectivo ?? 0m)</strong>
+                            <span>Credito</span><strong>@Money(_tourTicket?.TotalCredito ?? 0m)</strong>
+                            <span>Cobros</span><strong>@Money(_tourTicket?.TotalCobros ?? 0m)</strong>
+                            <span>Cancelaciones</span><strong>@Money(_tourTicket?.TotalCancelaciones ?? 0m)</strong>
+                            <span>Gastos</span><strong>@Money(_tourTicket?.TotalGastos ?? 0m)</strong>
+                            <span>Gasolina</span><strong>@Money(_tourTicket?.TotalGasolina ?? 0m)</strong>
+                            <span>Liquido</span><strong>@Money(_tourTicket?.LiquidoRecibir ?? 0m)</strong>
+                        </div>
+                    }
+                    else if (_tourTab == "visitas")
+                    {
+                        @if (_tourVisitas?.Visitas?.Any() == true)
+                        {
+                            <div class="tour-list">
+                                @foreach (var visita in _tourVisitas.Visitas)
+                                {
+                                    <div class="tour-list-item">
+                                        <strong>@visita.Cliente</strong>
+                                        <small>#@VisitOrder(visita.IdCliente) · @TextOrDash(visita.Sucursal)</small>
+                                        <small>@TextOrDash(visita.Estatus) · @Money(visita.MontoVentas) · @((visita.MinutosTraslado ?? 0).ToString("N0")) min traslado</small>
+                                        <small class="@GpsBadgeClass(visita.GpsValido50m)">
+                                            @GpsMonitorText(visita.DistanciaMetros, visita.GpsValido50m)
+                                        </small>
+                                        <small>@TextOrDash(visita.ProductosVendidos)</small>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="empty-state small">No hay visitas cargadas para este recorrido.</div>
+                        }
+                    }
+                    else if (_tourTab == "pendientes")
+                    {
+                        @if (_tourVisitas?.NoVisitados?.Any() == true)
+                        {
+                            <div class="tour-list">
+                                @foreach (var cliente in _tourVisitas.NoVisitados)
+                                {
+                                    <div class="tour-list-item">
+                                        <strong>@cliente.Cliente</strong>
+                                        <small>#@cliente.Orden · @TextOrDash(cliente.Sucursal)</small>
+                                        <small>@TextOrDash(cliente.TipoVisita) · @TextOrDash(cliente.Telefono)</small>
+                                        <small>@TextOrDash(cliente.Direccion)</small>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="empty-state small">No hay clientes pendientes para este recorrido.</div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="tour-text-block">
+                            <h6>Resumen de cierre</h6>
+                            <pre>@TextBlockOrDash(_tourTicket?.TxtResumenCierre)</pre>
+                            <h6>Ventas cierre</h6>
+                            <pre>@TextBlockOrDash(_tourTicket?.TxtVentasCierre)</pre>
+                            <h6>Inventario inicio</h6>
+                            <pre>@TextBlockOrDash(_tourTicket?.TxtInventarioInicio)</pre>
+                            <h6>Inventario cierre</h6>
+                            <pre>@TextBlockOrDash(_tourTicket?.TxtInventarioCierre)</pre>
+                            <h6>Estado</h6>
+                            <pre>@TextBlockOrDash(TourCierreEstadoTexto)</pre>
+                        </div>
+                    }
+                </div>
+            }
+
             @if (_selected is null)
             {
                 <div class="empty-state small">
                     <i class="material-icons-outlined">storefront</i>
-                    <strong>Selecciona un cliente</strong>
-                    <span>Veras telefono, credito, estado y acciones rapidas.</span>
+                    <strong>@(_mode == MapMode.Tour ? "Selecciona una visita" : "Selecciona un cliente")</strong>
+                    <span>@(_mode == MapMode.Tour ? "Veras venta, productos y datos generales del cliente visitado." : "Veras telefono, credito, estado y acciones rapidas.")</span>
                 </div>
             }
             else
@@ -238,12 +345,23 @@
                     <span>Telefono</span><strong>@TextOrDash(_selected.Phone)</strong>
                     <span>RFC</span><strong>@TextOrDash(_selected.Rfc)</strong>
                     <span>Credito</span><strong>@_selected.CreditText</strong>
-                    <span>Ultima visita</span><strong class="@VisitAgeClass(_selected)">@_selected.LastVisit</strong>
-                    <span>Frecuencia</span><strong>@FrequencyLabel(_selected.FrequencyWeeks)</strong>
+                    @if (_mode == MapMode.Route)
+                    {
+                        <span>Ultima visita</span><strong class="@VisitAgeClass(_selected)">@_selected.LastVisit</strong>
+                        <span>Frecuencia</span><strong>@FrequencyLabel(_selected.FrequencyWeeks)</strong>
+                    }
+                    else
+                    {
+                        <span>Resultado</span><strong>@(_selected.Status == VisitStatus.Done ? "Visitado" : "Sin cierre")</strong>
+                        <span>Venta / top</span><strong class="preline">@TextOrDash(_selected.ProductTop)</strong>
+                    }
                     <span>GPS</span><strong>@GeoText(_selected.GeoSource)</strong>
                     <span>Monto historico</span><strong>@Money(_selected.TotalSalesAmount)</strong>
                     <span>Facturacion</span><strong>@(_selected.HasBilling ? TextOrDash(_selected.BillingName) : "No factura")</strong>
-                    <span>Top productos</span><strong class="preline">@TextOrDash(_selected.ProductTop)</strong>
+                    @if (_mode == MapMode.Route)
+                    {
+                        <span>Top productos</span><strong class="preline">@TextOrDash(_selected.ProductTop)</strong>
+                    }
                     <span>Direccion</span><strong>@_selected.Address</strong>
                 </div>
             }
@@ -338,6 +456,19 @@
     .detail-grid strong{font-weight:650;color:#344054}
     .visit-late{color:#b42318 !important}
     .preline{white-space:pre-line}
+    .tour-tabs-card{border:1px solid #e6eaf0;border-radius:10px;padding:.85rem;background:linear-gradient(180deg,#fff,#f8fbff)}
+    .tour-tabs{display:flex;gap:.45rem;flex-wrap:wrap;margin-bottom:.85rem}
+    .tour-tabs button{border:1px solid #d7dde6;background:#fff;color:#475467;border-radius:999px;padding:.38rem .7rem;font-size:.82rem;font-weight:600}
+    .tour-tabs button.active{border-color:#0d6efd;background:#eaf2ff;color:#0d6efd}
+    .tour-list{display:flex;flex-direction:column;gap:.6rem;max-height:360px;overflow:auto}
+    .tour-list-item{border:1px solid #e6eaf0;border-radius:8px;padding:.7rem .8rem;background:#fff}
+    .tour-list-item strong,.tour-list-item small{display:block}
+    .tour-list-item small{color:#667085}
+    .tour-list-item .gps-ok{color:#067647;font-weight:700}
+    .tour-list-item .gps-error{color:#b42318;font-weight:700}
+    .tour-text-block{display:flex;flex-direction:column;gap:.6rem}
+    .tour-text-block h6{margin:0;color:#344054;font-weight:700}
+    .tour-text-block pre{margin:0;white-space:pre-wrap;background:#f8fafc;border:1px solid #e6eaf0;border-radius:8px;padding:.75rem;color:#344054;font-size:.83rem;font-family:Consolas,monospace;max-height:220px;overflow:auto}
     .detail-actions{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:1.25rem}
     .monitor-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;margin-top:.85rem}
     .shortcut-card{display:flex;align-items:flex-start;gap:.8rem;text-decoration:none;padding:.95rem 1rem;border-radius:10px;border:1px solid #e6eaf0;background:linear-gradient(180deg,#fff,#f8fbff);box-shadow:0 4px 18px rgba(18,38,63,.04);color:#344054}
@@ -370,14 +501,21 @@
     private bool _loading;
     private bool _restored;
     private bool _loadingImage;
+    private bool _tourSearchExecuted;
+    private bool _loadingTourDetail;
     private DateTime _fechaTrabajo = DateTime.Today;
     private string _frecuenciaSeleccionada = "Todas";
+    private string _tourTab = "resumen";
     private List<MapaRutaOptionResponse> _routes = [];
     private List<MapaRecorridoOptionResponse> _recorridos = [];
     private List<MapStop> _stops = [];
     private MapStop? _selected;
     private string? _selectedImageDataUrl;
     private MapaConfiguracionResponse? _mapConfig;
+    private string? _tourDetailError;
+    private ReporteVisitasResponse? _tourVisitas;
+    private RecorridoTicketResponse? _tourTicket;
+    private RecorridoCierreCompletoResponse? _tourCierre;
     private DotNetObjectReference<GoogleMapBridge>? _mapBridgeRef;
     private bool _mapDirty;
     private readonly (int Numero, string Nombre)[] _diasSemana =
@@ -396,13 +534,36 @@
         .Where(MatchesFrequency)
         .OrderBy(s => s.Order)
         .ToList();
+    private MapaRecorridoOptionResponse? SelectedRecorrido => _recorridos.FirstOrDefault(x => x.IdRecorrido == _recorridoId) ?? _recorridos.FirstOrDefault();
 
     private string MapStatusText => VisibleStops.Any()
-        ? $"{VisibleStops.Count} cliente(s) programado(s) para {_fechaTrabajo:dd/MM/yyyy}."
-        : "Sin clientes programados para la fecha seleccionada.";
+        ? _mode == MapMode.Tour
+            ? $"{VisibleStops.Count} visita(s) cargada(s) del recorrido para {_fechaTrabajo:dd/MM/yyyy}."
+            : $"{VisibleStops.Count} cliente(s) programado(s) para {_fechaTrabajo:dd/MM/yyyy}."
+        : _mode == MapMode.Tour
+            ? "Sin visitas cargadas para el recorrido seleccionado."
+            : "Sin clientes programados para la fecha seleccionada.";
     private string RouteNameText => _routes.FirstOrDefault(x => x.IdRuta == _routeId)?.Nombre ?? "seleccionada";
     private string ClientesConImagenTexto => VisibleStops.Count == 0 ? "0" : VisibleStops.Count(x => x.HasImage).ToString("N0");
     private string ClientesConVisitaVencidaTexto => VisibleStops.Count == 0 ? "0" : VisibleStops.Count(x => x.DaysSinceLastVisit.HasValue && x.DaysSinceLastVisit.Value > 15).ToString("N0");
+    private string TourProgramadosTexto => (_tourVisitas?.Kpi.VisitasProgramadas ?? SelectedRecorrido?.VisitasProgramadas ?? 0).ToString("N0");
+    private string TourVisitadosTexto => (_tourVisitas?.Kpi.TotalVisitas ?? _tourTicket?.TotalVisitas ?? SelectedRecorrido?.VisitasRealizadas ?? 0).ToString("N0");
+    private string TourNoVisitadosTexto => (_tourVisitas?.Kpi.NoVisitados ?? Math.Max((SelectedRecorrido?.VisitasProgramadas ?? 0) - (SelectedRecorrido?.VisitasRealizadas ?? 0), 0)).ToString("N0");
+    private string TourMontoTexto => (_tourTicket?.TotalVentas ?? _tourCierre?.TotalVentas ?? SelectedRecorrido?.MontoVentas ?? 0m).ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("es-MX"));
+    private string? SelectedRecorridoNombre => SelectedRecorrido?.Nombre;
+    private string TourResumenTitulo => SelectedRecorrido is null
+        ? "Sin recorrido cargado"
+        : $"{SelectedRecorrido.Nombre} · {_fechaTrabajo:dd/MM/yyyy}";
+    private string TourCierreEstadoTexto => !string.IsNullOrWhiteSpace(_tourTicket?.TxtResumenCierre)
+        ? "Cierre completo disponible."
+        : !string.IsNullOrWhiteSpace(_tourDetailError)
+            ? _tourDetailError
+            : "La API publicada todavia no devolvio los textos completos de cierre para este recorrido.";
+    private string RecargasResumenTexto => _tourCierre?.DetalleMovimientos?.Any() == true
+        ? string.Join(Environment.NewLine, _tourCierre.DetalleMovimientos.Select(x => $"{x.TipoDescripcion}: {x.Cantidad:N0} · {Money(x.MontoTotal)}"))
+        : SelectedRecorrido?.MontoVentas > 0
+            ? "Sin movimientos detallados."
+            : "Sin dato";
     private List<MapStop> VisibleStopsWithCoordinates => VisibleStops.Where(x => x.HasValidCoordinates).ToList();
     private MapBounds? CurrentBounds => BuildBounds(VisibleStopsWithCoordinates, _selected);
     private string? CurrentMapUrl => _selected is not null && _selected.HasValidCoordinates
@@ -444,8 +605,9 @@
             {
                 if (_mode == MapMode.Tour)
                 {
-                    await LoadRecorridosAsync();
-                    await LoadRouteAsync();
+                    _recorridos = [];
+                    _recorridoId = 0;
+                    _stops = [];
                 }
                 else
                 {
@@ -468,18 +630,19 @@
         await SaveStateAsync();
         if (_mode == MapMode.Tour)
         {
-            await LoadRecorridosAsync();
-            await LoadRouteAsync();
+            _recorridos = [];
+            _recorridoId = 0;
+            _stops = [];
+            _selected = null;
+            _tourDetailError = null;
+            _tourVisitas = null;
+            _tourTicket = null;
+            _tourCierre = null;
+            _tourSearchExecuted = false;
+            _mapDirty = true;
             return;
         }
 
-        await LoadRouteAsync();
-    }
-
-    private async Task OnRecorridoChangedAsync(ChangeEventArgs e)
-    {
-        _recorridoId = long.TryParse(e.Value?.ToString(), out var id) ? id : 0;
-        await SaveStateAsync();
         await LoadRouteAsync();
     }
 
@@ -488,6 +651,20 @@
         if (DateTime.TryParse(e.Value?.ToString(), out var fecha))
             _fechaTrabajo = fecha.Date;
         await SaveStateAsync();
+        if (_mode == MapMode.Tour)
+        {
+            _recorridos = [];
+            _recorridoId = 0;
+            _stops = [];
+            _selected = null;
+            _tourDetailError = null;
+            _tourVisitas = null;
+            _tourTicket = null;
+            _tourCierre = null;
+            _tourSearchExecuted = false;
+            _mapDirty = true;
+            return;
+        }
         await LoadRouteAsync();
     }
 
@@ -499,6 +676,10 @@
         _stops = [];
         _recorridoId = 0;
         _error = null;
+        _tourDetailError = null;
+        _tourVisitas = null;
+        _tourTicket = null;
+        _tourCierre = null;
 
         if (_routeId <= 0)
         {
@@ -509,7 +690,7 @@
         }
 
         _loading = true;
-        var (items, error) = await MapaApi.GetRecorridosAsync(_routeId);
+        var (items, error) = await MapaApi.GetRecorridosAsync(_routeId, _fechaTrabajo);
         _loading = false;
         _error = error;
         _recorridos = items?.ToList() ?? [];
@@ -623,11 +804,65 @@
         await SaveStateAsync();
         if (_mode == MapMode.Tour)
         {
-            await LoadRecorridosAsync();
-            await LoadRouteAsync();
+            _recorridos = [];
+            _recorridoId = 0;
+            _stops = [];
+            _selected = null;
+            _tourDetailError = null;
+            _tourVisitas = null;
+            _tourTicket = null;
+            _tourCierre = null;
+            _tourSearchExecuted = false;
+            _mapDirty = true;
             return;
         }
         await LoadRouteAsync();
+    }
+    private async Task BuscarRecorridoAsync()
+    {
+        _tourSearchExecuted = true;
+        await LoadRecorridosAsync();
+        if (_recorridoId > 0)
+        {
+            await LoadRouteAsync();
+            await LoadTourDetailAsync();
+        }
+        else
+        {
+            _error = $"No se encontro recorrido para la ruta {RouteNameText} en la fecha {_fechaTrabajo:dd/MM/yyyy}.";
+        }
+    }
+    private async Task LoadTourDetailAsync()
+    {
+        if (_mode != MapMode.Tour || _routeId <= 0 || _recorridoId <= 0)
+            return;
+
+        _loadingTourDetail = true;
+        _tourDetailError = null;
+
+        var (visitas, visitasError) = await MapaApi.GetReporteVisitasAsync(_routeId, _fechaTrabajo, _recorridoId);
+        var (ticket, ticketError) = await MapaApi.GetRecorridoTicketAsync(_recorridoId);
+        var (cierre, cierreError) = await MapaApi.GetRecorridoCierreCompletoAsync(_recorridoId);
+
+        _loadingTourDetail = false;
+        _tourVisitas = visitas;
+        _tourTicket = ticket;
+        _tourCierre = cierre;
+
+        _error = FirstError(_error, visitasError);
+        _tourDetailError = FirstError(ticketError, cierreError);
+        if (_tourVisitas?.Visitas?.Any() == true)
+        {
+            var byClient = _tourVisitas.Visitas
+                .GroupBy(x => x.IdCliente)
+                .ToDictionary(g => g.Key, g => g.First().IdVisita);
+
+            _stops = _stops
+                .OrderBy(x => byClient.TryGetValue(x.Id, out var idVisita) ? idVisita : long.MaxValue)
+                .ThenBy(x => x.Order)
+                .ToList();
+        }
+        _tourTab = "resumen";
     }
     private async Task SelectRecorridoAsync(MapaRecorridoOptionResponse tour)
     {
@@ -636,6 +871,8 @@
         await LoadRouteAsync();
     }
     private string ModeClass(MapMode mode) => _mode == mode ? "btn-primary" : "btn-outline-primary";
+    private void SetTourTab(string tab) => _tourTab = tab;
+    private string TourTabClass(string tab) => string.Equals(_tourTab, tab, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     private async Task SetDayAsync(int diaSemana)
     {
         var currentDay = DiaSemanaNumero(_fechaTrabajo);
@@ -655,6 +892,24 @@
     private static string StatusClass(VisitStatus status) => status switch { VisitStatus.Done => "done", VisitStatus.Alert => "alert", _ => "pending" };
     private static string StatusText(VisitStatus status) => status switch { VisitStatus.Done => "Visitado", VisitStatus.Alert => "Alerta", _ => "Pendiente" };
     private static string TextOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "Sin dato" : value;
+    private static string TextBlockOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "Sin dato" : value;
+    private static string NumberOrDash(int? value) => value.HasValue ? value.Value.ToString("N0") : "Sin dato";
+    private static string FormatDateTime(DateTime? value) => value.HasValue ? value.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Sin dato";
+    private static string? FirstError(params string?[] values) => values.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+    private static string GpsBadgeClass(bool gpsValido50m) => gpsValido50m ? "gps-ok" : "gps-error";
+    private static string GpsMonitorText(decimal? distanciaMetros, bool gpsValido50m)
+    {
+        if (gpsValido50m)
+        {
+            return distanciaMetros.HasValue
+                ? $"Ubicacion OK · {distanciaMetros.Value:N0} m"
+                : "Ubicacion OK";
+        }
+
+        return distanciaMetros.HasValue
+            ? $"Ubicacion error · {distanciaMetros.Value:N0} m"
+            : "Ubicacion error";
+    }
     private static string GeoText(string source) => source switch
     {
         "REAL_FIN" => "GPS real de cierre",
@@ -669,7 +924,7 @@
         if (ultimaVisitaUtc.HasValue)
         {
             var fecha = ultimaVisitaUtc.Value.ToLocalTime().ToString("dd/MM/yyyy");
-            return diasSinVisita.HasValue ? $"{fecha} · {diasSinVisita.Value} dia(s)" : fecha;
+            return diasSinVisita.HasValue ? $"{fecha} Â· {diasSinVisita.Value} dia(s)" : fecha;
         }
 
         return string.IsNullOrWhiteSpace(fallback) ? "Sin visita reciente" : fallback;
@@ -698,6 +953,8 @@
         var lonPad = Math.Max((maxLon - minLon) * 0.12d, 0.0035d);
         return new MapBounds(minLat - latPad, maxLat + latPad, minLon - lonPad, maxLon + lonPad);
     }
+    private int VisitOrder(int idCliente)
+        => VisibleStops.FirstOrDefault(x => x.Id == idCliente)?.Order ?? 0;
     private async Task RenderGoogleMapAsync()
     {
         if (!CanShowMap || string.IsNullOrWhiteSpace(_mapConfig?.ApiKey))

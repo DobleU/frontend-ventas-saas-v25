@@ -1,8 +1,9 @@
 using webVentasSaaSV25.Services.Http;
+using webVentasSaaSV25.State;
 
 namespace webVentasSaaSV25.Services.Monitor;
 
-public sealed class MonitorMapaService(ApiClient api)
+public sealed class MonitorMapaService(ApiClient api, AppState appState)
 {
     public Task<(MapaConfiguracionResponse? D, string? E)> GetConfiguracionAsync()
         => api.GetAsync<MapaConfiguracionResponse>("api/v1/mapa/configuracion");
@@ -83,6 +84,12 @@ public sealed class MonitorMapaService(ApiClient api)
         if (!string.IsNullOrWhiteSpace(search)) query += $"&search={Uri.EscapeDataString(search)}";
         return api.GetAsync<ReporteEventosResponse>($"api/v1/mapa/reportes/eventos?{query}");
     }
+
+    public Task<(RecorridoTicketResponse? D, string? E)> GetRecorridoTicketAsync(long idRecorrido)
+        => api.GetAsync<RecorridoTicketResponse>($"api/v1/app/recorrido/{idRecorrido}/ticket");
+
+    public Task<(RecorridoCierreCompletoResponse? D, string? E)> GetRecorridoCierreCompletoAsync(long idRecorrido)
+        => api.GetAsync<RecorridoCierreCompletoResponse>($"api/v1/app/recorrido/{idRecorrido}/cierre-completo?idEmpresa={appState.IdEmpresa}");
 
     public Task<(MonitorWriteResult? D, string? E)> RegistrarEventoAccionAsync(
         long idEvento,
@@ -389,4 +396,101 @@ public sealed class MonitorWriteResult
     public int Id { get; init; }
     public int Conf { get; init; }
     public string? Msg { get; init; }
+}
+
+public sealed class RecorridoTicketResponse
+{
+    public long IdRecorrido { get; init; }
+    public string? NombreVendedor { get; init; }
+    public string? NombreRuta { get; init; }
+    public DateOnly FechaRecorrido { get; init; }
+    public DateTime? FechaInicioUtc { get; init; }
+    public int TotalVisitas { get; init; }
+    public int VisitasConVenta { get; init; }
+    public int VisitasSinVenta { get; init; }
+    public int VisitasOmitidas { get; init; }
+    public int TotalVisitasRuta { get; init; }
+    public int TotalVisitasExtra { get; init; }
+    public int TotalVisitasCapturado { get; init; }
+    public int TotalVisitasRepetido { get; init; }
+    public decimal TotalVentas { get; init; }
+    public decimal TotalEfectivo { get; init; }
+    public decimal TotalCredito { get; init; }
+    public decimal TotalCobros { get; init; }
+    public decimal TotalCancelaciones { get; init; }
+    public decimal TotalGastos { get; init; }
+    public decimal TotalGasolina { get; init; }
+    public decimal LiquidoRecibir { get; init; }
+    public int? MinutosRecorrido { get; init; }
+    public string? TxtInventarioInicio { get; init; }
+    public string? TxtInventarioCierre { get; init; }
+    public string? TxtVentasCierre { get; init; }
+    public string? TxtResumenCierre { get; init; }
+    public DateTime? TicketGeneradoUtc { get; init; }
+}
+
+public sealed class RecorridoCierreCompletoResponse
+{
+    public long IdRecorrido { get; init; }
+    public string? NombreVendedor { get; init; }
+    public string? NombreRuta { get; init; }
+    public DateOnly FechaRecorrido { get; init; }
+    public int? MinutosRecorrido { get; init; }
+    public DateTime? FechaInicioUtc { get; init; }
+    public int TotalVisitas { get; init; }
+    public int VisitasConVenta { get; init; }
+    public int VisitasSinVenta { get; init; }
+    public int VisitasOmitidas { get; init; }
+    public int TotalProspectos { get; init; }
+    public int TotalVisitasRuta { get; init; }
+    public int TotalVisitasExtra { get; init; }
+    public int TotalVisitasCapturado { get; init; }
+    public int TotalVisitasRepetido { get; init; }
+    public decimal TotalVentas { get; init; }
+    public decimal TotalEfectivo { get; init; }
+    public decimal TotalCredito { get; init; }
+    public decimal TotalCobros { get; init; }
+    public decimal TotalCancelaciones { get; init; }
+    public decimal TotalGastos { get; init; }
+    public decimal TotalGasolina { get; init; }
+    public decimal TotalDepositos { get; init; }
+    public decimal TotalRetiros { get; init; }
+    public decimal LiquidoARecibir { get; init; }
+    public IReadOnlyList<ResumenDepositoItemResponse> DetalleMovimientos { get; init; } = [];
+    public IReadOnlyList<CierreInventarioItemResponse> InventarioActual { get; init; } = [];
+    public IReadOnlyList<CierreProductoVendidoResponse> ProductosVendidos { get; init; } = [];
+}
+
+public sealed class ResumenDepositoItemResponse
+{
+    public string TipoMovimiento { get; init; } = string.Empty;
+    public string TipoDescripcion { get; init; } = string.Empty;
+    public int Cantidad { get; init; }
+    public decimal MontoTotal { get; init; }
+}
+
+public sealed class CierreInventarioItemResponse
+{
+    public int IdProducto { get; init; }
+    public string? Sku { get; init; }
+    public string? NombreProducto { get; init; }
+    public long? IdLote { get; init; }
+    public string? NumLote { get; init; }
+    public DateOnly? FechaCaducidad { get; init; }
+    public decimal CantidadPiezas { get; init; }
+    public int? CantXCaja { get; init; }
+    public decimal CantCajas { get; init; }
+    public decimal CantPiezas { get; init; }
+}
+
+public sealed class CierreProductoVendidoResponse
+{
+    public int IdProducto { get; init; }
+    public string? Sku { get; init; }
+    public string? NombreProducto { get; init; }
+    public decimal CantidadPiezas { get; init; }
+    public int? CantXCaja { get; init; }
+    public decimal CantCajas { get; init; }
+    public decimal CantPiezas { get; init; }
+    public decimal Total { get; init; }
 }
