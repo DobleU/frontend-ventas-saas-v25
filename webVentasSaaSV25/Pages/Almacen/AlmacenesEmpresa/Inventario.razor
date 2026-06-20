@@ -189,7 +189,7 @@
     private async Task Cargar()
     {
         _loading = true;
-        var (data, error) = await Svc.GetInventarioAsync(IdAlmacen, _search, _page, _pageSize);
+        var (data, error) = await Svc.GetInventarioAsync(IdAlmacen, _search, _page, _pageSize, soloConExistencia: true);
         _loading = false;
 
         if (error is not null)

@@ -1,0 +1,408 @@
+@page "/almacen/almacenes/{IdAlmacen:int}/intercambio"
+@using webVentasSaaSV25.Services.Almacen
+@using webVentasSaaSV25.Services.Catalogos
+@inject InventarioAlmacenWebService Svc
+@inject CatalogoItemService CatalogoItems
+
+<PageTitle>Intercambio - VentasSaaSDU</PageTitle>
+
+<Breadcrumb Titulo="Intercambio" Items="@(new[]{ ("Almacen", "/almacen/almacenes"), ("Intercambio", "") })" />
+
+<div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
+    <div>
+        <h3 class="mb-1">Intercambio</h3>
+        <p class="text-secondary mb-0">Sustituye un lote en ruta por un lote disponible del almacen origen, manteniendo trazabilidad de movimientos.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-2" @onclick="CargarAsync" disabled="@_loading">
+            @if (_loading)
+            {
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            }
+            else
+            {
+                <span class="material-icons-outlined">refresh</span>
+            }
+            Actualizar
+        </button>
+        <a class="btn btn-outline-secondary d-flex align-items-center gap-2" href="javascript:history.back()">
+            <span class="material-icons-outlined">arrow_back</span>
+            Regresar
+        </a>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(_ok))
+{
+    <div class="alert alert-success">@_ok</div>
+}
+
+@if (_loading)
+{
+    <LoadingSpinner Solo="true" Texto="Cargando intercambio..." />
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-12 col-xl-5">
+            <div class="card rounded-4 h-100">
+                <div class="card-body">
+                    <h5 class="mb-3">Captura</h5>
+
+                    <div class="mb-3">
+                        <label class="form-label">Ruta destino</label>
+                        <select class="form-select" value="@_idAlmacenDestino" @onchange="OnRutaChanged">
+                            <option value="0">Selecciona ruta</option>
+                            @foreach (var ruta in _rutasDestino)
+                            {
+                                <option value="@ruta.IdSubalmacen">@ruta.NombreRuta - @ruta.NombreVehiculo</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Producto de ruta</label>
+                        <select class="form-select" value="@_idProducto" @onchange="OnProductoChanged" disabled="@(_idAlmacenDestino <= 0 || _loadingRuta)">
+                            <option value="0">Selecciona producto</option>
+                            @foreach (var producto in ProductosRuta)
+                            {
+                                <option value="@producto.IdProducto">@NombreProductoCombo(producto)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Lote de ruta</label>
+                        <select class="form-select" @bind="_idLoteRuta" disabled="@(_idProducto <= 0)">
+                            <option value="0">Selecciona lote</option>
+                            @foreach (var lote in LotesRuta)
+                            {
+                                <option value="@lote.IdLote">Lote @lote.NumLote - Stock @Fmt(lote.CantidadPiezas)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Lote del almacen origen</label>
+                        <select class="form-select" @bind="_idLoteOrigen" disabled="@(_idProducto <= 0)">
+                            <option value="0">Selecciona lote origen</option>
+                            @foreach (var lote in LotesOrigen)
+                            {
+                                <option value="@lote.IdLote">Lote @lote.NumLote - Stock @Fmt(lote.CantidadPiezas)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label">Cajas</label>
+                            <InputNumber class="form-control" @bind-Value="_cajas" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Piezas</label>
+                            <InputNumber class="form-control" @bind-Value="_piezas" />
+                        </div>
+                    </div>
+
+                    <div class="small text-secondary mt-2">
+                        @if (ProductoSeleccionado is not null)
+                        {
+                            <span>Equivale a @Fmt(CantidadCapturada) pieza(s). Cantidad por caja: @(ProductoSeleccionado.CantXcaja ?? 0).</span>
+                        }
+                        else
+                        {
+                            <span>Selecciona producto para calcular cajas y piezas.</span>
+                        }
+                    </div>
+
+                    <div class="mb-3 mt-3">
+                        <label class="form-label">Motivo de intercambio</label>
+                        <select class="form-select" @bind="_idMotivo">
+                            <option value="0">Selecciona motivo</option>
+                            @foreach (var motivo in _motivos)
+                            {
+                                <option value="@motivo.IdCatalogoItem">@motivo.Nombre</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" rows="3" @bind="_observaciones"></textarea>
+                    </div>
+
+                    <button type="button" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2"
+                            @onclick="GuardarAsync"
+                            disabled="@(!PuedeGuardar || _saving)">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        }
+                        else
+                        {
+                            <span class="material-icons-outlined">published_with_changes</span>
+                        }
+                        Agregar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-7">
+            <div class="card rounded-4 h-100">
+                <div class="card-body">
+                    <h5 class="mb-3">Resumen</h5>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <tbody>
+                                <tr><th>Ruta</th><td>@(_rutasDestino.FirstOrDefault(x => x.IdSubalmacen == _idAlmacenDestino)?.NombreRuta ?? "-")</td></tr>
+                                <tr><th>Producto</th><td>@(ProductoSeleccionado?.NombreProducto ?? "-")</td></tr>
+                                <tr><th>Lote que sale de ruta</th><td>@(LotesRuta.FirstOrDefault(x => x.IdLote == _idLoteRuta)?.NumLote ?? "-")</td></tr>
+                                <tr><th>Lote que entra a ruta</th><td>@(LotesOrigen.FirstOrDefault(x => x.IdLote == _idLoteOrigen)?.NumLote ?? "-")</td></tr>
+                                <tr><th>Cantidad</th><td>@Fmt(CantidadCapturada) pieza(s)</td></tr>
+                                <tr><th>Motivo</th><td>@(_motivos.FirstOrDefault(x => x.IdCatalogoItem == _idMotivo)?.Nombre ?? "-")</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-secondary small">
+                        El proceso registra la salida del lote en ruta, la entrada del lote de reemplazo y el retorno del lote retirado al almacen origen.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int IdAlmacen { get; set; }
+
+    private bool _loading;
+    private bool _loadingRuta;
+    private bool _saving;
+    private string? _error;
+    private string? _ok;
+    private readonly List<SubalmacenVehiculoCardResponse> _rutasDestino = [];
+    private readonly List<InventarioAlmacenItemResponse> _inventarioOrigen = [];
+    private readonly List<InventarioAlmacenItemResponse> _inventarioRuta = [];
+    private readonly List<CatalogoItemResponse> _motivos = [];
+    private int _idAlmacenDestino;
+    private int _idRutaDestino;
+    private int _idProducto;
+    private long _idLoteRuta;
+    private long _idLoteOrigen;
+    private int _cajas;
+    private int _piezas;
+    private int _idMotivo;
+    private string? _observaciones;
+
+    private InventarioAlmacenItemResponse? ProductoSeleccionado
+        => _inventarioRuta.FirstOrDefault(x => x.IdProducto == _idProducto);
+
+    private List<InventarioAlmacenItemResponse> ProductosRuta
+        => _inventarioRuta
+            .Where(x => x.CantidadPiezas > 0 && _inventarioOrigen.Any(o => o.IdProducto == x.IdProducto && o.CantidadPiezas > 0))
+            .GroupBy(x => x.IdProducto)
+            .Select(g => g.OrderBy(x => x.NombreProducto).First())
+            .OrderBy(x => x.NombreProducto)
+            .ToList();
+
+    private List<InventarioAlmacenItemResponse> LotesRuta
+        => _inventarioRuta
+            .Where(x => x.IdProducto == _idProducto && x.CantidadPiezas > 0)
+            .OrderBy(x => x.FechaCaducidad ?? DateTime.MaxValue)
+            .ThenBy(x => x.NumLote)
+            .ToList();
+
+    private List<InventarioAlmacenItemResponse> LotesOrigen
+        => _inventarioOrigen
+            .Where(x => x.IdProducto == _idProducto && x.CantidadPiezas > 0 && x.IdLote != _idLoteRuta)
+            .OrderBy(x => x.FechaCaducidad ?? DateTime.MaxValue)
+            .ThenBy(x => x.NumLote)
+            .ToList();
+
+    private decimal CantidadCapturada
+    {
+        get
+        {
+            var cantXcaja = ProductoSeleccionado?.CantXcaja ?? 0;
+            return (_cajas * cantXcaja) + _piezas;
+        }
+    }
+
+    private bool PuedeGuardar
+        => _idRutaDestino > 0
+           && _idAlmacenDestino > 0
+           && _idProducto > 0
+           && _idLoteRuta > 0
+           && _idLoteOrigen > 0
+           && _idLoteRuta != _idLoteOrigen
+           && CantidadCapturada > 0
+           && _idMotivo > 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAsync();
+    }
+
+    private async Task CargarAsync()
+    {
+        _loading = true;
+        _error = null;
+        _ok = null;
+
+        try
+        {
+            var (rutas, errRutas) = await Svc.GetSubalmacenesVehiculosCardsAsync(IdAlmacen, isActive: true);
+            if (!string.IsNullOrWhiteSpace(errRutas))
+            {
+                _error = errRutas;
+                return;
+            }
+
+            _rutasDestino.Clear();
+            _rutasDestino.AddRange((rutas ?? []).Where(x => x.IsActive).OrderBy(x => x.NombreRuta));
+
+            var (origen, errOrigen) = await Svc.GetInventarioAsync(IdAlmacen, page: 1, pageSize: 1000, soloConExistencia: true);
+            if (!string.IsNullOrWhiteSpace(errOrigen))
+            {
+                _error = errOrigen;
+                return;
+            }
+
+            _inventarioOrigen.Clear();
+            _inventarioOrigen.AddRange(origen?.Items ?? []);
+
+            var (motivos, errMotivos) = await CatalogoItems.GetByTipoAsync(100);
+            if (!string.IsNullOrWhiteSpace(errMotivos))
+            {
+                _error = errMotivos;
+                return;
+            }
+
+            _motivos.Clear();
+            _motivos.AddRange((motivos?.Items ?? []).Where(x => x.IsActive).OrderBy(x => x.Orden ?? 0).ThenBy(x => x.Nombre));
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnRutaChanged(ChangeEventArgs e)
+    {
+        _idAlmacenDestino = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        var ruta = _rutasDestino.FirstOrDefault(x => x.IdSubalmacen == _idAlmacenDestino);
+        _idRutaDestino = ruta?.IdRuta ?? 0;
+        _idProducto = 0;
+        _idLoteRuta = 0;
+        _idLoteOrigen = 0;
+        _inventarioRuta.Clear();
+
+        if (_idAlmacenDestino <= 0)
+            return;
+
+        _loadingRuta = true;
+        try
+        {
+            var (inventario, error) = await Svc.GetInventarioAsync(_idAlmacenDestino, page: 1, pageSize: 1000, soloConExistencia: true);
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                _error = error;
+                return;
+            }
+
+            _inventarioRuta.AddRange(inventario?.Items ?? []);
+        }
+        finally
+        {
+            _loadingRuta = false;
+        }
+    }
+
+    private void OnProductoChanged(ChangeEventArgs e)
+    {
+        _idProducto = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        _idLoteRuta = 0;
+        _idLoteOrigen = 0;
+        _cajas = 0;
+        _piezas = 0;
+    }
+
+    private async Task GuardarAsync()
+    {
+        _error = null;
+        _ok = null;
+
+        var loteRuta = LotesRuta.FirstOrDefault(x => x.IdLote == _idLoteRuta);
+        var loteOrigen = LotesOrigen.FirstOrDefault(x => x.IdLote == _idLoteOrigen);
+        if (loteRuta is null || loteOrigen is null)
+        {
+            _error = "Selecciona lotes validos.";
+            return;
+        }
+
+        if (CantidadCapturada > loteRuta.CantidadPiezas)
+        {
+            _error = $"No hay existencia suficiente en ruta. Stock: {Fmt(loteRuta.CantidadPiezas)}.";
+            return;
+        }
+
+        if (CantidadCapturada > loteOrigen.CantidadPiezas)
+        {
+            _error = $"No hay existencia suficiente en almacen origen. Stock: {Fmt(loteOrigen.CantidadPiezas)}.";
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var request = new CrearIntercambioAlmacenRequest
+            {
+                IdRutaDestino = _idRutaDestino,
+                IdAlmacenDestino = _idAlmacenDestino,
+                IdProducto = _idProducto,
+                IdLoteRuta = _idLoteRuta,
+                IdLoteOrigen = _idLoteOrigen,
+                Cantidad = CantidadCapturada,
+                CantCajas = _cajas > 0 ? Convert.ToInt16(_cajas) : null,
+                CantPiezas = _piezas > 0 ? _piezas : null,
+                IdMotivoIntercambio = _idMotivo,
+                Observaciones = _observaciones
+            };
+
+            var (id, error) = await Svc.CrearIntercambioAlmacenAsync(IdAlmacen, request);
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                _error = error;
+                return;
+            }
+
+            _ok = $"Intercambio registrado correctamente. Folio interno: {id}.";
+            _idProducto = 0;
+            _idLoteRuta = 0;
+            _idLoteOrigen = 0;
+            _cajas = 0;
+            _piezas = 0;
+            _idMotivo = 0;
+            _observaciones = null;
+            await OnRutaChanged(new ChangeEventArgs { Value = _idAlmacenDestino.ToString() });
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private static string NombreProductoCombo(InventarioAlmacenItemResponse item)
+        => string.IsNullOrWhiteSpace(item.NombreCorto)
+            ? item.NombreProducto
+            : $"{item.NombreProducto} ({item.NombreCorto})";
+
+    private static string Fmt(decimal value)
+        => value.ToString("#,##0.####");
+}

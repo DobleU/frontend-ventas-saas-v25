@@ -311,6 +311,32 @@ public sealed class ClienteResponse
     public int DiasCredito { get; init; }
     public int? IdRuta { get; init; }
     public string? NombreRuta { get; init; }
+    public int? IdDireccion { get; init; }
+    public string? NombreSucursal { get; init; }
+    public string? Direccion1 { get; init; }
+    public int? IdPais { get; init; }
+    public int? IdEstado { get; init; }
+    public int? IdMunicipio { get; init; }
+    public string? CodigoPostal { get; init; }
+    public string? Colonia { get; init; }
+    public string? Referencias { get; init; }
+    public decimal? Latitud { get; init; }
+    public decimal? Longitud { get; init; }
+    public bool EsPrincipal { get; init; }
+    public bool EsEntrega { get; init; }
+    public bool EsFacturacionDireccion { get; init; }
+    public int? DiaSemana { get; init; }
+    public int? OrdenDia { get; init; }
+    public int? IdFrecuenciaVisita { get; init; }
+    public int? FrecuenciaSemanas { get; init; }
+    public int? IdFacturacion { get; init; }
+    public string? FactRfc { get; init; }
+    public string? FactRazonSocial { get; init; }
+    public string? FactRegimenFiscal { get; init; }
+    public string? FactUsoCfdi { get; init; }
+    public string? FactDireccionFiscal { get; init; }
+    public string? FactCodigoPostal { get; init; }
+    public bool FactEsDefault { get; init; }
     public bool IsActive { get; init; }
     public DateTime CreatedUtc { get; init; }
     public DateTime? UpdatedUtc { get; init; }
@@ -346,6 +372,61 @@ public sealed class ActualizarClienteRequest
     public decimal? CredLimite { get; set; }
     public int? CredDias { get; set; }
     public bool? IsActive { get; set; }
+}
+public sealed class GuardarClienteFormularioRequest
+{
+    public int? IdCliente { get; set; }
+    public int? IdRuta { get; set; }
+    public int? IdAlmacen { get; set; }
+    public DateTime? FechaTrabajo { get; set; }
+    public int IdTipoPersona { get; set; } = 1;
+    public string? Nombre { get; set; }
+    public string? ApePat { get; set; }
+    public string? ApeMat { get; set; }
+    public string? RazonSocial { get; set; }
+    public string? Rfc { get; set; }
+    public string? Correo { get; set; }
+    public string? Telefono1 { get; set; }
+    public string? Telefono2 { get; set; }
+    public bool TieneCredito { get; set; }
+    public decimal LimiteCredito { get; set; }
+    public int DiasCredito { get; set; }
+    public bool? BloquearCredito { get; set; }
+    public bool? BloquearGeneral { get; set; }
+    public bool? IsActive { get; set; }
+    public ClienteDireccionFormularioRequest? Direccion { get; set; }
+    public ClienteFacturacionFormularioRequest? Facturacion { get; set; }
+}
+public sealed class ClienteDireccionFormularioRequest
+{
+    public int? IdDireccion { get; set; }
+    public string? NombreSucursal { get; set; }
+    public string? Direccion1 { get; set; }
+    public int? IdPais { get; set; }
+    public int? IdEstado { get; set; }
+    public int? IdMunicipio { get; set; }
+    public string? CodigoPostal { get; set; }
+    public string? Colonia { get; set; }
+    public string? Referencias { get; set; }
+    public decimal? Latitud { get; set; }
+    public decimal? Longitud { get; set; }
+    public bool EsPrincipal { get; set; } = true;
+    public bool EsEntrega { get; set; } = true;
+    public bool EsFacturacion { get; set; }
+    public int? DiaSemana { get; set; }
+    public int? OrdenDia { get; set; }
+    public int? IdFrecuenciaVisita { get; set; }
+}
+public sealed class ClienteFacturacionFormularioRequest
+{
+    public int? IdFacturacion { get; set; }
+    public string? Rfc { get; set; }
+    public string? RazonSocial { get; set; }
+    public string? RegimenFiscal { get; set; }
+    public string? UsoCfdi { get; set; }
+    public string? DireccionFiscal { get; set; }
+    public string? CodigoPostal { get; set; }
+    public bool EsDefault { get; set; } = true;
 }
 public sealed class FiltroClienteRequest
 {
@@ -548,8 +629,13 @@ public sealed class ClienteService(ApiClient api)
             $"api/v1/clientes?{Qs.Build(f.Search, f.IsActive, f.Page, f.PageSize, extra)}");
     }
     public Task<(ClienteResponse? D, string? E)> GetByIdAsync(int id) => api.GetAsync<ClienteResponse>($"api/v1/clientes/{id}");
+    public Task<(ClienteResponse? D, string? E)> GetFormularioAsync(int id) => api.GetAsync<ClienteResponse>($"api/v1/clientes/{id}/formulario");
     public Task<(ApiWriteResult? D, string? E)> CrearAsync(CrearClienteRequest r) => api.PostAsync<ApiWriteResult>("api/v1/clientes", r);
     public Task<(ApiWriteResult? D, string? E)> ActualizarAsync(int id, ActualizarClienteRequest r) => api.PutAsync<ApiWriteResult>($"api/v1/clientes/{id}", r);
+    public Task<(ApiWriteResult? D, string? E)> CrearFormularioAsync(GuardarClienteFormularioRequest r)
+        => api.PostAsync<ApiWriteResult>("api/v1/clientes/formulario", r);
+    public Task<(ApiWriteResult? D, string? E)> ActualizarFormularioAsync(int id, GuardarClienteFormularioRequest r)
+        => api.PutAsync<ApiWriteResult>($"api/v1/clientes/{id}/formulario", r);
     public Task<(bool Ok, string? E)> EliminarAsync(int id) => api.DeleteAsync($"api/v1/clientes/{id}");
 }
 

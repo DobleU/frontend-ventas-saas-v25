@@ -74,6 +74,7 @@
             </a>
             <ul class="dropdown-menu">
                 <li>@Item("/monitor/mapa", "map", "Mapa General")</li>
+                <li>@Item("/monitor/prospectos", "person_search", "Monitor Prospectos", pronto: true)</li>
                 <li>@Item("/monitor/rutas", "monitoring", "Monitor Recorrido")</li>
                 <li>@Item("/monitor/clientes", "groups", "Monitor Clientes")</li>
                 <li>@Item("/monitor/pos", "point_of_sale", "Monitor POS")</li>
@@ -102,9 +103,9 @@
                 <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
             </a>
             <ul class="dropdown-menu">
-                <li>@Item("/pos/ventas", "shopping_cart", "Ventas POS")</li>
-                <li>@Item("/pos/caja", "payments", "Caja")</li>
-                <li>@Item("/pos/tickets", "receipt_long", "Reimpresión de Ticket")</li>
+                <li>@Item("/pos/ventas", "shopping_cart", "Ventas POS", pronto: true)</li>
+                <li>@Item("/pos/caja", "payments", "Caja", pronto: true)</li>
+                <li>@Item("/pos/tickets", "receipt_long", "Reimpresión de Ticket", pronto: true)</li>
             </ul>
         </li>
 
@@ -217,7 +218,7 @@
                 <li>@Item("/reportes/clientes", "people", "Clientes")</li>
                 <li>@Item("/reportes/ruta", "route", "Reportes de Ruta")</li>
                 <li>@Item("/reportes/inventario/movimientos", "inventory", "Movimientos de Almacén")</li>
-                <li>@Item("/reportes/utilidad-margen", "monitoring", "Utilidad y Margen")</li>
+                <li>@Item("/reportes/utilidad-margen", "monitoring", "Utilidad y Margen", pronto: true)</li>
             </ul>
         </li>
 

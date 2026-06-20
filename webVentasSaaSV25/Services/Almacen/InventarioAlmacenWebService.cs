@@ -382,6 +382,24 @@ public sealed class SolicitudRutaResponse
     public decimal TotalPiezasSueltasSurtidas { get; init; }
 }
 
+public sealed class IntercambioAlmacenListItemResponse
+{
+    public long IdIntercambio { get; init; }
+    public string Folio { get; init; } = string.Empty;
+    public int IdAlmacenOrigen { get; init; }
+    public string NombreAlmacenOrigen { get; init; } = string.Empty;
+    public int IdAlmacenDestino { get; init; }
+    public string NombreAlmacenDestino { get; init; } = string.Empty;
+    public int IdRutaDestino { get; init; }
+    public string NombreRutaDestino { get; init; } = string.Empty;
+    public string Motivo { get; init; } = string.Empty;
+    public int TotalLineas { get; init; }
+    public decimal TotalPiezas { get; init; }
+    public DateTime CreatedUtc { get; init; }
+    public string? UsuarioRegistro { get; init; }
+    public string? Observaciones { get; init; }
+}
+
 public sealed class SolicitudRutaCabeceraResponse
 {
     public long IdSolicitud { get; init; }
@@ -460,6 +478,7 @@ public sealed class RegistrarEntregaRutaRequest
 public sealed class CrearTransferenciaAlmacenRequest
 {
     public int IdAlmacenDestino { get; set; }
+    public bool PermitirDestinoRuta { get; set; }
     public string? Observaciones { get; set; }
     public List<CrearTransferenciaAlmacenDetalleRequest> Detalle { get; set; } = [];
 }
@@ -472,6 +491,20 @@ public sealed class CrearTransferenciaAlmacenDetalleRequest
     public short? CantTarimas { get; set; }
     public short? CantCajas { get; set; }
     public int? CantPiezas { get; set; }
+}
+
+public sealed class CrearIntercambioAlmacenRequest
+{
+    public int IdRutaDestino { get; set; }
+    public int IdAlmacenDestino { get; set; }
+    public int IdProducto { get; set; }
+    public long IdLoteRuta { get; set; }
+    public long IdLoteOrigen { get; set; }
+    public decimal Cantidad { get; set; }
+    public short? CantCajas { get; set; }
+    public int? CantPiezas { get; set; }
+    public int IdMotivoIntercambio { get; set; }
+    public string? Observaciones { get; set; }
 }
 
 public sealed class CrearAlmacenEmpresaRequest
@@ -594,12 +627,14 @@ public sealed class InventarioAlmacenWebService(ApiClient api)
         int idAlmacen,
         string? search = null,
         int page = 1,
-        int pageSize = 20)
+        int pageSize = 20,
+        bool soloConExistencia = false)
         => api.GetAsync<InventarioAlmacenPagedResult<InventarioAlmacenItemResponse>>($"api/v1/inv/almacenes/{idAlmacen}/inventario?{BuildQuery(new()
         {
             ["search"] = search,
             ["page"] = page,
-            ["pageSize"] = pageSize
+            ["pageSize"] = pageSize,
+            ["soloConExistencia"] = soloConExistencia
         })}");
 
     public Task<(int? D, string? E)> ImportarIngresoProduccionAsync(
@@ -669,6 +704,18 @@ public sealed class InventarioAlmacenWebService(ApiClient api)
             ["pageSize"] = pageSize
         })}");
 
+    public Task<(InventarioAlmacenPagedResult<IntercambioAlmacenListItemResponse>? D, string? E)> GetIntercambiosAlmacenAsync(
+        int idAlmacen,
+        string? search = null,
+        int page = 1,
+        int pageSize = 20)
+        => api.GetAsync<InventarioAlmacenPagedResult<IntercambioAlmacenListItemResponse>>($"api/v1/inv/almacenes/{idAlmacen}/intercambios?{BuildQuery(new()
+        {
+            ["search"] = search,
+            ["page"] = page,
+            ["pageSize"] = pageSize
+        })}");
+
     public Task<(SolicitudRutaDetalleResponse? D, string? E)> GetSolicitudRutaDetalleAsync(long idSolicitud)
         => api.GetAsync<SolicitudRutaDetalleResponse>($"api/v1/inv/almacenes/solicitudes-ruta/{idSolicitud}");
 
@@ -685,6 +732,11 @@ public sealed class InventarioAlmacenWebService(ApiClient api)
         int idAlmacenOrigen,
         CrearTransferenciaAlmacenRequest request)
         => api.PostAsync<int?>($"api/v1/inv/almacenes/{idAlmacenOrigen}/transferencias", request);
+
+    public Task<(int? D, string? E)> CrearIntercambioAlmacenAsync(
+        int idAlmacenOrigen,
+        CrearIntercambioAlmacenRequest request)
+        => api.PostAsync<int?>($"api/v1/inv/almacenes/{idAlmacenOrigen}/intercambios", request);
 
     public Task<(int? D, string? E)> CrearAlmacenAsync(CrearAlmacenEmpresaRequest request)
         => api.PostAsync<int?>("api/v1/inv/almacenes", request);

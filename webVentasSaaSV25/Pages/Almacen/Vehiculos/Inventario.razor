@@ -131,7 +131,7 @@ else
     {
         if (_vehiculo is null) return;
         _loading = true;
-        var (data, error) = await Svc.GetInventarioAsync(_vehiculo.IdSubalmacen, _search, _page, _pageSize);
+        var (data, error) = await Svc.GetInventarioAsync(_vehiculo.IdSubalmacen, _search, _page, _pageSize, soloConExistencia: true);
         _loading = false;
         if (error is not null) { _alerta?.MostrarError(error); return; }
         _paged = data;

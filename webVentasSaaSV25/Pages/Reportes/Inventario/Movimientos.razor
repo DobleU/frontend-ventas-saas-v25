@@ -40,6 +40,7 @@
                         <option value="IngresoProduccion">Ingreso produccion</option>
                         <option value="Conteo">Conteo</option>
                         <option value="SolicitudRuta">Solicitud ruta</option>
+                        <option value="Intercambio">Intercambio</option>
                     </select>
                 </div>
                 <div class="col-12 col-md-4">
@@ -183,7 +184,7 @@
                 x.DescEstatus,
                 x.Encargado ?? "-")).ToList() ?? [];
         }
-        else
+        else if (_tipo == "SolicitudRuta")
         {
             var (data, error) = await InventarioApi.GetSolicitudesRutaAsync(_idAlmacen, 0, _search, 1, 200);
             if (error is not null)
@@ -202,6 +203,27 @@
                 x.TotalPiezasSolicitadas.ToString("N2", _mx),
                 x.TotalPiezasSurtidas.ToString("N2", _mx),
                 x.DescEstatus,
+                x.Observaciones ?? "-")).ToList() ?? [];
+        }
+        else
+        {
+            var (data, error) = await InventarioApi.GetIntercambiosAlmacenAsync(_idAlmacen, _search, 1, 200);
+            if (error is not null)
+            {
+                _loading = false;
+                _alerta?.MostrarError(error);
+                return;
+            }
+
+            _rows = data?.Items.Select(x => new MovimientoRow(
+                x.Folio,
+                x.CreatedUtc.ToString("dd/MM/yyyy"),
+                $"{x.NombreRutaDestino} / {x.Motivo}",
+                x.UsuarioRegistro ?? "-",
+                x.TotalLineas.ToString("N0", _mx),
+                x.TotalPiezas.ToString("N2", _mx),
+                "-",
+                "Aplicado",
                 x.Observaciones ?? "-")).ToList() ?? [];
         }
 

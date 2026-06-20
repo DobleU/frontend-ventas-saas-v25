@@ -107,7 +107,7 @@
 
             <div class="stop-list">
                 <div class="stop-list-title">
-                    <h6>Clientes del dia</h6>
+                    <h6>@(_mode == MapMode.Tour ? "Visitas del recorrido" : "Clientes del dia")</h6>
                     <span>@VisibleStops.Count</span>
                 </div>
 
@@ -132,6 +132,10 @@
                             <span class="stop-main">
                                 <strong>@stop.Name</strong>
                                 <small>@stop.Address</small>
+                                @if (_mode == MapMode.Tour)
+                                {
+                                    <small class="@TrasladoBadgeClass(stop)">@TrasladoMonitorText(stop)</small>
+                                }
                             </span>
                             <span class="status-dot @StatusClass(stop.Status)"></span>
                         </button>
@@ -225,22 +229,22 @@
                     else if (_tourTab == "resumen")
                     {
                         <div class="detail-grid route-focus-grid">
-                            <span>Vendedor</span><strong>@TextOrDash(_tourTicket?.NombreVendedor)</strong>
-                            <span>Inicio</span><strong>@FormatDateTime(_tourTicket?.FechaInicioUtc)</strong>
-                            <span>Min recorrido</span><strong>@NumberOrDash(_tourTicket?.MinutosRecorrido)</strong>
-                            <span>Visitas con venta</span><strong>@(_tourVisitas?.Kpi.VisitasConVenta ?? _tourTicket?.VisitasConVenta ?? 0)</strong>
-                            <span>Visitas sin venta</span><strong>@(_tourVisitas?.Kpi.VisitasSinVenta ?? _tourTicket?.VisitasSinVenta ?? 0)</strong>
-                            <span>Visitas extra</span><strong>@(_tourVisitas?.Kpi.VisitasExtra ?? _tourTicket?.TotalVisitasExtra ?? 0)</strong>
+                            <span>Vendedor</span><strong>@TextOrDash(_tourCierre?.NombreVendedor)</strong>
+                            <span>Inicio</span><strong>@FormatDateTime(_tourCierre?.FechaInicioUtc)</strong>
+                            <span>Min recorrido</span><strong>@NumberOrDash(_tourCierre?.MinutosRecorrido)</strong>
+                            <span>Visitas con venta</span><strong>@(_tourVisitas?.Kpi.VisitasConVenta ?? _tourCierre?.VisitasConVenta ?? 0)</strong>
+                            <span>Visitas sin venta</span><strong>@(_tourVisitas?.Kpi.VisitasSinVenta ?? _tourCierre?.VisitasSinVenta ?? 0)</strong>
+                            <span>Visitas extra</span><strong>@(_tourVisitas?.Kpi.VisitasExtra ?? _tourCierre?.TotalVisitasExtra ?? 0)</strong>
                             <span>Lecturas QR</span><strong>@((_tourVisitas?.Kpi.LecturasQr ?? 0).ToString("N0"))</strong>
                             <span>GPS valido 50m</span><strong>@((_tourVisitas?.Kpi.VisitasGpsValido ?? 0).ToString("N0"))</strong>
                             <span>Tiempo traslado</span><strong>@((_tourVisitas?.Kpi.TiempoMuertoMinutos ?? 0).ToString("N0")) min</strong>
-                            <span>Efectivo</span><strong>@Money(_tourTicket?.TotalEfectivo ?? 0m)</strong>
-                            <span>Credito</span><strong>@Money(_tourTicket?.TotalCredito ?? 0m)</strong>
-                            <span>Cobros</span><strong>@Money(_tourTicket?.TotalCobros ?? 0m)</strong>
-                            <span>Cancelaciones</span><strong>@Money(_tourTicket?.TotalCancelaciones ?? 0m)</strong>
-                            <span>Gastos</span><strong>@Money(_tourTicket?.TotalGastos ?? 0m)</strong>
-                            <span>Gasolina</span><strong>@Money(_tourTicket?.TotalGasolina ?? 0m)</strong>
-                            <span>Liquido</span><strong>@Money(_tourTicket?.LiquidoRecibir ?? 0m)</strong>
+                            <span>Efectivo</span><strong>@Money(_tourCierre?.TotalEfectivo ?? 0m)</strong>
+                            <span>Credito</span><strong>@Money(_tourCierre?.TotalCredito ?? 0m)</strong>
+                            <span>Cobros</span><strong>@Money(_tourCierre?.TotalCobros ?? 0m)</strong>
+                            <span>Cancelaciones</span><strong>@Money(_tourCierre?.TotalCancelaciones ?? 0m)</strong>
+                            <span>Gastos</span><strong>@Money(_tourCierre?.TotalGastos ?? 0m)</strong>
+                            <span>Gasolina</span><strong>@Money(_tourCierre?.TotalGasolina ?? 0m)</strong>
+                            <span>Liquido</span><strong>@Money(_tourCierre?.LiquidoARecibir ?? 0m)</strong>
                         </div>
                     }
                     else if (_tourTab == "visitas")
@@ -253,7 +257,10 @@
                                     <div class="tour-list-item">
                                         <strong>@visita.Cliente</strong>
                                         <small>#@VisitOrder(visita.IdCliente) · @TextOrDash(visita.Sucursal)</small>
-                                        <small>@TextOrDash(visita.Estatus) · @Money(visita.MontoVentas) · @((visita.MinutosTraslado ?? 0).ToString("N0")) min traslado</small>
+                                        <small>@TextOrDash(visita.Estatus) · @Money(visita.MontoVentas)</small>
+                                        <small class="@TrasladoBadgeClass(visita)">
+                                            @TrasladoMonitorText(visita)
+                                        </small>
                                         <small class="@GpsBadgeClass(visita.GpsValido50m)">
                                             @GpsMonitorText(visita.DistanciaMetros, visita.GpsValido50m)
                                         </small>
@@ -292,15 +299,15 @@
                     {
                         <div class="tour-text-block">
                             <h6>Resumen de cierre</h6>
-                            <pre>@TextBlockOrDash(_tourTicket?.TxtResumenCierre)</pre>
+                            <pre>@TextBlockOrDash(TourResumenCierreTexto)</pre>
                             <h6>Ventas cierre</h6>
-                            <pre>@TextBlockOrDash(_tourTicket?.TxtVentasCierre)</pre>
+                            <pre>@TextBlockOrDash(TourVentasCierreTexto)</pre>
                             <h6>Inventario inicio</h6>
-                            <pre>@TextBlockOrDash(_tourTicket?.TxtInventarioInicio)</pre>
+                            <pre>@TextBlockOrDash(TourInventarioInicioTexto)</pre>
                             <h6>Inventario cierre</h6>
-                            <pre>@TextBlockOrDash(_tourTicket?.TxtInventarioCierre)</pre>
-                            <h6>Estado</h6>
-                            <pre>@TextBlockOrDash(TourCierreEstadoTexto)</pre>
+                            <pre>@TextBlockOrDash(TourInventarioCierreTexto)</pre>
+                            <h6>Recargas en ruta</h6>
+                            <pre>@TextBlockOrDash(TourRecargasTexto)</pre>
                         </div>
                     }
                 </div>
@@ -431,6 +438,8 @@
     .stop-main{flex:1;min-width:0}
     .stop-main strong,.stop-main small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .stop-main small{color:#667085}
+    .stop-main .travel-ok{color:#067647;font-weight:700}
+    .stop-main .travel-error{color:#b42318;font-weight:700}
     .status-dot{width:11px;height:11px;border-radius:50%;display:inline-flex;flex:0 0 auto;background:#98a2b3}
     .status-dot.pending,.pin.pending{background:#0d6efd}
     .status-dot.done,.pin.done{background:#198754}
@@ -466,6 +475,8 @@
     .tour-list-item small{color:#667085}
     .tour-list-item .gps-ok{color:#067647;font-weight:700}
     .tour-list-item .gps-error{color:#b42318;font-weight:700}
+    .tour-list-item .travel-ok{color:#067647;font-weight:700}
+    .tour-list-item .travel-error{color:#b42318;font-weight:700}
     .tour-text-block{display:flex;flex-direction:column;gap:.6rem}
     .tour-text-block h6{margin:0;color:#344054;font-weight:700}
     .tour-text-block pre{margin:0;white-space:pre-wrap;background:#f8fafc;border:1px solid #e6eaf0;border-radius:8px;padding:.75rem;color:#344054;font-size:.83rem;font-family:Consolas,monospace;max-height:220px;overflow:auto}
@@ -514,7 +525,6 @@
     private MapaConfiguracionResponse? _mapConfig;
     private string? _tourDetailError;
     private ReporteVisitasResponse? _tourVisitas;
-    private RecorridoTicketResponse? _tourTicket;
     private RecorridoCierreCompletoResponse? _tourCierre;
     private DotNetObjectReference<GoogleMapBridge>? _mapBridgeRef;
     private bool _mapDirty;
@@ -547,18 +557,28 @@
     private string ClientesConImagenTexto => VisibleStops.Count == 0 ? "0" : VisibleStops.Count(x => x.HasImage).ToString("N0");
     private string ClientesConVisitaVencidaTexto => VisibleStops.Count == 0 ? "0" : VisibleStops.Count(x => x.DaysSinceLastVisit.HasValue && x.DaysSinceLastVisit.Value > 15).ToString("N0");
     private string TourProgramadosTexto => (_tourVisitas?.Kpi.VisitasProgramadas ?? SelectedRecorrido?.VisitasProgramadas ?? 0).ToString("N0");
-    private string TourVisitadosTexto => (_tourVisitas?.Kpi.TotalVisitas ?? _tourTicket?.TotalVisitas ?? SelectedRecorrido?.VisitasRealizadas ?? 0).ToString("N0");
+    private string TourVisitadosTexto => (_tourVisitas?.Kpi.TotalVisitas ?? _tourCierre?.TotalVisitas ?? SelectedRecorrido?.VisitasRealizadas ?? 0).ToString("N0");
     private string TourNoVisitadosTexto => (_tourVisitas?.Kpi.NoVisitados ?? Math.Max((SelectedRecorrido?.VisitasProgramadas ?? 0) - (SelectedRecorrido?.VisitasRealizadas ?? 0), 0)).ToString("N0");
-    private string TourMontoTexto => (_tourTicket?.TotalVentas ?? _tourCierre?.TotalVentas ?? SelectedRecorrido?.MontoVentas ?? 0m).ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("es-MX"));
+    private string TourMontoTexto => (_tourCierre?.TotalVentas ?? SelectedRecorrido?.MontoVentas ?? 0m).ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("es-MX"));
     private string? SelectedRecorridoNombre => SelectedRecorrido?.Nombre;
     private string TourResumenTitulo => SelectedRecorrido is null
         ? "Sin recorrido cargado"
         : $"{SelectedRecorrido.Nombre} · {_fechaTrabajo:dd/MM/yyyy}";
-    private string TourCierreEstadoTexto => !string.IsNullOrWhiteSpace(_tourTicket?.TxtResumenCierre)
-        ? "Cierre completo disponible."
-        : !string.IsNullOrWhiteSpace(_tourDetailError)
-            ? _tourDetailError
-            : "La API publicada todavia no devolvio los textos completos de cierre para este recorrido.";
+    private string TourResumenCierreTexto => !string.IsNullOrWhiteSpace(_tourCierre?.TxtResumenCierre)
+        ? _tourCierre!.TxtResumenCierre!
+        : BuildTourResumenCierreFallback();
+    private string TourVentasCierreTexto => !string.IsNullOrWhiteSpace(_tourCierre?.TxtVentasCierre)
+        ? _tourCierre!.TxtVentasCierre!
+        : BuildTourVentasCierreFallback();
+    private string TourInventarioInicioTexto => !string.IsNullOrWhiteSpace(_tourCierre?.TxtInventarioInicio)
+        ? _tourCierre!.TxtInventarioInicio!
+        : "Sin dato";
+    private string TourInventarioCierreTexto => !string.IsNullOrWhiteSpace(_tourCierre?.TxtInventarioCierre)
+        ? _tourCierre!.TxtInventarioCierre!
+        : BuildTourInventarioCierreFallback();
+    private string TourRecargasTexto => !string.IsNullOrWhiteSpace(_tourCierre?.TxtRecargas)
+        ? _tourCierre!.TxtRecargas!
+        : "Sin dato";
     private string RecargasResumenTexto => _tourCierre?.DetalleMovimientos?.Any() == true
         ? string.Join(Environment.NewLine, _tourCierre.DetalleMovimientos.Select(x => $"{x.TipoDescripcion}: {x.Cantidad:N0} · {Money(x.MontoTotal)}"))
         : SelectedRecorrido?.MontoVentas > 0
@@ -636,7 +656,6 @@
             _selected = null;
             _tourDetailError = null;
             _tourVisitas = null;
-            _tourTicket = null;
             _tourCierre = null;
             _tourSearchExecuted = false;
             _mapDirty = true;
@@ -659,7 +678,6 @@
             _selected = null;
             _tourDetailError = null;
             _tourVisitas = null;
-            _tourTicket = null;
             _tourCierre = null;
             _tourSearchExecuted = false;
             _mapDirty = true;
@@ -678,7 +696,6 @@
         _error = null;
         _tourDetailError = null;
         _tourVisitas = null;
-        _tourTicket = null;
         _tourCierre = null;
 
         if (_routeId <= 0)
@@ -767,6 +784,8 @@
             TotalSalesAmount: point.MontoHistoricoTotal,
             HasBilling: point.TieneFacturacion,
             BillingName: point.RazonSocialFacturacion,
+            SegundosTraslado: point.SegundosTraslado,
+            MinutosTraslado: point.MinutosTraslado,
             Status: point.Estado?.ToLowerInvariant() switch
             {
                 "visitado" => VisitStatus.Done,
@@ -810,7 +829,6 @@
             _selected = null;
             _tourDetailError = null;
             _tourVisitas = null;
-            _tourTicket = null;
             _tourCierre = null;
             _tourSearchExecuted = false;
             _mapDirty = true;
@@ -841,25 +859,36 @@
         _tourDetailError = null;
 
         var (visitas, visitasError) = await MapaApi.GetReporteVisitasAsync(_routeId, _fechaTrabajo, _recorridoId);
-        var (ticket, ticketError) = await MapaApi.GetRecorridoTicketAsync(_recorridoId);
         var (cierre, cierreError) = await MapaApi.GetRecorridoCierreCompletoAsync(_recorridoId);
 
         _loadingTourDetail = false;
         _tourVisitas = visitas;
-        _tourTicket = ticket;
         _tourCierre = cierre;
 
         _error = FirstError(_error, visitasError);
-        _tourDetailError = FirstError(ticketError, cierreError);
+        _tourDetailError = FirstError(cierreError);
         if (_tourVisitas?.Visitas?.Any() == true)
         {
-            var byClient = _tourVisitas.Visitas
+            var visitasPorCliente = _tourVisitas.Visitas
+                .OrderBy(x => x.FechaInicioUtc ?? DateTime.MaxValue)
+                .ThenBy(x => x.IdVisita)
                 .GroupBy(x => x.IdCliente)
-                .ToDictionary(g => g.Key, g => g.First().IdVisita);
+                .ToDictionary(g => g.Key, g => new Queue<ReporteVisitaRowResponse>(g));
 
             _stops = _stops
-                .OrderBy(x => byClient.TryGetValue(x.Id, out var idVisita) ? idVisita : long.MaxValue)
+                .OrderBy(x => visitasPorCliente.TryGetValue(x.Id, out var queue) && queue.TryPeek(out var visita) ? visita.IdVisita : long.MaxValue)
                 .ThenBy(x => x.Order)
+                .Select(x =>
+                {
+                    if (!visitasPorCliente.TryGetValue(x.Id, out var queue) || !queue.TryDequeue(out var visita))
+                        return x;
+
+                    return x with
+                    {
+                        SegundosTraslado = visita.SegundosTraslado,
+                        MinutosTraslado = visita.MinutosTraslado
+                    };
+                })
                 .ToList();
         }
         _tourTab = "resumen";
@@ -897,6 +926,10 @@
     private static string FormatDateTime(DateTime? value) => value.HasValue ? value.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "Sin dato";
     private static string? FirstError(params string?[] values) => values.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
     private static string GpsBadgeClass(bool gpsValido50m) => gpsValido50m ? "gps-ok" : "gps-error";
+    private static string TrasladoBadgeClass(ReporteVisitaRowResponse visita)
+        => IsTrasladoError(visita) ? "travel-error" : "travel-ok";
+    private static string TrasladoBadgeClass(MapStop stop)
+        => IsTrasladoError(stop) ? "travel-error" : "travel-ok";
     private static string GpsMonitorText(decimal? distanciaMetros, bool gpsValido50m)
     {
         if (gpsValido50m)
@@ -910,6 +943,40 @@
             ? $"Ubicacion error · {distanciaMetros.Value:N0} m"
             : "Ubicacion error";
     }
+    private static bool IsTrasladoError(ReporteVisitaRowResponse visita)
+    {
+        var segundos = EffectiveTrasladoSeconds(visita.SegundosTraslado, visita.MinutosTraslado);
+        if (segundos <= 15)
+            return true;
+
+        return (visita.MinutosTraslado ?? 0) > 45;
+    }
+    private static bool IsTrasladoError(MapStop stop)
+    {
+        var segundos = EffectiveTrasladoSeconds(stop.SegundosTraslado, stop.MinutosTraslado);
+        if (segundos <= 15)
+            return true;
+
+        return (stop.MinutosTraslado ?? 0) > 45;
+    }
+    private static string TrasladoMonitorText(ReporteVisitaRowResponse visita)
+    {
+        var minutos = visita.MinutosTraslado ?? 0;
+        var segundos = EffectiveTrasladoSeconds(visita.SegundosTraslado, visita.MinutosTraslado);
+        var estado = IsTrasladoError(visita) ? "Traslado error" : "Traslado OK";
+        return $"{estado} · {minutos:N0} min · {segundos:N0} seg";
+    }
+    private static string TrasladoMonitorText(MapStop stop)
+    {
+        var minutos = stop.MinutosTraslado ?? 0;
+        var segundos = EffectiveTrasladoSeconds(stop.SegundosTraslado, stop.MinutosTraslado);
+        var estado = IsTrasladoError(stop) ? "Traslado error" : "Traslado OK";
+        return $"{estado} · {minutos:N0} min · {segundos:N0} seg";
+    }
+    private static int EffectiveTrasladoSeconds(int segundosTraslado, int? minutosTraslado)
+        => segundosTraslado <= 0 && (minutosTraslado ?? 0) > 0
+            ? minutosTraslado!.Value * 60
+            : segundosTraslado;
     private static string GeoText(string source) => source switch
     {
         "REAL_FIN" => "GPS real de cierre",
@@ -955,6 +1022,56 @@
     }
     private int VisitOrder(int idCliente)
         => VisibleStops.FirstOrDefault(x => x.Id == idCliente)?.Order ?? 0;
+    private string BuildTourResumenCierreFallback()
+    {
+        if (_tourCierre is null && _tourVisitas is null)
+            return "Sin dato";
+
+        var lines = new List<string>
+        {
+            $"Ruta: {RouteNameText}",
+            $"Fecha: {_fechaTrabajo:dd/MM/yyyy}",
+            $"Recorrido: {TextOrDash(SelectedRecorridoNombre)}",
+            $"Programados: {TourProgramadosTexto}",
+            $"Visitados: {TourVisitadosTexto}",
+            $"No visitados: {TourNoVisitadosTexto}",
+            $"Con venta: {_tourVisitas?.Kpi.VisitasConVenta ?? _tourCierre?.VisitasConVenta ?? 0}",
+            $"Sin venta: {_tourVisitas?.Kpi.VisitasSinVenta ?? _tourCierre?.VisitasSinVenta ?? 0}",
+            $"Extra: {_tourVisitas?.Kpi.VisitasExtra ?? _tourCierre?.TotalVisitasExtra ?? 0}",
+            $"Monto total: {TourMontoTexto}"
+        };
+        return string.Join(Environment.NewLine, lines);
+    }
+    private string BuildTourVentasCierreFallback()
+    {
+        if (_tourCierre is null)
+            return "Sin dato";
+
+        var lines = new List<string>
+        {
+            $"Ventas: {Money(_tourCierre?.TotalVentas ?? 0m)}",
+            $"Efectivo: {Money(_tourCierre?.TotalEfectivo ?? 0m)}",
+            $"Credito: {Money(_tourCierre?.TotalCredito ?? 0m)}",
+            $"Cobros: {Money(_tourCierre?.TotalCobros ?? 0m)}",
+            $"Cancelaciones: {Money(_tourCierre?.TotalCancelaciones ?? 0m)}",
+            $"Gastos: {Money(_tourCierre?.TotalGastos ?? 0m)}",
+            $"Gasolina: {Money(_tourCierre?.TotalGasolina ?? 0m)}",
+            $"Depositos: {Money(_tourCierre?.TotalDepositos ?? 0m)}",
+            $"Retiros: {Money(_tourCierre?.TotalRetiros ?? 0m)}",
+            $"Liquido: {Money(_tourCierre?.LiquidoARecibir ?? 0m)}"
+        };
+        return string.Join(Environment.NewLine, lines);
+    }
+    private string BuildTourInventarioCierreFallback()
+    {
+        if (_tourCierre?.InventarioActual?.Any() != true)
+            return "Sin dato";
+
+        return string.Join(
+            Environment.NewLine,
+            _tourCierre.InventarioActual.Take(20).Select(x =>
+                $"{TextOrDash(x.NombreProducto)} · cajas {x.CantCajas:N2} · piezas {x.CantPiezas:N2}"));
+    }
     private async Task RenderGoogleMapAsync()
     {
         if (!CanShowMap || string.IsNullOrWhiteSpace(_mapConfig?.ApiKey))
@@ -1089,6 +1206,8 @@
         decimal TotalSalesAmount,
         bool HasBilling,
         string? BillingName,
+        int SegundosTraslado,
+        int? MinutosTraslado,
         VisitStatus Status,
         decimal? Latitude,
         decimal? Longitude,

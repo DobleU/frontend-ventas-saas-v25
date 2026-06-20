@@ -1,20 +1,27 @@
 @page "/almacen/almacenes/{IdAlmacen:int}/transferencia"
+@page "/almacen/vehiculos/{IdAsignacion:long}/transferencia"
 @using webVentasSaaSV25.Services.Almacen
 @inject InventarioAlmacenWebService Svc
-@inject NavigationManager Nav
 
-<PageTitle>Transferencia entre almacenes - VentasSaaSDU</PageTitle>
+<PageTitle>@TituloPagina - VentasSaaSDU</PageTitle>
 
-<Breadcrumb Titulo="Transferencia entre almacenes" Items="@(new[]{ ("Almacen", "/almacen/almacenes"), ("Transferencia", "") })" />
+<Breadcrumb Titulo="@TituloPagina" Items="@(new[]{ ("Almacen", "/almacen/almacenes"), ("Transferencia", "") })" />
 
 <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
     <div>
-        <h3 class="mb-1">Transferencia entre almacenes</h3>
-        <p class="text-secondary mb-0">Mueve existencia del almacén origen a otro almacén de sucursal con trazabilidad de salida y entrada.</p>
+        <h3 class="mb-1">@TituloPagina</h3>
+        <p class="text-secondary mb-0">@DescripcionPagina</p>
     </div>
     <div class="d-flex gap-2">
         <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-2" @onclick="CargarAsync" disabled="@_cargando">
-            <span class="material-icons-outlined">refresh</span>
+            @if (_cargando)
+            {
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            }
+            else
+            {
+                <span class="material-icons-outlined">refresh</span>
+            }
             Actualizar
         </button>
         <a class="btn btn-outline-secondary d-flex align-items-center gap-2" href="javascript:history.back()">
@@ -34,6 +41,11 @@
     <div class="alert alert-success">@_ok</div>
 }
 
+@if (_cargando && _inventario.Count == 0)
+{
+    <LoadingSpinner Solo="true" Texto="Cargando transferencia..." />
+}
+
 <div class="row g-3">
     <div class="col-12 col-xl-4">
         <div class="card rounded-4 h-100">
@@ -41,9 +53,9 @@
                 <h5 class="mb-3">Captura</h5>
 
                 <div class="mb-3">
-                    <label class="form-label">Almacén destino</label>
+                    <label class="form-label">@EtiquetaDestino</label>
                     <select class="form-select" @bind="_idAlmacenDestino">
-                        <option value="0">Selecciona almacén</option>
+                        <option value="0">@TextoSeleccionDestino</option>
                         @foreach (var a in _almacenesDestino)
                         {
                             <option value="@a.IdAlmacen">@a.Nombre</option>
@@ -52,14 +64,23 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Producto / lote origen</label>
-                    <select class="form-select" @bind="_keySeleccionada">
-                        <option value="">Selecciona producto</option>
-                        @foreach (var item in _inventario.Where(x => x.CantidadPiezas > 0).OrderBy(x => x.NombreProducto))
+                    <label class="form-label">Producto origen</label>
+                    <select class="form-select" value="@_idProductoSeleccionado" @onchange="OnProductoChanged">
+                        <option value="0">Selecciona producto</option>
+                        @foreach (var item in ProductosDisponibles)
                         {
-                            <option value="@Key(item)">
-                                @item.NombreProducto - Lote @item.NumLote - Stock @Fmt(item.CantidadPiezas)
-                            </option>
+                            <option value="@item.IdProducto">@NombreProductoCombo(item)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Lote origen</label>
+                    <select class="form-select" @bind="_idLoteSeleccionado" disabled="@(_idProductoSeleccionado <= 0)">
+                        <option value="0">Selecciona lote</option>
+                        @foreach (var item in LotesDisponibles)
+                        {
+                            <option value="@item.IdLote">Lote @item.NumLote - Stock @Fmt(item.CantidadPiezas)</option>
                         }
                     </select>
                 </div>
@@ -82,12 +103,21 @@
                     }
                     else
                     {
-                        <span>Selecciona producto para calcular cajas y piezas.</span>
+                        <span>Selecciona producto y lote para calcular cajas y piezas.</span>
                     }
                 </div>
 
-                <button type="button" class="btn btn-primary w-100 mt-3 d-flex align-items-center justify-content-center gap-2" @onclick="AgregarDetalle">
-                    <span class="material-icons-outlined">add</span>
+                <button type="button" class="btn btn-primary w-100 mt-3 d-flex align-items-center justify-content-center gap-2"
+                        @onclick="AgregarDetalleAsync"
+                        disabled="@(!PuedeAgregar || _agregando)">
+                    @if (_agregando)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    }
+                    else
+                    {
+                        <span class="material-icons-outlined">add</span>
+                    }
                     Agregar
                 </button>
 
@@ -108,7 +138,14 @@
                         <div class="text-secondary small">@_detalle.Count producto(s), @Fmt(_detalle.Sum(x => x.Cantidad)) pieza(s)</div>
                     </div>
                     <button type="button" class="btn btn-success d-flex align-items-center gap-2" @onclick="EntregarAsync" disabled="@(!_detalle.Any() || _guardando)">
-                        <span class="material-icons-outlined">local_shipping</span>
+                        @if (_guardando)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        }
+                        else
+                        {
+                            <span class="material-icons-outlined">local_shipping</span>
+                        }
                         ENTREGAR
                     </button>
                 </div>
@@ -162,22 +199,53 @@
 
 @code {
     [Parameter] public int IdAlmacen { get; set; }
+    [Parameter] public long? IdAsignacion { get; set; }
 
     private bool _cargando;
     private bool _guardando;
+    private bool _agregando;
     private string? _error;
     private string? _ok;
-    private List<AlmacenEmpresaCardResponse> _almacenesDestino = [];
-    private List<InventarioAlmacenItemResponse> _inventario = [];
-    private List<TransferenciaDetalleVm> _detalle = [];
+    private readonly List<AlmacenEmpresaCardResponse> _almacenesDestino = [];
+    private readonly List<InventarioAlmacenItemResponse> _inventario = [];
+    private readonly List<TransferenciaDetalleVm> _detalle = [];
     private int _idAlmacenDestino;
-    private string? _keySeleccionada;
+    private int _idProductoSeleccionado;
+    private long _idLoteSeleccionado;
     private int _cajas;
     private int _piezas;
     private string? _observaciones;
+    private SubalmacenVehiculoCardResponse? _vehiculoOrigen;
+
+    private bool EsTransferenciaVehiculos => IdAsignacion.HasValue;
+    private int IdAlmacenOrigen => EsTransferenciaVehiculos ? (_vehiculoOrigen?.IdSubalmacen ?? 0) : IdAlmacen;
+    private string TituloPagina => EsTransferenciaVehiculos ? "Transferencia entre vehiculos" : "Transferencia entre almacenes";
+    private string DescripcionPagina => EsTransferenciaVehiculos
+        ? "Mueve existencia del vehiculo origen a otro vehiculo activo con trazabilidad de salida y entrada."
+        : "Mueve existencia del almacen origen a otro almacen de sucursal con trazabilidad de salida y entrada.";
+    private string EtiquetaDestino => EsTransferenciaVehiculos ? "Vehiculo destino" : "Almacen destino";
+    private string TextoSeleccionDestino => EsTransferenciaVehiculos ? "Selecciona vehiculo" : "Selecciona almacen";
 
     private InventarioAlmacenItemResponse? Seleccionado
-        => _inventario.FirstOrDefault(x => Key(x) == _keySeleccionada);
+        => _inventario.FirstOrDefault(x => x.IdProducto == _idProductoSeleccionado && x.IdLote == _idLoteSeleccionado);
+
+    private List<InventarioAlmacenItemResponse> ProductosDisponibles
+        => _inventario
+            .Where(x => x.CantidadPiezas > 0)
+            .GroupBy(x => x.IdProducto)
+            .Select(g => g.OrderBy(x => x.NombreProducto).First())
+            .OrderBy(x => x.NombreProducto)
+            .ToList();
+
+    private List<InventarioAlmacenItemResponse> LotesDisponibles
+        => _inventario
+            .Where(x => x.IdProducto == _idProductoSeleccionado && x.CantidadPiezas > 0)
+            .OrderBy(x => x.FechaCaducidad ?? DateTime.MaxValue)
+            .ThenBy(x => x.NumLote)
+            .ToList();
+
+    private bool PuedeAgregar
+        => _idAlmacenDestino > 0 && _idProductoSeleccionado > 0 && _idLoteSeleccionado > 0 && CantidadCapturada > 0;
 
     private decimal CantidadCapturada
     {
@@ -201,26 +269,67 @@
 
         try
         {
-            var (almacenes, errAlmacenes) = await Svc.GetAlmacenesCardsAsync(isActive: true);
-            if (!string.IsNullOrWhiteSpace(errAlmacenes))
+            _almacenesDestino.Clear();
+
+            if (EsTransferenciaVehiculos)
             {
-                _error = errAlmacenes;
+                var (vehiculo, errVehiculo) = await Svc.GetSubalmacenVehiculoByIdAsync(IdAsignacion!.Value);
+                if (!string.IsNullOrWhiteSpace(errVehiculo) || vehiculo is null)
+                {
+                    _error = errVehiculo ?? "Vehiculo origen no encontrado.";
+                    return;
+                }
+
+                _vehiculoOrigen = vehiculo;
+
+                var (vehiculos, errVehiculos) = await Svc.GetSubalmacenesVehiculosCardsAsync(vehiculo.IdAlmacenPadre, isActive: true);
+                if (!string.IsNullOrWhiteSpace(errVehiculos))
+                {
+                    _error = errVehiculos;
+                    return;
+                }
+
+                _almacenesDestino.AddRange((vehiculos ?? [])
+                    .Where(x => x.IdAsignacion != IdAsignacion && x.IsActive)
+                    .OrderBy(x => x.NombreRuta)
+                    .ThenBy(x => x.NombreVehiculo)
+                    .Select(x => new AlmacenEmpresaCardResponse
+                    {
+                        IdAlmacen = x.IdSubalmacen,
+                        Nombre = $"{x.NombreRuta} - {x.NombreVehiculo}"
+                    }));
+            }
+            else
+            {
+                var (almacenes, errAlmacenes) = await Svc.GetAlmacenesCardsAsync(isActive: true);
+                if (!string.IsNullOrWhiteSpace(errAlmacenes))
+                {
+                    _error = errAlmacenes;
+                    return;
+                }
+
+                _almacenesDestino.AddRange((almacenes ?? [])
+                    .Where(x => x.IdAlmacen != IdAlmacen && x.IsActive && x.IdRuta is null)
+                    .OrderBy(x => x.Nombre));
+            }
+
+            if (IdAlmacenOrigen <= 0)
+            {
+                _error = "No se pudo resolver el almacen origen.";
                 return;
             }
 
-            _almacenesDestino = (almacenes ?? [])
-                .Where(x => x.IdAlmacen != IdAlmacen && x.IsActive && x.IdRuta is null)
-                .OrderBy(x => x.Nombre)
-                .ToList();
-
-            var (inv, errInv) = await Svc.GetInventarioAsync(IdAlmacen, page: 1, pageSize: 1000);
+            var (inv, errInv) = await Svc.GetInventarioAsync(IdAlmacenOrigen, page: 1, pageSize: 1000, soloConExistencia: true);
             if (!string.IsNullOrWhiteSpace(errInv))
             {
                 _error = errInv;
                 return;
             }
 
-            _inventario = inv?.Items ?? [];
+            _inventario.Clear();
+            _inventario.AddRange(inv?.Items ?? []);
+            _idProductoSeleccionado = 0;
+            _idLoteSeleccionado = 0;
         }
         finally
         {
@@ -228,57 +337,67 @@
         }
     }
 
-    private void AgregarDetalle()
+    private async Task AgregarDetalleAsync()
     {
+        _agregando = true;
         _error = null;
         _ok = null;
 
-        var seleccionado = Seleccionado;
-        if (seleccionado is null)
+        try
         {
-            _error = "Selecciona un producto/lote.";
-            return;
-        }
-
-        var cantidad = CantidadCapturada;
-        if (cantidad <= 0)
-        {
-            _error = "Captura cajas o piezas mayores a cero.";
-            return;
-        }
-
-        var existente = _detalle.FirstOrDefault(x => x.IdProducto == seleccionado.IdProducto && x.IdLote == seleccionado.IdLote);
-        var cantidadActual = existente?.Cantidad ?? 0;
-        if (cantidadActual + cantidad > seleccionado.CantidadPiezas)
-        {
-            _error = $"No hay existencia suficiente. Stock origen: {Fmt(seleccionado.CantidadPiezas)}.";
-            return;
-        }
-
-        if (existente is null)
-        {
-            _detalle.Add(new TransferenciaDetalleVm
+            var seleccionado = Seleccionado;
+            if (seleccionado is null)
             {
-                IdProducto = seleccionado.IdProducto,
-                IdLote = seleccionado.IdLote,
-                NombreProducto = seleccionado.NombreProducto,
-                Sku = seleccionado.Sku,
-                NumLote = seleccionado.NumLote,
-                StockOrigen = seleccionado.CantidadPiezas,
-                Cantidad = cantidad,
-                CantCajas = _cajas > 0 ? Convert.ToInt16(_cajas) : null,
-                CantPiezas = _piezas > 0 ? _piezas : null
-            });
+                _error = "Selecciona un producto y lote.";
+                return;
+            }
+
+            var cantidad = CantidadCapturada;
+            if (cantidad <= 0)
+            {
+                _error = "Captura cajas o piezas mayores a cero.";
+                return;
+            }
+
+            var existente = _detalle.FirstOrDefault(x => x.IdProducto == seleccionado.IdProducto && x.IdLote == seleccionado.IdLote);
+            var cantidadActual = existente?.Cantidad ?? 0;
+            if (cantidadActual + cantidad > seleccionado.CantidadPiezas)
+            {
+                _error = $"No hay existencia suficiente. Stock origen: {Fmt(seleccionado.CantidadPiezas)}.";
+                return;
+            }
+
+            if (existente is null)
+            {
+                _detalle.Add(new TransferenciaDetalleVm
+                {
+                    IdProducto = seleccionado.IdProducto,
+                    IdLote = seleccionado.IdLote,
+                    NombreProducto = seleccionado.NombreProducto,
+                    Sku = seleccionado.Sku,
+                    NumLote = seleccionado.NumLote,
+                    StockOrigen = seleccionado.CantidadPiezas,
+                    Cantidad = cantidad,
+                    CantCajas = _cajas > 0 ? Convert.ToInt16(_cajas) : null,
+                    CantPiezas = _piezas > 0 ? _piezas : null
+                });
+            }
+            else
+            {
+                existente.Cantidad += cantidad;
+                existente.CantCajas = Convert.ToInt16((existente.CantCajas ?? 0) + _cajas);
+                existente.CantPiezas = (existente.CantPiezas ?? 0) + _piezas;
+            }
+
+            _cajas = 0;
+            _piezas = 0;
         }
-        else
+        finally
         {
-            existente.Cantidad += cantidad;
-            existente.CantCajas = Convert.ToInt16((existente.CantCajas ?? 0) + _cajas);
-            existente.CantPiezas = (existente.CantPiezas ?? 0) + _piezas;
+            _agregando = false;
         }
 
-        _cajas = 0;
-        _piezas = 0;
+        await Task.CompletedTask;
     }
 
     private void QuitarDetalle(TransferenciaDetalleVm item)
@@ -293,7 +412,7 @@
 
         if (_idAlmacenDestino <= 0)
         {
-            _error = "Selecciona almacén destino.";
+            _error = $"Selecciona {EtiquetaDestino.ToLowerInvariant()}.";
             return;
         }
 
@@ -309,6 +428,7 @@
             var request = new CrearTransferenciaAlmacenRequest
             {
                 IdAlmacenDestino = _idAlmacenDestino,
+                PermitirDestinoRuta = EsTransferenciaVehiculos,
                 Observaciones = _observaciones,
                 Detalle = _detalle.Select(x => new CrearTransferenciaAlmacenDetalleRequest
                 {
@@ -320,7 +440,7 @@
                 }).ToList()
             };
 
-            var (idMovimiento, error) = await Svc.CrearTransferenciaAlmacenAsync(IdAlmacen, request);
+            var (idMovimiento, error) = await Svc.CrearTransferenciaAlmacenAsync(IdAlmacenOrigen, request);
             if (!string.IsNullOrWhiteSpace(error))
             {
                 _error = error;
@@ -339,8 +459,18 @@
         }
     }
 
-    private static string Key(InventarioAlmacenItemResponse item)
-        => $"{item.IdProducto}|{item.IdLote}";
+    private void OnProductoChanged(ChangeEventArgs e)
+    {
+        _idProductoSeleccionado = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        _idLoteSeleccionado = 0;
+        _cajas = 0;
+        _piezas = 0;
+    }
+
+    private static string NombreProductoCombo(InventarioAlmacenItemResponse item)
+        => string.IsNullOrWhiteSpace(item.NombreCorto)
+            ? item.NombreProducto
+            : $"{item.NombreProducto} ({item.NombreCorto})";
 
     private static string Fmt(decimal value)
         => value.ToString("#,##0.####");

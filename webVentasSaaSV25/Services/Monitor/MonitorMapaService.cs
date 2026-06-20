@@ -1,9 +1,7 @@
 using webVentasSaaSV25.Services.Http;
-using webVentasSaaSV25.State;
-
 namespace webVentasSaaSV25.Services.Monitor;
 
-public sealed class MonitorMapaService(ApiClient api, AppState appState)
+public sealed class MonitorMapaService(ApiClient api)
 {
     public Task<(MapaConfiguracionResponse? D, string? E)> GetConfiguracionAsync()
         => api.GetAsync<MapaConfiguracionResponse>("api/v1/mapa/configuracion");
@@ -57,6 +55,20 @@ public sealed class MonitorMapaService(ApiClient api, AppState appState)
         return api.GetAsync<ReporteRecorridosResponse>($"api/v1/mapa/reportes/recorridos?{query}");
     }
 
+    public Task<(ReporteVentasRutaResponse? D, string? E)> GetReporteVentasRutaAsync(
+        int? idRuta,
+        DateTime? fechaInicio,
+        DateTime? fechaFin,
+        string modo,
+        int top = 50000)
+    {
+        var query = $"top={top}&modo={Uri.EscapeDataString(string.IsNullOrWhiteSpace(modo) ? "montos" : modo)}";
+        if (idRuta.HasValue && idRuta > 0) query += $"&idRuta={idRuta.Value}";
+        if (fechaInicio.HasValue) query += $"&fechaInicio={fechaInicio.Value:yyyy-MM-dd}";
+        if (fechaFin.HasValue) query += $"&fechaFin={fechaFin.Value:yyyy-MM-dd}";
+        return api.GetAsync<ReporteVentasRutaResponse>($"api/v1/mapa/reportes/ventas-ruta?{query}");
+    }
+
     public Task<(ReporteVisitasResponse? D, string? E)> GetReporteVisitasAsync(
         int idRuta,
         DateTime fecha,
@@ -86,10 +98,10 @@ public sealed class MonitorMapaService(ApiClient api, AppState appState)
     }
 
     public Task<(RecorridoTicketResponse? D, string? E)> GetRecorridoTicketAsync(long idRecorrido)
-        => api.GetAsync<RecorridoTicketResponse>($"api/v1/app/recorrido/{idRecorrido}/ticket");
+        => api.GetAsync<RecorridoTicketResponse>($"api/v1/mapa/recorridos/{idRecorrido}/ticket");
 
     public Task<(RecorridoCierreCompletoResponse? D, string? E)> GetRecorridoCierreCompletoAsync(long idRecorrido)
-        => api.GetAsync<RecorridoCierreCompletoResponse>($"api/v1/app/recorrido/{idRecorrido}/cierre-completo?idEmpresa={appState.IdEmpresa}");
+        => api.GetAsync<RecorridoCierreCompletoResponse>($"api/v1/mapa/recorridos/{idRecorrido}/cierre-completo");
 
     public Task<(MonitorWriteResult? D, string? E)> RegistrarEventoAccionAsync(
         long idEvento,
@@ -146,6 +158,8 @@ public sealed class MapaClientePuntoResponse
     public decimal? Longitud { get; init; }
     public string GeoSource { get; init; } = "SIN_COORDENADA";
     public int GeoQuality { get; init; }
+    public int SegundosTraslado { get; init; }
+    public int? MinutosTraslado { get; init; }
     public string? ProductoTop { get; init; }
     public int FrecuenciaSemanas { get; init; }
     public bool TieneImagen { get; init; }
@@ -229,6 +243,55 @@ public sealed class ReporteVisitasResponse
     public IReadOnlyList<ReporteVisitaPendienteRowResponse> NoVisitados { get; init; } = [];
 }
 
+public sealed class ReporteVentasRutaResponse
+{
+    public string Modo { get; init; } = "montos";
+    public ReporteVentasRutaKpiResponse Kpi { get; init; } = new();
+    public IReadOnlyList<ReporteVentasRutaMontoRowResponse> VentasMonto { get; init; } = [];
+    public IReadOnlyList<ReporteVentasRutaDiaRowResponse> ResumenDias { get; init; } = [];
+    public IReadOnlyList<ReporteVentasRutaProductoRowResponse> VentasProducto { get; init; } = [];
+}
+
+public sealed class ReporteVentasRutaKpiResponse
+{
+    public int TotalVentas { get; init; }
+    public decimal MontoVentas { get; init; }
+    public decimal MontoCredito { get; init; }
+    public decimal MontoCancelaciones { get; init; }
+}
+
+public sealed class ReporteVentasRutaMontoRowResponse
+{
+    public long IdVenta { get; init; }
+    public string FolioVenta { get; init; } = string.Empty;
+    public DateTime FechaHoraVenta { get; init; }
+    public int IdTipoVenta { get; init; }
+    public string TipoVenta { get; init; } = string.Empty;
+    public decimal Descuento { get; init; }
+    public decimal Iva { get; init; }
+    public decimal Total { get; init; }
+    public int IdEstatus { get; init; }
+    public string Estatus { get; init; } = string.Empty;
+    public decimal MontoCancelado { get; init; }
+    public string FormaPagoClave { get; init; } = string.Empty;
+    public string FormaPago { get; init; } = string.Empty;
+}
+
+public sealed class ReporteVentasRutaDiaRowResponse
+{
+    public byte OrdenDia { get; init; }
+    public string Dia { get; init; } = string.Empty;
+    public decimal Monto { get; init; }
+}
+
+public sealed class ReporteVentasRutaProductoRowResponse
+{
+    public string CodigoBarras { get; init; } = string.Empty;
+    public string Nombre { get; init; } = string.Empty;
+    public decimal CantidadVendida { get; init; }
+    public decimal MontoVentaProducto { get; init; }
+}
+
 public sealed class ReporteVisitasHeaderResponse
 {
     public long? IdRecorrido { get; init; }
@@ -267,6 +330,7 @@ public sealed class ReporteVisitaRowResponse
     public DateTime? FechaInicioUtc { get; init; }
     public DateTime? FechaFinUtc { get; init; }
     public int SegundosVisita { get; init; }
+    public int SegundosTraslado { get; init; }
     public int? MinutosTraslado { get; init; }
     public bool TieneQr { get; init; }
     public int Ventas { get; init; }
@@ -456,6 +520,12 @@ public sealed class RecorridoCierreCompletoResponse
     public decimal TotalDepositos { get; init; }
     public decimal TotalRetiros { get; init; }
     public decimal LiquidoARecibir { get; init; }
+    public string? TxtInventarioInicio { get; init; }
+    public string? TxtInventarioCierre { get; init; }
+    public string? TxtVentasCierre { get; init; }
+    public string? TxtResumenCierre { get; init; }
+    public string? TxtRecargas { get; init; }
+    public DateTime? TicketGeneradoUtc { get; init; }
     public IReadOnlyList<ResumenDepositoItemResponse> DetalleMovimientos { get; init; } = [];
     public IReadOnlyList<CierreInventarioItemResponse> InventarioActual { get; init; } = [];
     public IReadOnlyList<CierreProductoVendidoResponse> ProductosVendidos { get; init; } = [];

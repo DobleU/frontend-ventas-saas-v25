@@ -4,29 +4,34 @@
 @inject MonitorMapaService MonitorApi
 @inject IJSRuntime JS
 
-<PageTitle>Reporte de Ventas - Integra*System</PageTitle>
-<Breadcrumb Titulo="Reporte de Ventas" Items="@(new[] { ("Reportes", "/reportes"), ("Ventas", "") })" />
+<PageTitle>Reporte de Ventas en RUTA - Integra*System</PageTitle>
+<Breadcrumb Titulo="Reporte de Ventas en RUTA" Items="@(new[] { ("Reportes", "/reportes"), ("Ventas", "") })" />
 <AlertMessage @ref="_alerta" />
 
 <section class="report-shell">
     <div class="report-header">
         <div>
             <span class="report-kicker"><span class="material-icons-outlined">payments</span> Comercial</span>
-            <h3>Reporte de ventas</h3>
-            <p>Buscador de ventas por ruta y periodo con tabla exportable para Excel.</p>
+            <h3>Reporte de ventas en RUTA</h3>
+            <p>Consulta ventas por ruta y periodo. La paginacion es visual y la exportacion incluye el resultado completo.</p>
         </div>
-        <button class="btn btn-outline-primary" disabled="@(!_items.Any())" @onclick="Exportar">
+        <button class="btn btn-outline-primary" disabled="@(!CanExport)" @onclick="Exportar">
             <span class="material-icons-outlined fs-6">download</span>
             Exportar
         </button>
     </div>
+
+    @if (_loadingRutas)
+    {
+        <LoadingSpinner Solo="true" Texto="Cargando filtros..." />
+    }
 
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-body">
             <div class="row g-3 align-items-end">
                 <div class="col-12 col-md-3">
                     <label class="form-label">Ruta</label>
-                    <select class="form-select" @bind="_idRuta">
+                    <select class="form-select" @bind="_idRuta" @bind:after="OnFiltroChanged" disabled="@(_loading || _loadingRutas)">
                         <option value="0">Todas</option>
                         @foreach (var route in _rutas)
                         {
@@ -36,77 +41,222 @@
                 </div>
                 <div class="col-6 col-md-3">
                     <label class="form-label">Desde</label>
-                    <input class="form-control" type="date" @bind="_fechaInicio" />
+                    <input class="form-control" type="date" @bind="_fechaInicio" @bind:after="OnFiltroChanged" disabled="@_loading" />
                 </div>
                 <div class="col-6 col-md-3">
                     <label class="form-label">Hasta</label>
-                    <input class="form-control" type="date" @bind="_fechaFin" />
+                    <input class="form-control" type="date" @bind="_fechaFin" @bind:after="OnFiltroChanged" disabled="@_loading" />
                 </div>
                 <div class="col-12 col-md-3">
-                    <button class="btn btn-primary w-100" disabled="@_loading" @onclick="Consultar">
-                        <span class="material-icons-outlined fs-6">search</span>
-                        Consultar
-                    </button>
+                    <div class="report-mode">
+                        <label class="mode-option">
+                            <input type="radio" name="modo-reporte" value="montos" checked="@EsModo("montos")" @onchange="CambiarModo" disabled="@_loading" />
+                            <span>Montos</span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="modo-reporte" value="productos" checked="@EsModo("productos")" @onchange="CambiarModo" disabled="@_loading" />
+                            <span>Productos</span>
+                        </label>
+                    </div>
+                    <AppButton Tipo="primary"
+                               Icono="search"
+                               Texto="Consultar"
+                               Clase="w-100 mt-2"
+                               OnClick="Consultar"
+                               Loading="_loading"
+                               Disabled="@_loadingRutas" />
                 </div>
             </div>
+            @if (EsModo("montos"))
+            {
+                <div class="row g-3 align-items-end mt-1">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Registros por pagina</label>
+                        <select class="form-select" @bind="_pageSize" @bind:after="CambiarPageSize" disabled="@_loading">
+                            @foreach (var size in _pageSizeOptions)
+                            {
+                                <option value="@size">@size</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 
     <div class="row g-3 mb-3">
-        <div class="col-6 col-xl-3">@Kpi("Recorridos", _data.Kpi.TotalRecorridos.ToString("N0", _mx), "route")</div>
-        <div class="col-6 col-xl-3">@Kpi("Ventas", _data.Kpi.MontoVentas.ToString("C2", _mx), "payments")</div>
-        <div class="col-6 col-xl-3">@Kpi("Credito", _items.Sum(x => x.MontoCredito).ToString("C2", _mx), "credit_score")</div>
+        <div class="col-6 col-xl-3">@Kpi("Ventas", _data.Kpi.TotalVentas.ToString("N0", _mx), "receipt_long")</div>
+        <div class="col-6 col-xl-3">@Kpi("Monto", _data.Kpi.MontoVentas.ToString("C2", _mx), "payments")</div>
+        <div class="col-6 col-xl-3">@Kpi("Credito", _data.Kpi.MontoCredito.ToString("C2", _mx), "credit_score")</div>
         <div class="col-6 col-xl-3">@Kpi("Cancelaciones", _data.Kpi.MontoCancelaciones.ToString("C2", _mx), "money_off")</div>
     </div>
 
-    <div class="card border-0 shadow-sm">
-        <div class="table-responsive">
-            <table class="table align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Ruta</th>
-                        <th>Fecha</th>
-                        <th>Vendedor</th>
-                        <th>Estatus</th>
-                        <th class="text-end">Visitas</th>
-                        <th class="text-end">Efectividad</th>
-                        <th class="text-end">Ventas</th>
-                        <th class="text-end">Efectivo</th>
-                        <th class="text-end">Credito</th>
-                        <th class="text-end">Cancelaciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (_loading)
+    @if (EsModo("montos"))
+    {
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white border-0 pt-3">
+                <div class="report-table-head">
+                    <h5 class="mb-0">Ventas unitarias</h5>
+                    @if (!_loading && _data.VentasMonto.Any())
                     {
-                        <tr><td colspan="10" class="text-center py-4 text-secondary">Cargando ventas...</td></tr>
+                        <span class="text-secondary small">Pagina @_page de @TotalPages · @TotalVentasMonto.ToString("N0", _mx) registros</span>
                     }
-                    else if (!_items.Any())
-                    {
-                        <tr><td colspan="10" class="text-center py-4 text-secondary">Sin resultados para el filtro.</td></tr>
-                    }
-                    else
-                    {
-                        @foreach (var item in _items)
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Folio Venta</th>
+                            <th>Fecha/Hora Venta</th>
+                            <th>Tipo Venta</th>
+                            <th class="text-end">Descuento</th>
+                            <th class="text-end">IVA</th>
+                            <th class="text-end">Total</th>
+                            <th>Estatus</th>
+                            <th class="text-end">Monto Cancelado</th>
+                            <th>Forma Pago</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_loading)
                         {
-                            <tr>
-                                <td class="fw-semibold">@item.Ruta</td>
-                                <td>@item.FechaRecorrido.ToString("dd/MM/yyyy")</td>
-                                <td>@TextOrDash(item.Vendedor)</td>
-                                <td><span class="badge bg-light text-dark">@TextOrDash(item.Estatus)</span></td>
-                                <td class="text-end">@item.VisitasRealizadas / @item.VisitasProgramadas</td>
-                                <td class="text-end"><span class="@EfectividadBadge(item.Efectividad)">@item.Efectividad.ToString("N1", _mx)%</span></td>
-                                <td class="text-end">@item.MontoVentas.ToString("C2", _mx)</td>
-                                <td class="text-end">@item.MontoEfectivo.ToString("C2", _mx)</td>
-                                <td class="text-end">@item.MontoCredito.ToString("C2", _mx)</td>
-                                <td class="text-end">@item.MontoCancelaciones.ToString("C2", _mx)</td>
+                            <tr><td colspan="9" class="text-center py-4 text-secondary">Cargando ventas...</td></tr>
+                        }
+                        else if (!_hasConsulted)
+                        {
+                            <tr><td colspan="9" class="text-center py-4 text-secondary">Selecciona filtros y presiona Consultar.</td></tr>
+                        }
+                        else if (!PagedVentasMonto.Any())
+                        {
+                            <tr><td colspan="9" class="text-center py-4 text-secondary">Sin resultados para el filtro.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var item in PagedVentasMonto)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@item.FolioVenta</td>
+                                    <td>@item.FechaHoraVenta.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>@item.TipoVenta</td>
+                                    <td class="text-end">@item.Descuento.ToString("C2", _mx)</td>
+                                    <td class="text-end">@item.Iva.ToString("C2", _mx)</td>
+                                    <td class="text-end">@item.Total.ToString("C2", _mx)</td>
+                                    <td><span class="badge bg-light text-dark">@item.Estatus</span></td>
+                                    <td class="text-end">@item.MontoCancelado.ToString("C2", _mx)</td>
+                                    <td>@FormaPagoTexto(item)</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (!_loading && _data.VentasMonto.Any())
+            {
+                <div class="card-footer bg-white border-0">
+                    <div class="report-pager">
+                        <button class="btn btn-outline-secondary" disabled="@(_page <= 1)" @onclick="PaginaAnterior">
+                            Anterior
+                        </button>
+                        <span class="small text-secondary">Mostrando @StartRow a @EndRow de @TotalVentasMonto.ToString("N0", _mx)</span>
+                        <button class="btn btn-outline-secondary" disabled="@(_page >= TotalPages)" @onclick="PaginaSiguiente">
+                            Siguiente
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-3">
+                <h5 class="mb-0">Acumulado por dia de la semana</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Dia</th>
+                            <th class="text-end">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_loading)
+                        {
+                            <tr><td colspan="2" class="text-center py-4 text-secondary">Calculando acumulado...</td></tr>
+                        }
+                        else if (!_hasConsulted)
+                        {
+                            <tr><td colspan="2" class="text-center py-4 text-secondary">Pendiente de consulta.</td></tr>
+                        }
+                        else if (!_data.ResumenDias.Any())
+                        {
+                            <tr><td colspan="2" class="text-center py-4 text-secondary">Sin acumulado para el filtro.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var item in _data.ResumenDias)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@item.Dia</td>
+                                    <td class="text-end">@item.Monto.ToString("C2", _mx)</td>
+                                </tr>
+                            }
+                            <tr class="table-light fw-bold">
+                                <td>Total</td>
+                                <td class="text-end">@_data.ResumenDias.Sum(x => x.Monto).ToString("C2", _mx)</td>
                             </tr>
                         }
-                    }
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-3">
+                <h5 class="mb-0">Acumulado por producto</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Codigo Barras</th>
+                            <th>Nombre</th>
+                            <th class="text-end">Cantidad Vendida</th>
+                            <th class="text-end">Monto de Venta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_loading)
+                        {
+                            <tr><td colspan="4" class="text-center py-4 text-secondary">Cargando productos...</td></tr>
+                        }
+                        else if (!_hasConsulted)
+                        {
+                            <tr><td colspan="4" class="text-center py-4 text-secondary">Selecciona filtros y presiona Consultar.</td></tr>
+                        }
+                        else if (!_data.VentasProducto.Any())
+                        {
+                            <tr><td colspan="4" class="text-center py-4 text-secondary">Sin resultados para el filtro.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var item in _data.VentasProducto)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@TextOrDash(item.CodigoBarras)</td>
+                                    <td>@item.Nombre</td>
+                                    <td class="text-end">@item.CantidadVendida.ToString("N2", _mx)</td>
+                                    <td class="text-end">@item.MontoVentaProducto.ToString("C2", _mx)</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
 </section>
 
 @code {
@@ -115,25 +265,61 @@
     private readonly CultureInfo _mx = CultureInfo.GetCultureInfo("es-MX");
     private AlertMessage? _alerta;
     private List<MapaRutaOptionResponse> _rutas = [];
-    private ReporteRecorridosResponse _data = new();
-    private IReadOnlyList<ReporteRecorridoRowResponse> _items => _data.Recorridos;
+    private ReporteVentasRutaResponse _data = new();
     private bool _loading;
+    private bool _loadingRutas;
+    private bool _hasConsulted;
     private int _idRuta;
+    private int _page = 1;
+    private int _pageSize = 25;
+    private string _modo = "montos";
     private DateTime _fechaInicio = DateTime.Today.AddDays(-7);
     private DateTime _fechaFin = DateTime.Today;
+    private readonly int[] _pageSizeOptions = [25, 50, 100, 200];
+
+    private bool CanExport => EsModo("montos")
+        ? _data.VentasMonto.Any() || _data.ResumenDias.Any()
+        : _data.VentasProducto.Any();
+    private IReadOnlyList<ReporteVentasRutaMontoRowResponse> PagedVentasMonto => _data.VentasMonto
+        .Skip((_page - 1) * _pageSize)
+        .Take(_pageSize)
+        .ToList();
+    private int TotalVentasMonto => _data.VentasMonto.Count;
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling((TotalVentasMonto <= 0 ? 1m : TotalVentasMonto) / (decimal)_pageSize));
+    private int StartRow => TotalVentasMonto == 0 ? 0 : ((_page - 1) * _pageSize) + 1;
+    private int EndRow => Math.Min(_page * _pageSize, TotalVentasMonto);
 
     protected override async Task OnInitializedAsync()
     {
+        _loadingRutas = true;
         var (routes, error) = await MonitorApi.GetRutasAsync();
-        if (error is null && routes is not null) _rutas = routes.ToList();
-        if (QueryRouteId is > 0) _idRuta = QueryRouteId.Value;
-        await Consultar();
+        _loadingRutas = false;
+        if (error is null && routes is not null)
+        {
+            _rutas = routes.ToList();
+        }
+
+        if (QueryRouteId is > 0)
+        {
+            _idRuta = QueryRouteId.Value;
+        }
     }
 
     private async Task Consultar()
     {
+        if (_loading)
+        {
+            return;
+        }
+
+        _page = 1;
         _loading = true;
-        var (data, error) = await MonitorApi.GetReporteRecorridosAsync(_idRuta > 0 ? _idRuta : null, _fechaInicio, _fechaFin);
+        var (data, error) = await MonitorApi.GetReporteVentasRutaAsync(
+            _idRuta > 0 ? _idRuta : null,
+            _fechaInicio,
+            _fechaFin,
+            _modo,
+            top: 50000);
         _loading = false;
 
         if (error is not null)
@@ -142,37 +328,127 @@
             return;
         }
 
-        _data = data ?? new();
+        _data = data ?? new ReporteVentasRutaResponse { Modo = _modo };
+        _hasConsulted = true;
+        if (_page > TotalPages)
+        {
+            _page = TotalPages;
+        }
+    }
+
+    private async Task CambiarModo(ChangeEventArgs args)
+    {
+        _modo = args.Value?.ToString()?.Trim().ToLowerInvariant() == "productos"
+            ? "productos"
+            : "montos";
+
+        LimpiarResultado();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private Task CambiarPageSize()
+    {
+        _page = 1;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task OnFiltroChanged()
+    {
+        LimpiarResultado();
+        return Task.CompletedTask;
+    }
+
+    private void LimpiarResultado()
+    {
+        _page = 1;
+        _data = new ReporteVentasRutaResponse { Modo = _modo };
+        _hasConsulted = false;
+    }
+
+    private Task PaginaAnterior()
+    {
+        if (_page <= 1)
+            return Task.CompletedTask;
+
+        _page--;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task PaginaSiguiente()
+    {
+        if (_page >= TotalPages)
+            return Task.CompletedTask;
+
+        _page++;
+        return InvokeAsync(StateHasChanged);
     }
 
     private async Task Exportar()
     {
         var csv = new StringBuilder();
-        csv.AppendLine("Ruta,Fecha,Vendedor,Estatus,VisitasProgramadas,VisitasRealizadas,Efectividad,MontoVentas,MontoEfectivo,MontoCredito,MontoCancelaciones");
-        foreach (var item in _items)
+        if (EsModo("montos"))
         {
+            csv.AppendLine("Ventas Unitarias");
+            csv.AppendLine("Folio Venta,Fecha/Hora Venta,Tipo Venta,Descuento,IVA,Total,Estatus,Monto Cancelado,Forma Pago");
+            foreach (var item in _data.VentasMonto)
+            {
+                csv.AppendLine(string.Join(",",
+                    Csv(item.FolioVenta),
+                    Csv(item.FechaHoraVenta.ToString("dd/MM/yyyy HH:mm")),
+                    Csv(item.TipoVenta),
+                    item.Descuento.ToString(CultureInfo.InvariantCulture),
+                    item.Iva.ToString(CultureInfo.InvariantCulture),
+                    item.Total.ToString(CultureInfo.InvariantCulture),
+                    Csv(item.Estatus),
+                    item.MontoCancelado.ToString(CultureInfo.InvariantCulture),
+                    Csv(FormaPagoTexto(item))));
+            }
+
+            csv.AppendLine();
+            csv.AppendLine("Acumulado por Dia");
+            csv.AppendLine("Dia,Monto");
+            foreach (var item in _data.ResumenDias)
+            {
+                csv.AppendLine(string.Join(",",
+                    Csv(item.Dia),
+                    item.Monto.ToString(CultureInfo.InvariantCulture)));
+            }
+
             csv.AppendLine(string.Join(",",
-                Csv(item.Ruta),
-                Csv(item.FechaRecorrido.ToString("dd/MM/yyyy")),
-                Csv(item.Vendedor),
-                Csv(item.Estatus),
-                item.VisitasProgramadas,
-                item.VisitasRealizadas,
-                item.Efectividad.ToString(CultureInfo.InvariantCulture),
-                item.MontoVentas.ToString(CultureInfo.InvariantCulture),
-                item.MontoEfectivo.ToString(CultureInfo.InvariantCulture),
-                item.MontoCredito.ToString(CultureInfo.InvariantCulture),
-                item.MontoCancelaciones.ToString(CultureInfo.InvariantCulture)));
+                Csv("TOTAL"),
+                _data.ResumenDias.Sum(x => x.Monto).ToString(CultureInfo.InvariantCulture)));
+        }
+        else
+        {
+            csv.AppendLine("Codigo Barras,Nombre,Cantidad Vendida,Monto de Venta");
+            foreach (var item in _data.VentasProducto)
+            {
+                csv.AppendLine(string.Join(",",
+                    Csv(item.CodigoBarras),
+                    Csv(item.Nombre),
+                    item.CantidadVendida.ToString(CultureInfo.InvariantCulture),
+                    item.MontoVentaProducto.ToString(CultureInfo.InvariantCulture)));
+            }
         }
 
         var serialized = System.Text.Json.JsonSerializer.Serialize(csv.ToString());
         await JS.InvokeVoidAsync("eval",
-            $"const blob=new Blob([{serialized}],{{type:'text/csv;charset=utf-8;'}});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='reporte-ventas.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);");
+            $"const blob=new Blob([{serialized}],{{type:'text/csv;charset=utf-8;'}});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='reporte-ventas-ruta-{_modo}.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);");
     }
 
+    private bool EsModo(string modo) => string.Equals(_modo, modo, StringComparison.OrdinalIgnoreCase);
     private static string Csv(string? value) => string.Concat("\"", (value ?? string.Empty).Replace("\"", "\"\""), "\"");
     private static string TextOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "Sin dato" : value;
-    private static string EfectividadBadge(decimal value) => value < 75 ? "badge bg-danger" : "badge bg-success";
+
+    private static string FormaPagoTexto(ReporteVentasRutaMontoRowResponse item)
+    {
+        if (string.IsNullOrWhiteSpace(item.FormaPagoClave))
+        {
+            return TextOrDash(item.FormaPago);
+        }
+
+        return $"{item.FormaPagoClave} - {TextOrDash(item.FormaPago)}";
+    }
 
     private RenderFragment Kpi(string title, string value, string icon) => @<div class="card border-0 shadow-sm h-100">
         <div class="card-body d-flex align-items-center justify-content-between">
@@ -191,5 +467,12 @@
     .report-header h3 { margin:0; font-weight:800; }
     .report-header p { margin:.25rem 0 0; color:#6c757d; }
     .report-kicker { display:flex; align-items:center; gap:.35rem; color:#f05a1a; font-weight:700; font-size:.78rem; text-transform:uppercase; }
-    @@media (max-width: 768px) { .report-header { flex-direction:column; } }
+    .report-table-head { display:flex; justify-content:space-between; align-items:center; gap:1rem; }
+    .report-mode { display:flex; gap:1rem; flex-wrap:wrap; }
+    .report-pager { display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; }
+    .mode-option { display:flex; align-items:center; gap:.4rem; font-weight:600; margin:0; }
+    @@media (max-width: 768px) {
+        .report-header { flex-direction:column; }
+        .report-table-head, .report-pager { flex-direction:column; align-items:flex-start; }
+    }
 </style>

@@ -1,7 +1,7 @@
-﻿@page "/catalogos/clientes"
+@page "/catalogos/clientes"
 @using webVentasSaaSV25.Services.Catalogos
 @inject ClienteService Svc
-@inject RutaService    RutaSvc
+@inject RutaService RutaSvc
 
 <PageTitle>Clientes — VentasSaaSDU</PageTitle>
 <Breadcrumb Titulo="Clientes" Items="@(new[]{ ("Catálogos","/catalogos"), ("Clientes","") })" />
@@ -11,13 +11,16 @@
           Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
           Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
           OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo"
+          AccionesExtra="AccionesCliente"
           SearchPlaceholder="Nombre, razón social, RFC, correo">
 
     <FiltrosExtra>
         <select class="form-select form-select-sm" style="width:170px" @onchange="OnFiltroRuta">
             <option value="">Todas las rutas</option>
             @foreach (var r in _rutas)
-            { <option value="@r.IdRuta">@r.Nombre</option> }
+            {
+                <option value="@r.IdRuta">@r.Nombre</option>
+            }
         </select>
     </FiltrosExtra>
 
@@ -28,7 +31,6 @@
         <th style="width:160px">Correo</th>
         <th style="width:130px" class="text-center">Crédito</th>
         <th style="width:110px" class="text-center">Estado</th>
-        <th style="width:220px" class="text-center">Acciones</th>
     </HeaderRow>
     <RowTemplate>
         <td>
@@ -36,7 +38,9 @@
             <div class="text-muted small">
                 @(context.IdTipoPersona == 2 ? "Moral" : "Física")
                 @if (!string.IsNullOrWhiteSpace(context.NombreRuta))
-                { <span class="ms-2 badge bg-secondary-subtle text-secondary-emphasis">@context.NombreRuta</span> }
+                {
+                    <span class="ms-2 badge bg-secondary-subtle text-secondary-emphasis">@context.NombreRuta</span>
+                }
             </div>
         </td>
         <td class="text-muted small">@(context.Rfc ?? "—")</td>
@@ -49,147 +53,239 @@
                     $@context.LimiteCredito.ToString("N0") · @context.DiasCredito&nbsp;d
                 </span>
             }
-            else { <span class="text-muted small">—</span> }
+            else
+            {
+                <span class="text-muted small">—</span>
+            }
         </td>
         <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
-        <td class="text-center">
-            <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2" @onclick="()=>AbrirEditar(context)">
-                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
-            </button>
-            @if (context.IdRuta is > 0)
-            {
-                <a class="btn btn-sm btn-outline-secondary me-1 py-1 px-2" href="@($"/monitor/clientes?ruta={context.IdRuta}&cliente={context.IdCliente}")" title="Monitor de cliente">
-                    <i class="material-icons-outlined" style="font-size:15px;">person_search</i>
-                </a>
-                <a class="btn btn-sm btn-outline-secondary me-1 py-1 px-2" href="@($"/monitor/mapa?ruta={context.IdRuta}&cliente={context.IdCliente}")" title="Ver en mapa">
-                    <i class="material-icons-outlined" style="font-size:15px;">map</i>
-                </a>
-            }
-            <button class="btn btn-sm btn-outline-danger py-1 px-2" @onclick="()=>Eliminar(context)">
-                <i class="material-icons-outlined" style="font-size:15px;">delete</i>
-            </button>
-        </td>
     </RowTemplate>
 </DataGrid>
 
-<FormOffcanvas @ref="_panel" Titulo="@(_edit?"Editar Cliente":"Nuevo Cliente")"
-               Icono="@(_edit?"edit":"person_add")" Ancho="560px" OnGuardar="Guardar">
+<FormOffcanvas @ref="_panel" Titulo="@(_edit ? "Editar Cliente" : "Nuevo Cliente")"
+               Icono="@(_edit ? "edit" : "person_add")" Ancho="780px" OnGuardar="Guardar">
     <Body>
-        <div class="mb-3">
-            <label class="form-label fw-medium">Tipo de Persona <span class="text-danger">*</span></label>
-            <div class="d-flex gap-3">
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="tipoPer"
-                           checked="@(_idTipoPer==1)" @onchange='()=>_idTipoPer=1' />
-                    <label class="form-check-label">Física</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="tipoPer"
-                           checked="@(_idTipoPer==2)" @onchange='()=>_idTipoPer=2' />
-                    <label class="form-check-label">Moral</label>
-                </div>
-            </div>
-        </div>
-
-        @if (_idTipoPer == 1)
+        @if (_cargandoFormulario)
         {
-            <div class="mb-3">
-                <label class="form-label fw-medium">Nombre <span class="text-danger">*</span></label>
-                <input class="form-control @(_eNombreReq?"is-invalid":"")" maxlength="100"
-                       @bind="_nombre" @oninput="()=>_eNombreReq=false" placeholder="Nombre(s)" />
-                @if (_eNombreReq) { <div class="invalid-feedback">Requerido.</div> }
-            </div>
-            <div class="row g-3 mb-3">
-                <div class="col-6">
-                    <label class="form-label fw-medium">Apellido Paterno</label>
-                    <input class="form-control" maxlength="80" @bind="_apePat" />
-                </div>
-                <div class="col-6">
-                    <label class="form-label fw-medium">Apellido Materno</label>
-                    <input class="form-control" maxlength="80" @bind="_apeMat" />
-                </div>
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-secondary">Cargando cliente...</p>
             </div>
         }
         else
         {
-            <div class="mb-3">
-                <label class="form-label fw-medium">Razón Social <span class="text-danger">*</span></label>
-                <input class="form-control @(_eNombreReq?"is-invalid":"")" maxlength="200"
-                       @bind="_razonSocial" @oninput="()=>_eNombreReq=false"
-                       placeholder="Ej. Distribuidora ABC S.A. de C.V." />
-                @if (_eNombreReq) { <div class="invalid-feedback">Requerido.</div> }
-            </div>
-        }
-
-        <div class="row g-3 mb-3">
-            <div class="col-6">
-                <label class="form-label fw-medium">RFC</label>
-                <input class="form-control text-uppercase" maxlength="13" @bind="_rfc"
-                       placeholder="@(_idTipoPer==1?"XAXX010101000":"ABC010101XYZ")" />
-            </div>
-            <div class="col-6">
-                <label class="form-label fw-medium">Ruta asignada</label>
-                <select class="form-select" @bind="_idRuta">
-                    <option value="0">Sin ruta</option>
-                    @foreach (var r in _rutas) { <option value="@r.IdRuta">@r.Nombre</option> }
-                </select>
-            </div>
-        </div>
-
-        <div class="row g-3 mb-3">
-            <div class="col-6">
-                <label class="form-label fw-medium">Teléfono principal</label>
-                <input class="form-control" maxlength="20" @bind="_telefono1" placeholder="Ej. 5512345678" />
-            </div>
-            <div class="col-6">
-                <label class="form-label fw-medium">Teléfono alterno</label>
-                <input class="form-control" maxlength="20" @bind="_telefono2" />
-            </div>
-        </div>
-        <div class="mb-3">
-            <label class="form-label fw-medium">Correo</label>
-            <input type="email" class="form-control" maxlength="150" @bind="_correo"
-                   placeholder="cliente@ejemplo.com" />
-        </div>
-
-        <div class="mb-3">
-            <div class="form-check form-switch mb-2">
-                <input class="form-check-input" type="checkbox" @bind="_tieneCredito" />
-                <label class="form-check-label fw-medium">Asignar crédito</label>
-            </div>
-            @if (_tieneCredito)
-            {
-                <div class="row g-3">
-                    <div class="col-6">
-                        <label class="form-label">Límite ($)</label>
-                        <input type="number" class="form-control" min="0" step="100" @bind="_credLimite" />
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Días</label>
-                        <input type="number" class="form-control" min="0" max="365" @bind="_credDias" />
+            <div class="row g-3">
+                <div class="col-12">
+                    <h6 class="text-secondary mb-0">Datos generales</h6>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-medium">Tipo de Persona <span class="text-danger">*</span></label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipoPer"
+                                   checked="@(_idTipoPer == 1)" @onchange="() => _idTipoPer = 1" />
+                            <label class="form-check-label">Física</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipoPer"
+                                   checked="@(_idTipoPer == 2)" @onchange="() => _idTipoPer = 2" />
+                            <label class="form-check-label">Moral</label>
+                        </div>
                     </div>
                 </div>
-            }
-        </div>
 
-        @if (_edit)
-        {
-            <div class="row g-3 mb-3">
-                <div class="col-6">
+                @if (_idTipoPer == 1)
+                {
+                    <div class="col-md-4">
+                        <label class="form-label fw-medium">Nombre <span class="text-danger">*</span></label>
+                        <input class="form-control @(_eNombreReq ? "is-invalid" : "")" maxlength="100"
+                               @bind="_nombre" @oninput="() => _eNombreReq = false" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-medium">Apellido Paterno</label>
+                        <input class="form-control" maxlength="80" @bind="_apePat" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-medium">Apellido Materno</label>
+                        <input class="form-control" maxlength="80" @bind="_apeMat" />
+                    </div>
+                }
+                else
+                {
+                    <div class="col-12">
+                        <label class="form-label fw-medium">Razón Social <span class="text-danger">*</span></label>
+                        <input class="form-control @(_eNombreReq ? "is-invalid" : "")" maxlength="200"
+                               @bind="_razonSocial" @oninput="() => _eNombreReq = false" />
+                    </div>
+                }
+
+                <div class="col-md-4">
+                    <label class="form-label fw-medium">RFC</label>
+                    <input class="form-control text-uppercase" maxlength="13" @bind="_rfc" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-medium">Teléfono principal</label>
+                    <input class="form-control" maxlength="20" @bind="_telefono1" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-medium">Teléfono alterno</label>
+                    <input class="form-control" maxlength="20" @bind="_telefono2" />
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label fw-medium">Correo</label>
+                    <input type="email" class="form-control" maxlength="150" @bind="_correo" />
+                </div>
+                <div class="col-md-4">
                     <label class="form-label fw-medium">Estado</label>
-                    <div class="form-check form-switch">
+                    <div class="form-check form-switch mt-2">
                         <input class="form-check-input" type="checkbox" @bind="_isActive" />
-                        <label class="form-check-label">@(_isActive?"Activo":"Inactivo")</label>
+                        <label class="form-check-label">@(_isActive ? "Activo" : "Inactivo")</label>
                     </div>
                 </div>
-                <div class="col-6">
-                    <label class="form-label fw-medium">Bloquear crédito</label>
+
+                <div class="col-12"><hr class="my-2" /></div>
+                <div class="col-12">
+                    <h6 class="text-secondary mb-0">Crédito</h6>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch mt-4">
+                        <input class="form-check-input" type="checkbox" @bind="_tieneCredito" />
+                        <label class="form-check-label fw-medium">Asignar crédito</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Límite ($)</label>
+                    <input type="number" class="form-control" min="0" step="100" disabled="@(!_tieneCredito)" @bind="_credLimite" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Días</label>
+                    <input type="number" class="form-control" min="0" max="365" disabled="@(!_tieneCredito)" @bind="_credDias" />
+                </div>
+                <div class="col-md-4">
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" @bind="_bloquearCredito" />
-                        <label class="form-check-label @(_bloquearCredito?"text-danger":"")">
-                            @(_bloquearCredito?"Bloqueado":"")
-                        </label>
+                        <label class="form-check-label">Bloquear crédito</label>
                     </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" @bind="_bloquearGeneral" />
+                        <label class="form-check-label">Bloquear general</label>
+                    </div>
+                </div>
+
+                <div class="col-12"><hr class="my-2" /></div>
+                <div class="col-12">
+                    <h6 class="text-secondary mb-0">Dirección / Sucursal</h6>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-medium">Nombre de sucursal</label>
+                    <input class="form-control" maxlength="150" @bind="_nombreSucursal" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-medium">Ruta asignada</label>
+                    <select class="form-select" @bind="_idRuta">
+                        <option value="0">Sin ruta</option>
+                        @foreach (var r in _rutas)
+                        {
+                            <option value="@r.IdRuta">@r.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-medium">Calle y número <span class="text-danger">*</span></label>
+                    <input class="form-control @(_eDireccionReq ? "is-invalid" : "")" maxlength="200"
+                           @bind="_direccion1" @oninput="() => _eDireccionReq = false" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Colonia</label>
+                    <input class="form-control" maxlength="100" @bind="_colonia" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">C.P.</label>
+                    <input class="form-control" maxlength="10" @bind="_codigoPostal" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Id Estado</label>
+                    <input type="number" class="form-control" min="0" @bind="_idEstado" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Id Municipio</label>
+                    <input type="number" class="form-control" min="0" @bind="_idMunicipio" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Referencias</label>
+                    <textarea class="form-control" rows="2" maxlength="800" @bind="_referencias"></textarea>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Día de visita</label>
+                    <select class="form-select" @bind="_diaSemana">
+                        <option value="0">Sin día</option>
+                        <option value="1">Lunes</option>
+                        <option value="2">Martes</option>
+                        <option value="3">Miércoles</option>
+                        <option value="4">Jueves</option>
+                        <option value="5">Viernes</option>
+                        <option value="6">Sábado</option>
+                        <option value="7">Domingo</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Frecuencia</label>
+                    <select class="form-select" @bind="_idFrecuenciaVisita">
+                        <option value="0">Cada semana</option>
+                        <option value="701">Cada semana</option>
+                        <option value="702">Cada 2 semanas</option>
+                        <option value="703">Cada 3 semanas</option>
+                        <option value="704">Cada 4 semanas</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Orden</label>
+                    <input type="number" class="form-control" min="0" @bind="_ordenDia" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Latitud</label>
+                    <input type="number" class="form-control" step="0.000001" @bind="_latitud" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Longitud</label>
+                    <input type="number" class="form-control" step="0.000001" @bind="_longitud" />
+                </div>
+
+                <div class="col-12"><hr class="my-2" /></div>
+                <div class="col-12">
+                    <h6 class="text-secondary mb-0">Facturación</h6>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">RFC fiscal</label>
+                    <input class="form-control text-uppercase" maxlength="13" @bind="_factRfc" />
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">Razón social fiscal</label>
+                    <input class="form-control" maxlength="200" @bind="_factRazonSocial" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Régimen fiscal</label>
+                    <input class="form-control" maxlength="10" @bind="_factRegimenFiscal" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Uso CFDI</label>
+                    <input class="form-control" maxlength="10" @bind="_factUsoCfdi" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">C.P. fiscal</label>
+                    <input class="form-control" maxlength="10" @bind="_factCodigoPostal" />
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check form-switch mt-4">
+                        <input class="form-check-input" type="checkbox" @bind="_factEsDefault" />
+                        <label class="form-check-label">Default</label>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Dirección fiscal</label>
+                    <textarea class="form-control" rows="2" maxlength="300" @bind="_factDireccionFiscal"></textarea>
                 </div>
             </div>
         }
@@ -198,92 +294,260 @@
 <ConfirmDialog @ref="_confirm" />
 
 @code {
-    PagedResult<ClienteResponse>? _paged; FiltroClienteRequest _f = new(); bool _loading;
-    AlertMessage? _alerta; FormOffcanvas? _panel; ConfirmDialog? _confirm;
+    PagedResult<ClienteResponse>? _paged;
+    FiltroClienteRequest _f = new();
+    bool _loading;
+    bool _cargandoFormulario;
+    AlertMessage? _alerta;
+    FormOffcanvas? _panel;
+    ConfirmDialog? _confirm;
     List<RutaResponse> _rutas = [];
 
-    bool    _edit; int _id;
-    int     _idTipoPer    = 1;
-    string  _nombre       = ""; string _apePat = ""; string _apeMat = "";
-    string  _razonSocial  = ""; string _rfc    = "";
-    string  _correo       = ""; string _telefono1 = ""; string _telefono2 = "";
-    bool    _tieneCredito = false; decimal _credLimite = 0; int _credDias = 0;
-    int     _idRuta       = 0;
-    bool    _isActive     = true; bool _bloquearCredito = false;
-    bool    _eNombreReq;
+    bool _edit;
+    int _id;
+    int _idTipoPer = 1;
+    string _nombre = "";
+    string _apePat = "";
+    string _apeMat = "";
+    string _razonSocial = "";
+    string _rfc = "";
+    string _correo = "";
+    string _telefono1 = "";
+    string _telefono2 = "";
+    bool _tieneCredito;
+    decimal _credLimite;
+    int _credDias;
+    bool _bloquearCredito;
+    bool _bloquearGeneral;
+    bool _isActive = true;
+
+    int _idRuta;
+    int? _idDireccion;
+    string _nombreSucursal = "";
+    string _direccion1 = "";
+    string _colonia = "";
+    string _codigoPostal = "";
+    string _referencias = "";
+    int? _idEstado;
+    int? _idMunicipio;
+    int _diaSemana;
+    int _idFrecuenciaVisita;
+    int? _ordenDia;
+    decimal? _latitud;
+    decimal? _longitud;
+
+    int? _idFacturacion;
+    string _factRfc = "";
+    string _factRazonSocial = "";
+    string _factRegimenFiscal = "";
+    string _factUsoCfdi = "";
+    string _factCodigoPostal = "";
+    string _factDireccionFiscal = "";
+    bool _factEsDefault = true;
+
+    bool _eNombreReq;
+    bool _eDireccionReq;
 
     protected override async Task OnInitializedAsync()
         => await Task.WhenAll(Cargar(), CargarRutas());
 
-    async Task Cargar() { _loading=true; var(d,e)=await Svc.GetPagedAsync(_f); _loading=false; if(e!=null)_alerta?.MostrarError(e); else _paged=d; }
-    async Task CargarRutas() { var(d,_)=await RutaSvc.GetPagedAsync(new FiltroRutaRequest{IsActive=true,Page=1,PageSize=500}); _rutas=d?.Items??[]; }
+    async Task Cargar()
+    {
+        _loading = true;
+        var (d, e) = await Svc.GetPagedAsync(_f);
+        _loading = false;
+        if (e != null) _alerta?.MostrarError(e); else _paged = d;
+    }
 
-    async Task OnPage(int p)        { _f.Page=p;  await Cargar(); }
-    async Task OnSearch(string? s)  { _f.Search=s; _f.Page=1; await Cargar(); }
+    async Task CargarRutas()
+    {
+        var (d, _) = await RutaSvc.GetPagedAsync(new FiltroRutaRequest { IsActive = true, Page = 1, PageSize = 500 });
+        _rutas = d?.Items ?? [];
+    }
+
+    async Task OnPage(int p) { _f.Page = p; await Cargar(); }
+    async Task OnSearch(string? s) { _f.Search = s; _f.Page = 1; await Cargar(); }
+
     async Task OnFiltroRuta(ChangeEventArgs e)
-    { _f.IdRuta=int.TryParse(e.Value?.ToString(),out var id)&&id>0?id:null; _f.Page=1; await Cargar(); }
+    {
+        _f.IdRuta = int.TryParse(e.Value?.ToString(), out var id) && id > 0 ? id : null;
+        _f.Page = 1;
+        await Cargar();
+    }
+
+    RenderFragment<ClienteResponse> AccionesCliente => cliente => @<text>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" href="javascript:;" @onclick="() => AbrirEditar(cliente)">
+                <span class="material-icons-outlined fs-6">edit</span>Editar
+            </a>
+        </li>
+        @if (cliente.IdRuta is > 0)
+        {
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="@($"/monitor/clientes?ruta={cliente.IdRuta}&cliente={cliente.IdCliente}")">
+                    <span class="material-icons-outlined fs-6">person_search</span>Monitor
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="@($"/monitor/mapa?ruta={cliente.IdRuta}&cliente={cliente.IdCliente}")">
+                    <span class="material-icons-outlined fs-6">map</span>Mapa
+                </a>
+            </li>
+        }
+        <li><hr class="dropdown-divider" /></li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="javascript:;" @onclick="() => Eliminar(cliente)">
+                <span class="material-icons-outlined fs-6">delete</span>Eliminar
+            </a>
+        </li>
+    </text>;
 
     void AbrirNuevo()
     {
-        _edit=false; _id=0; _idTipoPer=1; _nombre=""; _apePat=""; _apeMat=""; _razonSocial="";
-        _rfc=""; _correo=""; _telefono1=""; _telefono2="";
-        _tieneCredito=false; _credLimite=0; _credDias=0; _idRuta=0; _eNombreReq=false;
+        LimpiarFormulario();
+        _edit = false;
         _panel?.Abrir();
     }
-    void AbrirEditar(ClienteResponse x)
+
+    async Task AbrirEditar(ClienteResponse x)
     {
-        _edit=true; _id=x.IdCliente; _idTipoPer=x.IdTipoPersona;
-        _nombre=x.Nombre??""; _apePat=x.ApePat??""; _apeMat=x.ApeMat??"";
-        _razonSocial=x.RazonSocial??""; _rfc=x.Rfc??"";
-        _correo=x.Correo??""; _telefono1=x.Telefono1??""; _telefono2=x.Telefono2??"";
-        _tieneCredito=x.TieneCredito; _credLimite=x.LimiteCredito; _credDias=x.DiasCredito;
-        _idRuta=x.IdRuta??0; _isActive=x.IsActive; _bloquearCredito=x.BloquearCredito;
-        _eNombreReq=false; _panel?.Abrir();
+        LimpiarFormulario();
+        _edit = true;
+        _id = x.IdCliente;
+        _cargandoFormulario = true;
+        _panel?.Abrir();
+
+        var (d, e) = await Svc.GetFormularioAsync(x.IdCliente);
+        _cargandoFormulario = false;
+        if (e != null || d is null)
+        {
+            _panel?.MostrarError(e ?? "No se pudo cargar el cliente.");
+            return;
+        }
+        CargarFormulario(d);
+    }
+
+    void LimpiarFormulario()
+    {
+        _id = 0; _idTipoPer = 1; _nombre = ""; _apePat = ""; _apeMat = ""; _razonSocial = "";
+        _rfc = ""; _correo = ""; _telefono1 = ""; _telefono2 = ""; _tieneCredito = false;
+        _credLimite = 0; _credDias = 0; _bloquearCredito = false; _bloquearGeneral = false; _isActive = true;
+        _idRuta = 0; _idDireccion = null; _nombreSucursal = ""; _direccion1 = ""; _colonia = "";
+        _codigoPostal = ""; _referencias = ""; _idEstado = null; _idMunicipio = null; _diaSemana = 0;
+        _idFrecuenciaVisita = 0; _ordenDia = null; _latitud = null; _longitud = null;
+        _idFacturacion = null; _factRfc = ""; _factRazonSocial = ""; _factRegimenFiscal = "";
+        _factUsoCfdi = ""; _factCodigoPostal = ""; _factDireccionFiscal = ""; _factEsDefault = true;
+        _eNombreReq = false; _eDireccionReq = false; _cargandoFormulario = false;
+    }
+
+    void CargarFormulario(ClienteResponse x)
+    {
+        _id = x.IdCliente; _idTipoPer = x.IdTipoPersona;
+        _nombre = x.Nombre ?? ""; _apePat = x.ApePat ?? ""; _apeMat = x.ApeMat ?? "";
+        _razonSocial = x.RazonSocial ?? ""; _rfc = x.Rfc ?? ""; _correo = x.Correo ?? "";
+        _telefono1 = x.Telefono1 ?? ""; _telefono2 = x.Telefono2 ?? "";
+        _tieneCredito = x.TieneCredito; _credLimite = x.LimiteCredito; _credDias = x.DiasCredito;
+        _bloquearCredito = x.BloquearCredito; _bloquearGeneral = x.BloquearGeneral; _isActive = x.IsActive;
+        _idRuta = x.IdRuta ?? 0; _idDireccion = x.IdDireccion; _nombreSucursal = x.NombreSucursal ?? "";
+        _direccion1 = x.Direccion1 ?? ""; _colonia = x.Colonia ?? ""; _codigoPostal = x.CodigoPostal ?? "";
+        _referencias = x.Referencias ?? ""; _idEstado = x.IdEstado; _idMunicipio = x.IdMunicipio;
+        _diaSemana = x.DiaSemana ?? 0; _idFrecuenciaVisita = x.IdFrecuenciaVisita ?? 0;
+        _ordenDia = x.OrdenDia; _latitud = x.Latitud; _longitud = x.Longitud;
+        _idFacturacion = x.IdFacturacion; _factRfc = x.FactRfc ?? ""; _factRazonSocial = x.FactRazonSocial ?? "";
+        _factRegimenFiscal = x.FactRegimenFiscal ?? ""; _factUsoCfdi = x.FactUsoCfdi ?? "";
+        _factCodigoPostal = x.FactCodigoPostal ?? ""; _factDireccionFiscal = x.FactDireccionFiscal ?? "";
+        _factEsDefault = x.FactEsDefault || x.IdFacturacion is null;
     }
 
     async Task Guardar()
     {
-        _eNombreReq = _idTipoPer==1 ? string.IsNullOrWhiteSpace(_nombre) : string.IsNullOrWhiteSpace(_razonSocial);
-        if (_eNombreReq) { _panel?.MostrarError("Corrija los campos marcados."); return; }
+        _eNombreReq = _idTipoPer == 1 ? string.IsNullOrWhiteSpace(_nombre) : string.IsNullOrWhiteSpace(_razonSocial);
+        _eDireccionReq = string.IsNullOrWhiteSpace(_direccion1);
+        if (_eNombreReq || _eDireccionReq)
+        {
+            _panel?.MostrarError("Corrija los campos marcados.");
+            return;
+        }
 
-        if (_edit)
+        var req = new GuardarClienteFormularioRequest
         {
-            var(_,e)=await Svc.ActualizarAsync(_id, new ActualizarClienteRequest
+            IdCliente = _edit ? _id : null,
+            IdTipoPersona = _idTipoPer,
+            Nombre = _nombre.Trim(),
+            ApePat = NullIfWhite(_apePat),
+            ApeMat = NullIfWhite(_apeMat),
+            RazonSocial = NullIfWhite(_razonSocial),
+            Rfc = NullIfWhite(_rfc)?.ToUpperInvariant(),
+            Correo = NullIfWhite(_correo),
+            Telefono1 = NullIfWhite(_telefono1),
+            Telefono2 = NullIfWhite(_telefono2),
+            TieneCredito = _tieneCredito,
+            LimiteCredito = _tieneCredito ? _credLimite : 0,
+            DiasCredito = _tieneCredito ? _credDias : 0,
+            BloquearCredito = _bloquearCredito,
+            BloquearGeneral = _bloquearGeneral,
+            IsActive = _isActive,
+            IdRuta = _idRuta > 0 ? _idRuta : null,
+            Direccion = new ClienteDireccionFormularioRequest
             {
-                IdCliente=_id, IdTipoPersona=_idTipoPer,
-                Nombre=_nombre.Trim(), ApePat=_apePat.Trim(), ApeMat=_apeMat.Trim(),
-                RazonSocial=_razonSocial.Trim(),
-                Rfc=string.IsNullOrWhiteSpace(_rfc)?null:_rfc.ToUpper().Trim(),
-                Correo=string.IsNullOrWhiteSpace(_correo)?null:_correo.Trim(),
-                Telefono1=string.IsNullOrWhiteSpace(_telefono1)?null:_telefono1.Trim(),
-                Telefono2=string.IsNullOrWhiteSpace(_telefono2)?null:_telefono2.Trim(),
-                BloquearCredito=_bloquearCredito, IsActive=_isActive,
-                CredLimite=_tieneCredito?_credLimite:0, CredDias=_tieneCredito?_credDias:0
-            });
-            if(e!=null){_panel?.MostrarError(e);return;}
-        }
-        else
+                IdDireccion = _idDireccion,
+                NombreSucursal = NullIfWhite(_nombreSucursal),
+                Direccion1 = _direccion1.Trim(),
+                IdEstado = _idEstado,
+                IdMunicipio = _idMunicipio,
+                CodigoPostal = NullIfWhite(_codigoPostal),
+                Colonia = NullIfWhite(_colonia),
+                Referencias = NullIfWhite(_referencias),
+                Latitud = _latitud,
+                Longitud = _longitud,
+                EsPrincipal = true,
+                EsEntrega = true,
+                DiaSemana = _diaSemana > 0 ? _diaSemana : null,
+                OrdenDia = _ordenDia > 0 ? _ordenDia : null,
+                IdFrecuenciaVisita = _idFrecuenciaVisita > 0 ? _idFrecuenciaVisita : null
+            },
+            Facturacion = TieneDatosFacturacion() ? new ClienteFacturacionFormularioRequest
+            {
+                IdFacturacion = _idFacturacion,
+                Rfc = NullIfWhite(_factRfc)?.ToUpperInvariant(),
+                RazonSocial = NullIfWhite(_factRazonSocial),
+                RegimenFiscal = NullIfWhite(_factRegimenFiscal),
+                UsoCfdi = NullIfWhite(_factUsoCfdi),
+                CodigoPostal = NullIfWhite(_factCodigoPostal),
+                DireccionFiscal = NullIfWhite(_factDireccionFiscal),
+                EsDefault = _factEsDefault
+            } : null
+        };
+
+        var (_, e) = _edit
+            ? await Svc.ActualizarFormularioAsync(_id, req)
+            : await Svc.CrearFormularioAsync(req);
+
+        if (e != null)
         {
-            var(_,e)=await Svc.CrearAsync(new CrearClienteRequest
-            {
-                IdTipoPersona=_idTipoPer,
-                Nombre=_nombre.Trim(), ApePat=_apePat.Trim(), ApeMat=_apeMat.Trim(),
-                RazonSocial=_razonSocial.Trim(),
-                Rfc=string.IsNullOrWhiteSpace(_rfc)?null:_rfc.ToUpper().Trim(),
-                Correo=string.IsNullOrWhiteSpace(_correo)?null:_correo.Trim(),
-                Telefono1=string.IsNullOrWhiteSpace(_telefono1)?null:_telefono1.Trim(),
-                Telefono2=string.IsNullOrWhiteSpace(_telefono2)?null:_telefono2.Trim(),
-                CredLimite=_tieneCredito?_credLimite:null, CredDias=_tieneCredito?_credDias:null
-            });
-            if(e!=null){_panel?.MostrarError(e);return;}
+            _panel?.MostrarError(e);
+            return;
         }
-        _panel?.MostrarExitoYCerrar(_edit?"Cliente actualizado.":"Cliente creado."); await Cargar();
+
+        _panel?.MostrarExitoYCerrar(_edit ? "Cliente actualizado." : "Cliente creado.");
+        _alerta?.MostrarExito(_edit ? "Cliente actualizado." : "Cliente creado.");
+        await Cargar();
     }
 
     async Task Eliminar(ClienteResponse x)
     {
-        if(!await _confirm!.ConfirmarEliminarAsync("cliente"))return;
-        var(_,e)=await Svc.EliminarAsync(x.IdCliente);
-        if(e!=null)_alerta?.MostrarError(e); else{_alerta?.MostrarExito("Cliente eliminado.");await Cargar();}
+        if (!await _confirm!.ConfirmarEliminarAsync("cliente")) return;
+        var (_, e) = await Svc.EliminarAsync(x.IdCliente);
+        if (e != null) _alerta?.MostrarError(e);
+        else { _alerta?.MostrarExito("Cliente eliminado."); await Cargar(); }
     }
+
+    bool TieneDatosFacturacion()
+        => !string.IsNullOrWhiteSpace(_factRfc)
+        || !string.IsNullOrWhiteSpace(_factRazonSocial)
+        || !string.IsNullOrWhiteSpace(_factRegimenFiscal)
+        || !string.IsNullOrWhiteSpace(_factUsoCfdi);
+
+    static string? NullIfWhite(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

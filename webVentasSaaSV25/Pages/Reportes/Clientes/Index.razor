@@ -13,32 +13,44 @@
         <div>
             <span class="report-kicker"><span class="material-icons-outlined">people</span> CRM</span>
             <h3>Reporte de clientes</h3>
-            <p>Buscador por ruta, estado y texto libre con exportacion a Excel compatible.</p>
+            <p>Consulta clientes por ruta, estado y texto libre con exportacion a Excel compatible.</p>
         </div>
     </div>
+
+    @if (_loadingRutas)
+    {
+        <LoadingSpinner Solo="true" Texto="Cargando filtros..." />
+    }
 
     <DataGrid TItem="ClienteResponse" Titulo="Clientes" Modulo="catalogos"
               Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
               Page="_filter.Page" PageSize="_filter.PageSize" Loading="_loading"
               OnPageChanged="OnPage" OnPageSizeChange="OnPageSizeChange" OnSearch="OnSearch"
               OnExportar="Exportar"
-              MostrarNuevo="false" MostrarImportar="false"
+              MostrarNuevo="false" MostrarImportar="false" MostrarExportar="@(_paged?.Items.Any() == true)"
               SearchPlaceholder="Nombre, razon social, RFC, correo">
 
         <FiltrosExtra>
             <div class="d-flex flex-wrap gap-2">
-                <select class="form-select form-select-sm" style="width:170px" @onchange="OnRutaChanged">
+                <select class="form-select form-select-sm" style="width:170px" @onchange="OnRutaChanged" disabled="@(_loading || _loadingRutas)">
                     <option value="">Todas las rutas</option>
                     @foreach (var route in _rutas)
                     {
                         <option value="@route.IdRuta" selected="@(route.IdRuta == _filter.IdRuta)">@route.Nombre</option>
                     }
                 </select>
-                <select class="form-select form-select-sm" style="width:140px" @onchange="OnEstadoChanged">
+                <select class="form-select form-select-sm" style="width:140px" @onchange="OnEstadoChanged" disabled="@_loading">
                     <option value="">Todos</option>
                     <option value="true">Activos</option>
                     <option value="false">Inactivos</option>
                 </select>
+                <AppButton Tipo="primary"
+                           Icono="search"
+                           Texto="Consultar"
+                           Clase="btn-sm"
+                           OnClick="Consultar"
+                           Loading="_loading"
+                           Disabled="@_loadingRutas" />
             </div>
         </FiltrosExtra>
 
@@ -75,20 +87,28 @@
 
     private AlertMessage? _alerta;
     private bool _loading;
+    private bool _loadingRutas;
+    private bool _hasConsulted;
     private PagedResult<ClienteResponse>? _paged;
     private FiltroClienteRequest _filter = new();
     private List<RutaResponse> _rutas = [];
 
     protected override async Task OnInitializedAsync()
     {
+        _loadingRutas = true;
         var (rutas, _) = await RutaApi.GetPagedAsync(new FiltroRutaRequest { IsActive = true, Page = 1, PageSize = 500 });
+        _loadingRutas = false;
         _rutas = rutas?.Items ?? [];
         if (QueryRouteId is > 0) _filter.IdRuta = QueryRouteId.Value;
-        await Cargar();
     }
 
     private async Task Cargar()
     {
+        if (_loading)
+        {
+            return;
+        }
+
         _loading = true;
         var (data, error) = await ClienteApi.GetPagedAsync(_filter);
         _loading = false;
@@ -100,24 +120,56 @@
         }
 
         _paged = data;
+        _hasConsulted = true;
     }
 
-    private async Task OnPage(int page) { _filter.Page = page; await Cargar(); }
-    private async Task OnPageSizeChange(int pageSize) { _filter.PageSize = pageSize; _filter.Page = 1; await Cargar(); }
-    private async Task OnSearch(string? search) { _filter.Search = search; _filter.Page = 1; await Cargar(); }
+    private async Task Consultar()
+    {
+        _filter.Page = 1;
+        await Cargar();
+    }
 
-    private async Task OnRutaChanged(ChangeEventArgs e)
+    private async Task OnPage(int page)
+    {
+        _filter.Page = page;
+        if (_hasConsulted)
+        {
+            await Cargar();
+        }
+    }
+
+    private Task OnPageSizeChange(int pageSize)
+    {
+        _filter.PageSize = pageSize;
+        _filter.Page = 1;
+        return Task.CompletedTask;
+    }
+
+    private Task OnSearch(string? search)
+    {
+        _filter.Search = search;
+        _filter.Page = 1;
+        _paged = null;
+        _hasConsulted = false;
+        return Task.CompletedTask;
+    }
+
+    private Task OnRutaChanged(ChangeEventArgs e)
     {
         _filter.IdRuta = int.TryParse(e.Value?.ToString(), out var id) && id > 0 ? id : null;
         _filter.Page = 1;
-        await Cargar();
+        _paged = null;
+        _hasConsulted = false;
+        return Task.CompletedTask;
     }
 
-    private async Task OnEstadoChanged(ChangeEventArgs e)
+    private Task OnEstadoChanged(ChangeEventArgs e)
     {
         _filter.IsActive = bool.TryParse(e.Value?.ToString(), out var active) ? active : null;
         _filter.Page = 1;
-        await Cargar();
+        _paged = null;
+        _hasConsulted = false;
+        return Task.CompletedTask;
     }
 
     private async Task Exportar()
