@@ -220,7 +220,7 @@ else
 
     private List<InventarioAlmacenItemResponse> LotesOrigen
         => _inventarioOrigen
-            .Where(x => x.IdProducto == _idProducto && x.CantidadPiezas > 0 && x.IdLote != _idLoteRuta)
+            .Where(x => x.IdProducto == _idProducto && x.CantidadPiezas > 0)
             .OrderBy(x => x.FechaCaducidad ?? DateTime.MaxValue)
             .ThenBy(x => x.NumLote)
             .ToList();
@@ -240,7 +240,6 @@ else
            && _idProducto > 0
            && _idLoteRuta > 0
            && _idLoteOrigen > 0
-           && _idLoteRuta != _idLoteOrigen
            && CantidadCapturada > 0
            && _idMotivo > 0;
 
