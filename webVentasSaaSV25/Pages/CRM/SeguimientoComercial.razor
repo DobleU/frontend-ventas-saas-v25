@@ -1,0 +1,155 @@
+@page "/crm/seguimiento-comercial"
+@using webVentasSaaSV25.Services.Crm
+@inject CrmWebService Crm
+
+<section class="crm-page">
+    <div class="crm-head">
+        <div>
+            <span class="crm-kicker"><span class="material-icons-outlined">event_note</span> CRM</span>
+            <h1>Seguimiento Comercial</h1>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" @onclick="Cargar"><span class="material-icons-outlined">refresh</span></button>
+            <button class="btn btn-primary btn-sm" @onclick="Nuevo"><span class="material-icons-outlined">add</span>Nuevo seguimiento</button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert alert-danger py-2">@error</div>
+    }
+
+    <div class="seg-layout">
+        <div class="crm-panel">
+            <div class="crm-toolbar">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text"><span class="material-icons-outlined">search</span></span>
+                    <input class="form-control" placeholder="Buscar seguimiento, prospecto o telefono" @bind="search" @bind:event="oninput" />
+                </div>
+                <label class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" @bind="soloPendientes" @bind:after="Cargar" />
+                    <span class="form-check-label">Pendientes</span>
+                </label>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle crm-table">
+                    <thead>
+                        <tr><th>Seguimiento</th><th>Relacionado</th><th>Fecha</th><th>Estado</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var s in Filtrados)
+                    {
+                        <tr>
+                            <td><strong>@s.titulo</strong><small>@(s.descripcion_accion ?? s.ultimo_resumen ?? "-")</small></td>
+                            <td><span>@(s.nombre_negocio ?? $"Cliente {s.id_cliente}")</span><small>@(s.telefono_contacto ?? s.whatsapp_prospecto ?? s.telefono_prospecto)</small></td>
+                            <td>@(s.fecha_programada_utc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
+                            <td><span class="crm-status @EstadoCss(s)">@EstadoTxt(s)</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-link btn-sm" title="Editar" @onclick="() => Editar(s)"><span class="material-icons-outlined">edit</span></button>
+                                <button class="btn btn-link btn-sm" title="Realizar" @onclick="() => Realizar(s)"><span class="material-icons-outlined">check_circle</span></button>
+                                <button class="btn btn-link btn-sm text-danger" title="Cancelar" @onclick="() => Cancelar(s)"><span class="material-icons-outlined">cancel</span></button>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <EditForm Model="form" OnValidSubmit="Guardar" class="crm-panel form-panel">
+            <DataAnnotationsValidator />
+            <h2>@(form.IdSeguimiento is null ? "Nuevo seguimiento" : "Editar seguimiento")</h2>
+            <label>Titulo</label>
+            <InputText class="form-control form-control-sm" @bind-Value="form.Titulo" />
+            <label>Prospecto</label>
+            <InputNumber class="form-control form-control-sm" @bind-Value="form.IdProspecto" />
+            <label>Cliente</label>
+            <InputNumber class="form-control form-control-sm" @bind-Value="form.IdCliente" />
+            <label>Tipo accion</label>
+            <InputSelect class="form-select form-select-sm" @bind-Value="form.ClaveTipoAccion">
+                <option value="VISITA">Visita</option>
+                <option value="LLAMADA">Llamada</option>
+                <option value="WHATSAPP">WhatsApp</option>
+                <option value="COTIZACION">Cotizacion</option>
+            </InputSelect>
+            <label>Fecha programada</label>
+            <InputDate class="form-control form-control-sm" @bind-Value="fechaProgramadaLocal" />
+            <label>Telefono contacto</label>
+            <InputText class="form-control form-control-sm" @bind-Value="form.TelefonoContacto" />
+            <label>Descripcion</label>
+            <InputTextArea class="form-control form-control-sm" rows="4" @bind-Value="form.DescripcionAccion" />
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="Nuevo">Limpiar</button>
+                <button type="submit" class="btn btn-primary btn-sm"><span class="material-icons-outlined">save</span>Guardar</button>
+            </div>
+        </EditForm>
+    </div>
+</section>
+
+@code {
+    private string? error;
+    private string search = string.Empty;
+    private bool soloPendientes = true;
+    private List<CrmSeguimientoResponse> seguimientos = [];
+    private CrmSeguimientoGuardarRequest form = new() { Titulo = "Seguimiento comercial" };
+    private DateTime fechaProgramadaLocal = DateTime.Now.AddDays(1);
+
+    private List<CrmSeguimientoResponse> Filtrados => seguimientos
+        .Where(s => string.IsNullOrWhiteSpace(search) || $"{s.titulo} {s.nombre_negocio} {s.telefono_contacto} {s.descripcion_accion}".Contains(search, StringComparison.OrdinalIgnoreCase))
+        .OrderBy(s => s.fecha_programada_utc ?? DateTime.MaxValue)
+        .ToList();
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    private async Task Cargar()
+    {
+        error = null;
+        var (d, e) = await Crm.GetSeguimientosAsync(soloPendientes: soloPendientes);
+        error = e;
+        seguimientos = d ?? [];
+    }
+
+    private void Nuevo()
+    {
+        fechaProgramadaLocal = DateTime.Now.AddDays(1);
+        form = new() { Titulo = string.Empty, ClaveEstatus = "PENDIENTE", ClaveTipoAccion = "VISITA", FechaProgramadaUtc = fechaProgramadaLocal.ToUniversalTime() };
+    }
+
+    private async Task Guardar()
+    {
+        form.FechaProgramadaUtc = fechaProgramadaLocal.ToUniversalTime();
+        var (_, e) = form.IdSeguimiento is long id
+            ? await Crm.ActualizarSeguimientoAsync(id, form)
+            : await Crm.CrearSeguimientoAsync(form);
+        error = e;
+        if (e is null) { Nuevo(); await Cargar(); }
+    }
+
+    private void Editar(CrmSeguimientoResponse s)
+    {
+        fechaProgramadaLocal = (s.fecha_programada_utc ?? DateTime.UtcNow.AddDays(1)).ToLocalTime();
+        form = new()
+        {
+            IdSeguimiento = s.id_seguimiento,
+            IdProspecto = s.id_prospecto,
+            IdCliente = s.id_cliente,
+            Titulo = s.titulo ?? string.Empty,
+            DescripcionAccion = s.descripcion_accion,
+            TelefonoContacto = s.telefono_contacto,
+            FechaProgramadaUtc = s.fecha_programada_utc,
+            Prioridad = s.prioridad,
+            ClaveEstatus = s.clave_estatus ?? "PENDIENTE",
+            ClaveTipoAccion = "VISITA",
+            IsActive = s.is_active
+        };
+    }
+
+    private async Task Realizar(CrmSeguimientoResponse s) { var (_, e) = await Crm.RealizarSeguimientoAsync(s.id_seguimiento); error = e; await Cargar(); }
+    private async Task Cancelar(CrmSeguimientoResponse s) { var (_, e) = await Crm.CancelarSeguimientoAsync(s.id_seguimiento); error = e; await Cargar(); }
+    private static string EstadoTxt(CrmSeguimientoResponse s) => s.fecha_cancelado_utc is not null ? "Cancelado" : s.fecha_realizado_utc is not null ? "Realizado" : s.estatus ?? "Pendiente";
+    private static string EstadoCss(CrmSeguimientoResponse s) => s.fecha_cancelado_utc is not null ? "off" : s.fecha_realizado_utc is not null ? "ok" : "warn";
+}
+
+<style>
+.crm-page{padding:1rem 1.25rem 2rem}.crm-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem}.crm-head h1{font-size:1.35rem;margin:0}.crm-kicker{display:flex;align-items:center;gap:.35rem;color:#667085;font-size:.76rem;font-weight:700;text-transform:uppercase}.crm-panel{background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(16,24,40,.04)}.seg-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:1rem}.crm-toolbar{display:flex;align-items:center;gap:.75rem;padding:.75rem}.crm-table{margin:0}.crm-table th{font-size:.72rem;text-transform:uppercase;color:#667085;background:#f8fafc}.crm-table small{display:block;color:#667085}.crm-status{border-radius:999px;padding:.15rem .45rem;font-size:.76rem}.crm-status.ok{background:#ecfdf3;color:#027a48}.crm-status.off{background:#f2f4f7;color:#667085}.crm-status.warn{background:#fffaeb;color:#b54708}.form-panel{padding:1rem}.form-panel h2{font-size:1rem}.form-panel label{margin-top:.65rem;font-size:.78rem;color:#667085;font-weight:700}.material-icons-outlined{font-size:1.1rem;vertical-align:middle}@@media (max-width: 992px){.seg-layout{grid-template-columns:1fr}.crm-toolbar{align-items:stretch;flex-direction:column}}
+</style>

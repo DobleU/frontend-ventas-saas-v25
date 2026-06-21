@@ -1,0 +1,211 @@
+@page "/crm/escenarios-comerciales"
+@page "/route/escenarios-comerciales"
+@using webVentasSaaSV25.Services.Crm
+@inject CrmWebService Crm
+
+<section class="crm-page">
+    <div class="crm-head">
+        <div>
+            <span class="crm-kicker"><span class="material-icons-outlined">forum</span> CRM</span>
+            <h1>Escenarios Comerciales</h1>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" @onclick="Cargar"><span class="material-icons-outlined">refresh</span></button>
+            <button class="btn btn-primary btn-sm" @onclick="Nuevo"><span class="material-icons-outlined">add</span>Nuevo</button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert alert-danger py-2">@error</div>
+    }
+
+    <div class="esc-layout">
+        <div class="crm-panel">
+            <div class="crm-toolbar">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text"><span class="material-icons-outlined">search</span></span>
+                    <input class="form-control" placeholder="Buscar escenario, objetivo, situacion o respuesta" @bind="search" @bind:event="oninput" />
+                </div>
+                <label class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" @bind="soloAprobados" @bind:after="Cargar" />
+                    <span class="form-check-label">Publicados</span>
+                </label>
+            </div>
+            <div class="esc-list">
+                @foreach (var e in Filtrados)
+                {
+                    <button class="esc-row @(seleccion?.id_escenario == e.id_escenario ? "active" : "")" @onclick="() => Seleccionar(e)">
+                        <span>
+                            <strong>@e.nombre</strong>
+                            <small>@(e.situacion_cliente ?? e.objetivo ?? e.descripcion ?? "-")</small>
+                        </span>
+                        <span class="row-meta">
+                            <span class="crm-badge">P @e.prioridad</span>
+                            <span class="crm-status @(e.aprobado ? "ok" : "warn")">@(e.aprobado ? "Publicado" : "Borrador")</span>
+                        </span>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="crm-panel detail-panel">
+            @if (detalle?.Escenario is null)
+            {
+                <div class="empty-state"><span class="material-icons-outlined">forum</span><strong>Selecciona un escenario</strong></div>
+            }
+            else
+            {
+                <div class="detail-title">
+                    <div>
+                        <h2>@detalle.Escenario.nombre</h2>
+                        <span>@(detalle.Escenario.objetivo ?? "Sin objetivo")</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-success btn-sm" @onclick="() => Aprobar(detalle.Escenario.id_escenario, !detalle.Escenario.aprobado)">
+                            <span class="material-icons-outlined">published_with_changes</span>
+                            @(detalle.Escenario.aprobado ? "Despublicar" : "Publicar")
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="() => Activar(detalle.Escenario.id_escenario, !detalle.Escenario.is_active)">
+                            <span class="material-icons-outlined">power_settings_new</span>
+                        </button>
+                    </div>
+                </div>
+                <p class="desc">@detalle.Escenario.descripcion</p>
+                <div class="tag-wrap">
+                    @foreach (var t in detalle.Tags)
+                    {
+                        <span class="crm-badge">@(t.tag ?? $"Tag {t.id_tag_item}") · @t.peso</span>
+                    }
+                    @foreach (var tn in detalle.TiposNegocio)
+                    {
+                        <span class="crm-badge">@(tn.tipo_negocio ?? $"Tipo {tn.id_tipo_negocio_item}")</span>
+                    }
+                </div>
+                <h3>Respuestas para vendedor</h3>
+                @foreach (var r in detalle.Respuestas.OrderBy(r => r.orden))
+                {
+                    <article class="respuesta">
+                        <div>
+                            <strong>@r.titulo</strong>
+                            <span>@(r.tono ?? "Sin tono")</span>
+                        </div>
+                        <p>@r.texto_respuesta</p>
+                    </article>
+                }
+            }
+        </div>
+
+        <EditForm Model="form" OnValidSubmit="Guardar" class="crm-panel form-panel">
+            <DataAnnotationsValidator />
+            <h2>@(form.IdEscenario is null ? "Nuevo escenario" : "Editar escenario")</h2>
+            <label>Codigo</label>
+            <InputText class="form-control form-control-sm" @bind-Value="form.Codigo" />
+            <label>Nombre</label>
+            <InputText class="form-control form-control-sm" @bind-Value="form.Nombre" />
+            <label>Situacion cliente</label>
+            <InputTextArea class="form-control form-control-sm" rows="2" @bind-Value="form.SituacionCliente" />
+            <label>Objetivo</label>
+            <InputTextArea class="form-control form-control-sm" rows="2" @bind-Value="form.Objetivo" />
+            <label>Descripcion</label>
+            <InputTextArea class="form-control form-control-sm" rows="2" @bind-Value="form.Descripcion" />
+            <label>Respuesta principal</label>
+            <InputText class="form-control form-control-sm" @bind-Value="respuesta.titulo" />
+            <InputTextArea class="form-control form-control-sm mt-2" rows="4" @bind-Value="respuesta.texto_respuesta" />
+            <div class="row g-2 mt-1">
+                <div class="col-6">
+                    <label>Prioridad</label>
+                    <InputNumber class="form-control form-control-sm" @bind-Value="form.Prioridad" />
+                </div>
+                <div class="col-6">
+                    <label>Estado</label>
+                    <InputSelect class="form-select form-select-sm" @bind-Value="form.Aprobado">
+                        <option value="false">Borrador</option>
+                        <option value="true">Publicado</option>
+                    </InputSelect>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="Nuevo">Limpiar</button>
+                <button type="submit" class="btn btn-primary btn-sm"><span class="material-icons-outlined">save</span>Guardar</button>
+            </div>
+        </EditForm>
+    </div>
+</section>
+
+@code {
+    private string? error;
+    private string search = string.Empty;
+    private bool soloAprobados;
+    private List<CrmEscenarioListItemResponse> escenarios = [];
+    private CrmEscenarioListItemResponse? seleccion;
+    private CrmEscenarioDetalleResponse? detalle;
+    private CrmEscenarioGuardarRequest form = new() { AplicaGlobal = true };
+    private CrmEscenarioRespuestaRequest respuesta = new() { titulo = "Respuesta principal", es_principal = true, permite_reproducir = true };
+
+    private List<CrmEscenarioListItemResponse> Filtrados => escenarios
+        .Where(e => string.IsNullOrWhiteSpace(search) || $"{e.nombre} {e.objetivo} {e.situacion_cliente} {e.descripcion}".Contains(search, StringComparison.OrdinalIgnoreCase))
+        .OrderBy(e => e.prioridad)
+        .ToList();
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    private async Task Cargar()
+    {
+        error = null;
+        var (d, e) = await Crm.GetEscenariosAsync(soloAprobados: soloAprobados);
+        error = e;
+        escenarios = d ?? [];
+        if (seleccion is null && escenarios.Count > 0) await Seleccionar(escenarios[0]);
+    }
+
+    private async Task Seleccionar(CrmEscenarioListItemResponse e)
+    {
+        seleccion = e;
+        var (d, err) = await Crm.GetEscenarioAsync(e.id_escenario);
+        error = err;
+        detalle = d;
+        form = new()
+        {
+            IdEscenario = e.id_escenario,
+            Codigo = e.codigo,
+            Nombre = e.nombre,
+            Descripcion = e.descripcion,
+            SituacionCliente = e.situacion_cliente,
+            Objetivo = e.objetivo ?? string.Empty,
+            Prioridad = e.prioridad,
+            AplicaGlobal = e.aplica_global,
+            Aprobado = e.aprobado,
+            IsActive = e.is_active
+        };
+        var r = detalle?.Respuestas.OrderBy(x => x.orden).FirstOrDefault();
+        respuesta = r is null
+            ? new() { titulo = "Respuesta principal", es_principal = true, permite_reproducir = true }
+            : new() { id_respuesta = r.id_respuesta, titulo = r.titulo, texto_respuesta = r.texto_respuesta, orden = r.orden, es_principal = r.es_principal, permite_reproducir = r.permite_reproducir, aprobado = r.aprobado };
+    }
+
+    private void Nuevo()
+    {
+        seleccion = null;
+        detalle = null;
+        form = new() { AplicaGlobal = true, IsActive = true, Prioridad = 100 };
+        respuesta = new() { titulo = "Respuesta principal", es_principal = true, permite_reproducir = true };
+    }
+
+    private async Task Guardar()
+    {
+        form.Respuestas = string.IsNullOrWhiteSpace(respuesta.texto_respuesta) ? [] : [respuesta];
+        var (_, e) = form.IdEscenario is long id
+            ? await Crm.ActualizarEscenarioAsync(id, form)
+            : await Crm.CrearEscenarioAsync(form);
+        error = e;
+        if (e is null) { await Cargar(); }
+    }
+
+    private async Task Aprobar(long id, bool aprobado) { var (_, e) = await Crm.AprobarEscenarioAsync(id, aprobado); error = e; await Cargar(); if (seleccion is not null) await Seleccionar(seleccion); }
+    private async Task Activar(long id, bool activo) { var (_, e) = await Crm.ActivarEscenarioAsync(id, activo); error = e; await Cargar(); if (seleccion is not null) await Seleccionar(seleccion); }
+}
+
+<style>
+.crm-page{padding:1rem 1.25rem 2rem}.crm-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem}.crm-head h1{font-size:1.35rem;margin:0}.crm-kicker{display:flex;align-items:center;gap:.35rem;color:#667085;font-size:.76rem;font-weight:700;text-transform:uppercase}.crm-panel{background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(16,24,40,.04)}.esc-layout{display:grid;grid-template-columns:minmax(260px,.75fr) minmax(0,1fr) minmax(320px,.7fr);gap:1rem}.crm-toolbar{display:flex;align-items:center;gap:.75rem;padding:.75rem}.esc-list{display:grid;gap:.35rem;padding:.4rem}.esc-row{display:flex;justify-content:space-between;gap:.75rem;text-align:left;background:#fff;border:1px solid transparent;border-radius:8px;padding:.65rem}.esc-row:hover,.esc-row.active{border-color:#93c5fd;background:#eff6ff}.esc-row small,.row-meta{display:block;color:#667085}.row-meta{display:flex;align-items:center;gap:.4rem}.crm-badge{display:inline-flex;align-items:center;border:1px solid #d0d5dd;border-radius:999px;padding:.12rem .45rem;font-size:.76rem;color:#344054;background:#fff}.crm-status{border-radius:999px;padding:.15rem .45rem;font-size:.76rem}.crm-status.ok{background:#ecfdf3;color:#027a48}.crm-status.warn{background:#fffaeb;color:#b54708}.detail-panel,.form-panel{padding:1rem}.detail-title{display:flex;justify-content:space-between;gap:.75rem;margin-bottom:.75rem}.detail-title h2,.form-panel h2{font-size:1.05rem;margin:0}.desc{color:#475467}.tag-wrap{display:flex;flex-wrap:wrap;gap:.35rem;margin:.75rem 0}.detail-panel h3{font-size:.9rem;margin:1rem 0 .5rem}.respuesta{border:1px solid #e5e7eb;border-radius:8px;padding:.7rem;margin-bottom:.6rem}.respuesta div{display:flex;justify-content:space-between;gap:.5rem}.respuesta span,.respuesta p{color:#667085;margin:.25rem 0 0}.form-panel label{margin-top:.65rem;font-size:.78rem;color:#667085;font-weight:700}.empty-state{min-height:260px;display:grid;place-items:center;text-align:center;color:#667085}.empty-state .material-icons-outlined{font-size:2.5rem}.material-icons-outlined{font-size:1.1rem;vertical-align:middle}@@media (max-width: 1200px){.esc-layout{grid-template-columns:1fr 1fr}.form-panel{grid-column:1 / -1}}@@media (max-width: 768px){.esc-layout{grid-template-columns:1fr}.crm-toolbar{align-items:stretch;flex-direction:column}}
+</style>

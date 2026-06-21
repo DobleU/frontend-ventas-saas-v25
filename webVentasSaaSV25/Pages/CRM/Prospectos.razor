@@ -1,0 +1,245 @@
+@page "/crm/prospectos"
+@using webVentasSaaSV25.Services.Crm
+@inject CrmWebService Crm
+
+<section class="crm-page">
+    <div class="crm-head">
+        <div>
+            <span class="crm-kicker"><span class="material-icons-outlined">person_search</span> CRM</span>
+            <h1>Prospectos</h1>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary btn-sm" @onclick="Cargar" disabled="@cargando">
+                <span class="material-icons-outlined">refresh</span>
+                Actualizar
+            </button>
+            <button class="btn btn-primary btn-sm" @onclick="Nuevo">
+                <span class="material-icons-outlined">add</span>
+                Nuevo
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert alert-danger py-2">@error</div>
+    }
+
+    <div class="crm-toolbar">
+        <div class="input-group input-group-sm">
+            <span class="input-group-text"><span class="material-icons-outlined">search</span></span>
+            <input class="form-control" placeholder="Buscar negocio, contacto, telefono o direccion" @bind="search" @bind:event="oninput" />
+        </div>
+        <span class="crm-count">@Filtrados.Count prospectos</span>
+    </div>
+
+    <div class="crm-grid prospect-layout">
+        <div class="crm-panel">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle crm-table">
+                    <thead>
+                        <tr>
+                            <th>Negocio</th>
+                            <th>Contacto</th>
+                            <th>Interes</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var p in Filtrados)
+                    {
+                        <tr class="@(seleccion?.id_prospecto == p.id_prospecto ? "row-selected" : "")" @onclick="() => Seleccionar(p)">
+                            <td>
+                                <strong>@p.nombre_negocio</strong>
+                                <small>@(p.direccion_texto ?? p.colonia ?? "Sin direccion")</small>
+                            </td>
+                            <td>
+                                <span>@(p.nombre_encargado ?? p.nombre_dueno ?? "Sin contacto")</span>
+                                <small>@(p.whatsapp ?? p.telefono ?? "Sin telefono")</small>
+                            </td>
+                            <td><span class="crm-badge">@(p.nivel_interes?.ToString() ?? "-") / @(p.nivel_potencial?.ToString() ?? "-")</span></td>
+                            <td><span class="crm-status @(p.is_active ? "ok" : "off")">@(p.is_active ? "Activo" : "Inactivo")</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <aside class="crm-panel detail-panel">
+            @if (seleccion is null)
+            {
+                <div class="empty-state">
+                    <span class="material-icons-outlined">touch_app</span>
+                    <strong>Selecciona un prospecto</strong>
+                </div>
+            }
+            else
+            {
+                <div class="detail-title">
+                    <div>
+                        <h2>@seleccion.nombre_negocio</h2>
+                        <span>@(seleccion.productos_interes ?? "Sin productos capturados")</span>
+                    </div>
+                    <span class="crm-badge">#@seleccion.id_prospecto</span>
+                </div>
+                <dl class="crm-dl">
+                    <dt>Contacto</dt><dd>@(seleccion.nombre_encargado ?? seleccion.nombre_dueno ?? "-")</dd>
+                    <dt>Telefono</dt><dd>@(seleccion.whatsapp ?? seleccion.telefono ?? "-")</dd>
+                    <dt>Ubicacion</dt><dd>@($"{seleccion.colonia} {seleccion.municipio} {seleccion.estado}".Trim())</dd>
+                    <dt>Observaciones</dt><dd>@(seleccion.observaciones ?? seleccion.comentario_final ?? "-")</dd>
+                </dl>
+
+                <h3>Historial de visitas</h3>
+                @foreach (var v in VisitasSeleccionadas)
+                {
+                    <div class="timeline-item">
+                        <strong>@v.fecha_inicio_utc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</strong>
+                        <span>@(v.persona_contactada ?? "Sin contacto")</span>
+                        <p>@(v.comentario ?? v.texto_siguiente_accion ?? "Sin comentario")</p>
+                    </div>
+                }
+
+                <h3>Dialogo comercial</h3>
+                @foreach (var d in DialogosSeleccionados)
+                {
+                    <div class="timeline-item">
+                        <strong>Dialogo #@d.id_dialogo</strong>
+                        <p>@(d.resumen_dialogo ?? d.comentario_final ?? "Sin resumen")</p>
+                    </div>
+                }
+            }
+        </aside>
+
+        <EditForm Model="form" OnValidSubmit="Guardar" class="crm-panel form-panel">
+            <DataAnnotationsValidator />
+            <div class="detail-title">
+                <div>
+                    <h2>Nuevo prospecto</h2>
+                    <span>Alta administrativa para seguimiento en ruta</span>
+                </div>
+                <span class="crm-badge">WEB</span>
+            </div>
+            <label>Negocio *</label>
+            <InputText class="form-control form-control-sm" @bind-Value="form.NombreNegocio" />
+            <label>Contacto</label>
+            <InputText class="form-control form-control-sm" @bind-Value="form.NombreEncargado" />
+            <div class="row g-2">
+                <div class="col-6">
+                    <label>Telefono</label>
+                    <InputText class="form-control form-control-sm" @bind-Value="form.Telefono" />
+                </div>
+                <div class="col-6">
+                    <label>WhatsApp</label>
+                    <InputText class="form-control form-control-sm" @bind-Value="form.Whatsapp" />
+                </div>
+            </div>
+            <label>Direccion</label>
+            <InputTextArea class="form-control form-control-sm" rows="2" @bind-Value="form.DireccionTexto" />
+            <div class="row g-2">
+                <div class="col-6">
+                    <label>Municipio</label>
+                    <InputText class="form-control form-control-sm" @bind-Value="form.Municipio" />
+                </div>
+                <div class="col-6">
+                    <label>Estado</label>
+                    <InputText class="form-control form-control-sm" @bind-Value="form.Estado" />
+                </div>
+            </div>
+            <label>Productos de interes</label>
+            <InputText class="form-control form-control-sm" @bind-Value="form.ProductosInteres" />
+            <div class="row g-2">
+                <div class="col-6">
+                    <label>Interes</label>
+                    <InputNumber class="form-control form-control-sm" @bind-Value="form.NivelInteres" />
+                </div>
+                <div class="col-6">
+                    <label>Potencial</label>
+                    <InputNumber class="form-control form-control-sm" @bind-Value="form.NivelPotencial" />
+                </div>
+            </div>
+            <label>Observaciones</label>
+            <InputTextArea class="form-control form-control-sm" rows="3" @bind-Value="form.Observaciones" />
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="Nuevo">Limpiar</button>
+                <button type="submit" class="btn btn-primary btn-sm" disabled="@guardando">
+                    <span class="material-icons-outlined">save</span>
+                    Guardar
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</section>
+
+@code {
+    private bool cargando;
+    private bool guardando;
+    private string? error;
+    private string search = string.Empty;
+    private CrmSyncProspectosResultadosResponse data = new();
+    private CrmProspectoSyncDto? seleccion;
+    private CrmProspectoReplicarRequest form = NuevoForm();
+
+    private List<CrmProspectoSyncDto> Filtrados => data.Prospectos
+        .Where(p => string.IsNullOrWhiteSpace(search)
+            || $"{p.nombre_negocio} {p.nombre_encargado} {p.nombre_dueno} {p.telefono} {p.whatsapp} {p.direccion_texto}".Contains(search, StringComparison.OrdinalIgnoreCase))
+        .OrderByDescending(p => p.created_utc)
+        .ToList();
+
+    private IEnumerable<CrmProspectoVisitaSyncDto> VisitasSeleccionadas =>
+        seleccion is null ? [] : data.Visitas.Where(v => v.id_prospecto == seleccion.id_prospecto).OrderByDescending(v => v.fecha_inicio_utc);
+
+    private IEnumerable<CrmDialogoSyncDto> DialogosSeleccionados =>
+        seleccion is null ? [] : data.Dialogos.Where(v => v.id_prospecto == seleccion.id_prospecto).OrderByDescending(v => v.id_dialogo);
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    private async Task Cargar()
+    {
+        cargando = true;
+        error = null;
+        var (d, e) = await Crm.GetProspectosResultadosAsync();
+        if (e is not null) error = e;
+        data = d ?? new();
+        seleccion ??= data.Prospectos.FirstOrDefault();
+        cargando = false;
+    }
+
+    private void Seleccionar(CrmProspectoSyncDto p) => seleccion = p;
+
+    private async Task Guardar()
+    {
+        error = null;
+        if (string.IsNullOrWhiteSpace(form.NombreNegocio))
+        {
+            error = "Captura el nombre del negocio.";
+            return;
+        }
+
+        guardando = true;
+        var (_, e) = await Crm.CrearProspectoAsync(form);
+        guardando = false;
+        error = e;
+        if (e is null)
+        {
+            form = NuevoForm();
+            await Cargar();
+            seleccion = data.Prospectos.OrderByDescending(p => p.created_utc).FirstOrDefault();
+        }
+    }
+
+    private void Nuevo() => form = NuevoForm();
+
+    private static CrmProspectoReplicarRequest NuevoForm() => new()
+    {
+        ClaveMovil = $"WEB-PROS-{Guid.NewGuid():N}",
+        NivelInteres = 3,
+        NivelPotencial = 3,
+        Latitud = 0,
+        Longitud = 0
+    };
+}
+
+<style>
+.crm-page{padding:1rem 1.25rem 2rem}.crm-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem}.crm-head h1{font-size:1.35rem;margin:0}.crm-kicker{display:flex;align-items:center;gap:.35rem;color:#667085;font-size:.76rem;font-weight:700;text-transform:uppercase}.crm-toolbar{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem}.crm-count{white-space:nowrap;color:#667085;font-size:.82rem}.crm-grid{display:grid;gap:1rem}.prospect-layout{grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr) minmax(300px,.7fr)}.crm-panel{background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(16,24,40,.04)}.crm-table{margin:0}.crm-table th{font-size:.72rem;text-transform:uppercase;color:#667085;background:#f8fafc}.crm-table td{cursor:pointer}.crm-table small{display:block;color:#667085}.row-selected td{background:#eef6ff}.crm-badge{display:inline-flex;align-items:center;border:1px solid #d0d5dd;border-radius:999px;padding:.12rem .45rem;font-size:.76rem;color:#344054;background:#fff}.crm-status{border-radius:999px;padding:.15rem .45rem;font-size:.76rem}.crm-status.ok{background:#ecfdf3;color:#027a48}.crm-status.off{background:#f2f4f7;color:#667085}.detail-panel,.form-panel{padding:1rem}.detail-title{display:flex;justify-content:space-between;gap:.75rem;margin-bottom:.75rem}.detail-title h2{font-size:1.05rem;margin:0}.detail-title span{color:#667085}.crm-dl{display:grid;grid-template-columns:90px 1fr;gap:.45rem .75rem;font-size:.86rem}.crm-dl dt{color:#667085}.crm-dl dd{margin:0}.detail-panel h3{font-size:.9rem;margin:1rem 0 .5rem}.timeline-item{border-left:3px solid #3b82f6;padding:.2rem 0 .55rem .7rem;margin-bottom:.55rem}.timeline-item span,.timeline-item p{display:block;color:#667085;margin:.05rem 0}.empty-state{min-height:260px;display:grid;place-items:center;text-align:center;color:#667085}.empty-state .material-icons-outlined{font-size:2.5rem}.form-panel label{margin-top:.65rem;font-size:.78rem;color:#667085;font-weight:700}.material-icons-outlined{font-size:1.1rem;vertical-align:middle}@@media (max-width: 1200px){.prospect-layout{grid-template-columns:1fr 1fr}.form-panel{grid-column:1 / -1}}@@media (max-width: 768px){.prospect-layout{grid-template-columns:1fr}.crm-toolbar{align-items:stretch;flex-direction:column}.crm-count{white-space:normal}}
+</style>
