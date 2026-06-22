@@ -59,6 +59,9 @@
         </td>
         <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
         <td class="text-center">
+            <button class="btn btn-sm btn-outline-info me-1 py-1 px-2" title="Detalle comercial" @onclick="()=>AbrirDetalle(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">tune</i>
+            </button>
             <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2" @onclick="()=>AbrirEditar(context)">
                 <i class="material-icons-outlined" style="font-size:15px;">edit</i>
             </button>
@@ -174,13 +177,164 @@
         }
     </Body>
 </FormOffcanvas>
+
+<FormOffcanvas @ref="_detallePanel" Titulo="@($"Detalle comercial: {_detalleProducto?.Nombre}")"
+               Icono="tune" Ancho="1040px" OnGuardar="GuardarDetalle">
+    <Body>
+        @if (_detalleProducto == null)
+        {
+            <LoadingSpinner />
+        }
+        else
+        {
+            <AppTabs>
+                <AppTab Icono="bi bi-info-circle" Titulo="General">
+                    <div class="row g-3">
+                        <div class="col-12 col-lg-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small">SKU</div>
+                                <div class="fw-medium">@(_detalleProducto.Sku ?? "—")</div>
+                                <div class="text-muted small mt-3">Código de barra</div>
+                                <div class="fw-medium">@(_detalleProducto.CodigoBarra ?? "—")</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small">Precio base</div>
+                                <div class="fw-medium">$@_detalleProducto.PrecioActual.ToString("N2")</div>
+                                <div class="text-muted small mt-3">Costo actual</div>
+                                <div class="fw-medium">$@_detalleProducto.CostoActual.ToString("N2")</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small mb-2">Comportamiento</div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @Flag("Inventario", _detalleProducto.ManejaInventario)
+                                    @Flag("Lote", _detalleProducto.ManejaLote)
+                                    @Flag("Serie", _detalleProducto.ManejaSerie)
+                                    @Flag("Activo", _detalleProducto.IsActive)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </AppTab>
+
+                <AppTab Icono="bi bi-shop" Titulo="Sucursal / Canales">
+                    @if (_loadingDetalle)
+                    {
+                        <LoadingSpinner />
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Sucursal</th>
+                                        <th class="text-center">WEB</th>
+                                        <th class="text-center">APP</th>
+                                        <th class="text-center">POS</th>
+                                        <th class="text-center">Ruta</th>
+                                        <th style="width:190px">Lista</th>
+                                        <th class="text-center">Bloqueo</th>
+                                        <th>Motivo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var s in _sucursalConfig)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="fw-medium">@s.NombreSucursal</div>
+                                                <code class="small">@s.CodigoSucursal</code>
+                                            </td>
+                                            <td class="text-center"><input class="form-check-input" type="checkbox" @bind="s.PermiteWeb" /></td>
+                                            <td class="text-center"><input class="form-check-input" type="checkbox" @bind="s.PermiteApp" /></td>
+                                            <td class="text-center"><input class="form-check-input" type="checkbox" @bind="s.PermitePos" /></td>
+                                            <td class="text-center"><input class="form-check-input" type="checkbox" @bind="s.PermiteRuta" /></td>
+                                            <td>
+                                                <select class="form-select form-select-sm" @bind="s.IdListaPrecioDefault">
+                                                    <option value="">Default</option>
+                                                    @foreach (var l in _listasPrecio)
+                                                    {
+                                                        <option value="@l.IdListaPrecio">@l.Nombre</option>
+                                                    }
+                                                </select>
+                                            </td>
+                                            <td class="text-center"><input class="form-check-input" type="checkbox" @bind="s.BloqueadoVenta" /></td>
+                                            <td><input class="form-control form-control-sm" maxlength="300" @bind="s.MotivoBloqueo" /></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </AppTab>
+
+                <AppTab Icono="bi bi-box-seam" Titulo="Almacén">
+                    @if (_loadingDetalle)
+                    {
+                        <LoadingSpinner />
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Almacén</th>
+                                        <th class="text-center">Venta</th>
+                                        <th class="text-center">Compra</th>
+                                        <th class="text-center">Transf.</th>
+                                        <th class="text-center">Ajuste</th>
+                                        <th style="width:110px">Mín.</th>
+                                        <th style="width:110px">Máx.</th>
+                                        <th style="width:130px">Reorden</th>
+                                        <th>Ubicación</th>
+                                        <th class="text-center">Bloqueo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var a in _almacenConfig)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="fw-medium">@a.NombreAlmacen</div>
+                                                <div class="text-muted small">@(a.NombreSucursal ?? "Sin sucursal")</div>
+                                            </td>
+                                            <td class="text-center"><input class="form-check-input" type="checkbox" @bind="a.PermiteVenta" /></td>
+                                            <td class="text-center"><input class="form-check-input" type="checkbox" @bind="a.PermiteCompra" /></td>
+                                            <td class="text-center"><input class="form-check-input" type="checkbox" @bind="a.PermiteTransferencia" /></td>
+                                            <td class="text-center"><input class="form-check-input" type="checkbox" @bind="a.PermiteAjuste" /></td>
+                                            <td><input type="number" class="form-control form-control-sm" step="0.01" @bind="a.StockMinimo" /></td>
+                                            <td><input type="number" class="form-control form-control-sm" step="0.01" @bind="a.StockMaximo" /></td>
+                                            <td><input type="number" class="form-control form-control-sm" step="0.01" @bind="a.PuntoReorden" /></td>
+                                            <td><input class="form-control form-control-sm" maxlength="100" @bind="a.UbicacionSugerida" /></td>
+                                            <td class="text-center"><input class="form-check-input" type="checkbox" @bind="a.BloqueadoMovimiento" /></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </AppTab>
+            </AppTabs>
+        }
+    </Body>
+</FormOffcanvas>
+
 <ConfirmDialog @ref="_confirm" />
 
 @code {
     PagedResult<ProductoResponse>? _paged; FiltroProductoRequest _f = new(); bool _loading;
-    AlertMessage? _alerta; FormOffcanvas? _panel; ConfirmDialog? _confirm;
+    AlertMessage? _alerta; FormOffcanvas? _panel; FormOffcanvas? _detallePanel; ConfirmDialog? _confirm;
     List<ClasificacionResponse> _categorias = []; List<ClasificacionResponse> _marcas = [];
     List<UnidadResponse> _unidades = [];
+    ProductoResponse? _detalleProducto; bool _loadingDetalle;
+    List<ProductoSucursalConfigResponse> _sucursalConfig = [];
+    List<ProductoAlmacenConfigResponse> _almacenConfig = [];
+    List<ProductoPrecioListaComboResponse> _listasPrecio = [];
 
     bool    _edit; int _id;
     string  _sku=""; string _nombre=""; string _nombreCorto=""; string _codigoBarra="";
@@ -273,4 +427,75 @@
         var(_,e)=await Svc.EliminarAsync(x.IdProducto);
         if(e!=null)_alerta?.MostrarError(e); else{_alerta?.MostrarExito("Producto eliminado.");await Cargar();}
     }
+
+    async Task AbrirDetalle(ProductoResponse x)
+    {
+        _detalleProducto = x;
+        _sucursalConfig = [];
+        _almacenConfig = [];
+        _detallePanel?.Abrir();
+        await CargarDetalle(x.IdProducto);
+    }
+
+    async Task CargarDetalle(int idProducto)
+    {
+        _loadingDetalle = true;
+        var (suc, es) = await Svc.GetSucursalConfigAsync(idProducto);
+        var (alm, ea) = await Svc.GetAlmacenConfigAsync(idProducto);
+        var (lis, el) = await Svc.GetListasPrecioAsync();
+        _loadingDetalle = false;
+
+        if (es != null) { _detallePanel?.MostrarError(es); return; }
+        if (ea != null) { _detallePanel?.MostrarError(ea); return; }
+        _sucursalConfig = suc?.ToList() ?? [];
+        _almacenConfig = alm?.ToList() ?? [];
+        if (el == null) _listasPrecio = lis?.ToList() ?? [];
+    }
+
+    async Task GuardarDetalle()
+    {
+        if (_detalleProducto == null) return;
+
+        foreach (var s in _sucursalConfig)
+        {
+            var (_, e) = await Svc.UpsertSucursalConfigAsync(_detalleProducto.IdProducto, new UpsertProductoSucursalConfigRequest
+            {
+                IdProducto = _detalleProducto.IdProducto,
+                IdSucursal = s.IdSucursal,
+                PermiteWeb = s.PermiteWeb,
+                PermiteApp = s.PermiteApp,
+                PermitePos = s.PermitePos,
+                PermiteRuta = s.PermiteRuta,
+                IdListaPrecioDefault = s.IdListaPrecioDefault,
+                BloqueadoVenta = s.BloqueadoVenta,
+                MotivoBloqueo = s.MotivoBloqueo
+            });
+            if (e != null) { _detallePanel?.MostrarError(e); return; }
+        }
+
+        foreach (var a in _almacenConfig)
+        {
+            var (_, e) = await Svc.UpsertAlmacenConfigAsync(_detalleProducto.IdProducto, new UpsertProductoAlmacenConfigRequest
+            {
+                IdProducto = _detalleProducto.IdProducto,
+                IdAlmacen = a.IdAlmacen,
+                PermiteVenta = a.PermiteVenta,
+                PermiteCompra = a.PermiteCompra,
+                PermiteTransferencia = a.PermiteTransferencia,
+                PermiteAjuste = a.PermiteAjuste,
+                StockMinimo = a.StockMinimo,
+                StockMaximo = a.StockMaximo,
+                PuntoReorden = a.PuntoReorden,
+                UbicacionSugerida = a.UbicacionSugerida,
+                BloqueadoMovimiento = a.BloqueadoMovimiento,
+                MotivoBloqueo = a.MotivoBloqueo
+            });
+            if (e != null) { _detallePanel?.MostrarError(e); return; }
+        }
+
+        _detallePanel?.MostrarExitoYCerrar("Configuración guardada.");
+        _alerta?.MostrarExito("Configuración de producto guardada.");
+    }
+
+    RenderFragment Flag(string texto, bool activo) => @<span class="badge @(activo ? "bg-success-subtle text-success-emphasis" : "bg-secondary-subtle text-secondary-emphasis")">@texto</span>;
 }

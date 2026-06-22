@@ -1,0 +1,416 @@
+@page "/core/precios"
+@using webVentasSaaSV25.Services.Catalogos
+@inject ProductoService ProductoSvc
+@inject ZonaService ZonaSvc
+@inject SucursalService SucursalSvc
+@inject RutaService RutaSvc
+
+<PageTitle>Precios - VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Precios" Items="@(new[]{ ("CORE",""), ("Precios","") })" />
+<AlertMessage @ref="_alerta" />
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-xl-3">
+        <div class="border rounded-2 p-3 h-100">
+            <div class="text-muted small">Reglas activas</div>
+            <div class="fs-4 fw-semibold">@(_paged?.TotalRecords ?? 0)</div>
+        </div>
+    </div>
+    <div class="col-12 col-xl-3">
+        <div class="border rounded-2 p-3 h-100">
+            <div class="text-muted small">Prioridad</div>
+            <div class="fw-medium">Cliente > zona > ruta > base</div>
+        </div>
+    </div>
+    <div class="col-12 col-xl-3">
+        <div class="border rounded-2 p-3 h-100">
+            <div class="text-muted small">APP/POS</div>
+            <div class="fw-medium">Usa canal de venta</div>
+        </div>
+    </div>
+    <div class="col-12 col-xl-3">
+        <div class="border rounded-2 p-3 h-100">
+            <div class="text-muted small">Precio abierto</div>
+            <div class="fw-medium">Controlado por precio minimo</div>
+        </div>
+    </div>
+</div>
+
+<DataGrid TItem="ProductoPrecioReglaResponse"
+          Titulo="Reglas de precio" Modulo="core"
+          Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
+          Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
+          OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo">
+    <FiltrosExtra>
+        <select class="form-select form-select-sm" style="width:180px" @bind="_f.TipoRegla" @bind:after="CargarDesdeFiltro">
+            <option value="">Todas</option>
+            @foreach (var t in _tiposRegla)
+            {
+                <option value="@t.Id">@t.Nombre</option>
+            }
+        </select>
+        <select class="form-select form-select-sm" style="width:180px" @bind="_f.IdListaPrecio" @bind:after="CargarDesdeFiltro">
+            <option value="">Lista precio</option>
+            @foreach (var l in _listas)
+            {
+                <option value="@l.IdListaPrecio">@l.Nombre</option>
+            }
+        </select>
+    </FiltrosExtra>
+    <HeaderRow>
+        <th>Producto</th>
+        <th style="width:140px">Tipo</th>
+        <th style="width:180px">Alcance</th>
+        <th style="width:130px" class="text-end">Precio</th>
+        <th style="width:110px" class="text-center">Canal</th>
+        <th style="width:160px">Vigencia</th>
+        <th style="width:90px" class="text-center">Estado</th>
+        <th style="width:80px" class="text-center">Acciones</th>
+    </HeaderRow>
+    <RowTemplate>
+        <td>
+            <div class="fw-medium">@context.NombreProducto</div>
+            <div class="text-muted small">@TextOrDash(context.Sku)</div>
+        </td>
+        <td>@TipoReglaNombre(context.TipoRegla)</td>
+        <td>
+            <div>@AlcanceTexto(context)</div>
+            @if (!string.IsNullOrWhiteSpace(context.NombreListaPrecio))
+            {
+                <div class="text-muted small">@context.NombreListaPrecio</div>
+            }
+        </td>
+        <td class="text-end">
+            <div class="fw-semibold">$@context.Precio.ToString("N2")</div>
+            @if (context.PrecioMinimo.HasValue)
+            {
+                <div class="text-muted small">Min $@context.PrecioMinimo.Value.ToString("N2")</div>
+            }
+        </td>
+        <td class="text-center">
+            <span class="badge text-bg-light border">@CanalNombre(context.CanalVenta)</span>
+        </td>
+        <td class="small">
+            <div>@FechaTexto(context.FechaInicioUtc)</div>
+            <div class="text-muted">@FechaTexto(context.FechaFinUtc)</div>
+        </td>
+        <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
+        <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary py-1 px-2" title="Editar" @onclick="()=>AbrirEditar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
+            </button>
+        </td>
+    </RowTemplate>
+</DataGrid>
+
+<FormOffcanvas @ref="_panel" Titulo="@(_edit ? "Editar regla" : "Nueva regla")"
+               Icono="@(_edit ? "edit" : "add_circle")" OnGuardar="Guardar">
+    <Body>
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label fw-medium">Producto <span class="text-danger">*</span></label>
+                <select class="form-select @(_eProducto ? "is-invalid" : "")" @bind="_m.IdProducto">
+                    <option value="0">Selecciona producto</option>
+                    @foreach (var p in _productos)
+                    {
+                        <option value="@p.IdProducto">@p.Nombre</option>
+                    }
+                </select>
+                @if (_eProducto) { <div class="invalid-feedback">Requerido.</div> }
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-medium">Tipo de regla</label>
+                <select class="form-select" @bind="_m.TipoRegla">
+                    @foreach (var t in _tiposRegla)
+                    {
+                        <option value="@t.Id">@t.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-medium">Lista de precio</label>
+                <select class="form-select" @bind="_m.IdListaPrecio">
+                    <option value="">Default</option>
+                    @foreach (var l in _listas)
+                    {
+                        <option value="@l.IdListaPrecio">@l.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-medium">Zona</label>
+                <select class="form-select" @bind="_m.IdZona">
+                    <option value="">Todas</option>
+                    @foreach (var z in _zonas)
+                    {
+                        <option value="@z.IdZona">@z.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-medium">Sucursal</label>
+                <select class="form-select" @bind="_m.IdSucursal">
+                    <option value="">Todas</option>
+                    @foreach (var s in _sucursales)
+                    {
+                        <option value="@s.IdSucursal">@s.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-medium">Ruta</label>
+                <select class="form-select" @bind="_m.IdRuta">
+                    <option value="">Todas</option>
+                    @foreach (var r in _rutas)
+                    {
+                        <option value="@r.IdRuta">@r.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-medium">Id cliente</label>
+                <input type="number" class="form-control" @bind="_m.IdCliente" />
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-medium">Canal</label>
+                <select class="form-select" @bind="_m.CanalVenta">
+                    <option value="">Todos</option>
+                    <option value="1">WEB</option>
+                    <option value="2">APP</option>
+                    <option value="3">POS</option>
+                    <option value="4">Ruta</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-medium">Precio <span class="text-danger">*</span></label>
+                <input type="number" min="0" step="0.01" class="form-control @(_ePrecio ? "is-invalid" : "")" @bind="_m.Precio" />
+                @if (_ePrecio) { <div class="invalid-feedback">Debe ser mayor o igual a cero.</div> }
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-medium">Precio minimo</label>
+                <input type="number" min="0" step="0.01" class="form-control" @bind="_m.PrecioMinimo" />
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-medium">Cantidad minima</label>
+                <input type="number" min="1" step="1" class="form-control" @bind="_m.CantidadMinima" />
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-medium">Prioridad</label>
+                <input type="number" class="form-control" @bind="_m.Prioridad" />
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-medium">Cupon</label>
+                <input class="form-control" maxlength="80" @bind="_m.CodigoCupon" />
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-medium">Inicio</label>
+                <input type="date" class="form-control" @bind="_m.FechaInicioUtc" />
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-medium">Fin</label>
+                <input type="date" class="form-control" @bind="_m.FechaFinUtc" />
+            </div>
+            <div class="col-12">
+                <div class="d-flex flex-wrap gap-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" @bind="_m.PrecioAbierto" />
+                        <label class="form-check-label">Precio abierto</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" @bind="_m.PermiteAcumularDescuento" />
+                        <label class="form-check-label">Acumula descuento</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" @bind="_m.RequiereAutorizacionBajoMargen" />
+                        <label class="form-check-label">Autorizar bajo margen</label>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-medium">Notas</label>
+                <textarea class="form-control" rows="3" maxlength="1000" @bind="_m.NotasRegla"></textarea>
+            </div>
+        </div>
+    </Body>
+</FormOffcanvas>
+
+@code {
+    PagedResult<ProductoPrecioReglaResponse>? _paged;
+    FiltroProductoPrecioReglaRequest _f = new();
+    List<ProductoResponse> _productos = [];
+    List<ProductoPrecioListaComboResponse> _listas = [];
+    List<ZonaResponse> _zonas = [];
+    List<SucursalResponse> _sucursales = [];
+    List<RutaResponse> _rutas = [];
+    AlertMessage? _alerta;
+    FormOffcanvas? _panel;
+    bool _loading;
+    bool _edit;
+    bool _eProducto;
+    bool _ePrecio;
+    UpsertProductoPrecioReglaRequest _m = NewModel();
+
+    readonly ReglaItem[] _tiposRegla =
+    [
+        new(1, "Base"),
+        new(2, "Zona"),
+        new(3, "Sucursal"),
+        new(4, "Almacen"),
+        new(5, "Ruta"),
+        new(6, "Cliente"),
+        new(7, "Tipo cliente")
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCombos();
+        await Cargar();
+    }
+
+    async Task CargarCombos()
+    {
+        var (p, ep) = await ProductoSvc.GetPagedAsync(new FiltroProductoRequest { IsActive = true, Page = 1, PageSize = 500 });
+        if (ep == null) _productos = p?.Items ?? [];
+
+        var (l, el) = await ProductoSvc.GetListasPrecioAsync();
+        if (el == null) _listas = l?.ToList() ?? [];
+
+        var (z, ez) = await ZonaSvc.GetPagedAsync(new FiltroZonaRequest { IsActive = true, Page = 1, PageSize = 500 });
+        if (ez == null) _zonas = z?.Items ?? [];
+
+        var (s, es) = await SucursalSvc.GetPagedAsync(new FiltroSucursalRequest { IsActive = true, Page = 1, PageSize = 500 });
+        if (es == null) _sucursales = s?.Items ?? [];
+
+        var (r, er) = await RutaSvc.GetPagedAsync(new FiltroRutaRequest { IsActive = true, Page = 1, PageSize = 500 });
+        if (er == null) _rutas = r?.Items ?? [];
+    }
+
+    async Task Cargar()
+    {
+        _loading = true;
+        var (d, e) = await ProductoSvc.GetReglasPrecioAsync(_f);
+        _loading = false;
+        if (e != null) _alerta?.MostrarError(e); else _paged = d;
+    }
+
+    async Task CargarDesdeFiltro()
+    {
+        _f.Page = 1;
+        await Cargar();
+    }
+
+    async Task OnPage(int p) { _f.Page = p; await Cargar(); }
+    async Task OnSearch(string? s) { _f.Search = s; _f.Page = 1; await Cargar(); }
+
+    void AbrirNuevo()
+    {
+        _edit = false;
+        _m = NewModel();
+        LimpiarErrores();
+        _panel?.Abrir();
+    }
+
+    void AbrirEditar(ProductoPrecioReglaResponse x)
+    {
+        _edit = true;
+        _m = new UpsertProductoPrecioReglaRequest
+        {
+            IdProducto = x.IdProducto,
+            TipoRegla = x.TipoRegla,
+            IdListaPrecio = x.IdListaPrecio,
+            IdZona = x.IdZona,
+            IdSucursal = x.IdSucursal,
+            IdAlmacen = x.IdAlmacen,
+            IdRuta = x.IdRuta,
+            IdCliente = x.IdCliente,
+            CanalVenta = x.CanalVenta.HasValue ? (byte?)x.CanalVenta.Value : null,
+            ModalidadPago = (byte)x.ModalidadPago,
+            CodigoCupon = x.CodigoCupon,
+            CantidadMinima = x.CantidadMinima,
+            CantidadMaxima = x.CantidadMaxima,
+            Precio = x.Precio,
+            Moneda = x.Moneda,
+            TipoAjuste = (byte)x.TipoAjuste,
+            ValorAjuste = x.ValorAjuste,
+            MargenMinimoPct = x.MargenMinimoPct,
+            PrecioMinimo = x.PrecioMinimo,
+            PrecioAbierto = x.PrecioAbierto,
+            PermitirBajoCosto = x.PermitirBajoCosto,
+            RequiereAutorizacionBajoMargen = x.RequiereAutorizacionBajoMargen,
+            Prioridad = x.Prioridad,
+            FechaInicioUtc = x.FechaInicioUtc,
+            FechaFinUtc = x.FechaFinUtc,
+            PermiteAcumularDescuento = x.PermiteAcumularDescuento,
+            NotasRegla = x.NotasRegla
+        };
+        LimpiarErrores();
+        _panel?.Abrir();
+    }
+
+    async Task Guardar()
+    {
+        LimpiarErrores();
+        _eProducto = _m.IdProducto <= 0;
+        _ePrecio = _m.Precio < 0;
+        if (_m.PrecioAbierto && (!_m.PrecioMinimo.HasValue || _m.PrecioMinimo.Value <= 0))
+        {
+            _panel?.MostrarError("Para precio abierto capture un precio minimo mayor a cero.");
+            return;
+        }
+        if (_eProducto || _ePrecio)
+        {
+            _panel?.MostrarError("Corrija los campos marcados.");
+            return;
+        }
+
+        if (!_m.PrecioAbierto) _m.PrecioMinimo = null;
+        var (_, e) = await ProductoSvc.UpsertReglaPrecioAsync(_m);
+        if (e != null) { _panel?.MostrarError(e); return; }
+
+        _panel?.MostrarExitoYCerrar(_edit ? "Regla actualizada." : "Regla creada.");
+        await Cargar();
+    }
+
+    void LimpiarErrores()
+    {
+        _eProducto = false;
+        _ePrecio = false;
+    }
+
+    static UpsertProductoPrecioReglaRequest NewModel() => new()
+    {
+        TipoRegla = 1,
+        CantidadMinima = 1,
+        Precio = 0,
+        Moneda = "MXN",
+        Prioridad = 100,
+        RequiereAutorizacionBajoMargen = true
+    };
+
+    string TipoReglaNombre(int id) => _tiposRegla.FirstOrDefault(x => x.Id == id)?.Nombre ?? $"Tipo {id}";
+    static string TextOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+    static string FechaTexto(DateTime? value) => value.HasValue ? value.Value.ToString("dd/MM/yyyy") : "Sin fin";
+
+    static string CanalNombre(int? canal) => canal switch
+    {
+        1 => "WEB",
+        2 => "APP",
+        3 => "POS",
+        4 => "Ruta",
+        _ => "Todos"
+    };
+
+    string AlcanceTexto(ProductoPrecioReglaResponse r)
+        => r.TipoRegla switch
+        {
+            2 => r.NombreZona ?? $"Zona {r.IdZona}",
+            3 => r.NombreSucursal ?? $"Sucursal {r.IdSucursal}",
+            4 => r.NombreAlmacen ?? $"Almacen {r.IdAlmacen}",
+            5 => r.NombreRuta ?? $"Ruta {r.IdRuta}",
+            6 => r.NombreCliente ?? $"Cliente {r.IdCliente}",
+            7 => $"Tipo cliente {r.IdTipoCliente}",
+            _ => "General"
+        };
+
+    sealed record ReglaItem(byte Id, string Nombre);
+}

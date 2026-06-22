@@ -12,7 +12,7 @@
 @if (_verMatriz && _rolSeleccionado != null)
 {
     @* ── Vista matriz de permisos ──────────────────────────────────────── *@
-    <div class="d-flex align-items-center gap-2 mb-3">
+    <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
         <button class="btn btn-outline-secondary btn-sm" @onclick="VolverLista">
             <i class="material-icons-outlined me-1" style="font-size:15px;">arrow_back</i>Volver
         </button>
@@ -21,6 +21,10 @@
         {
             <span class="badge bg-warning-subtle text-warning-emphasis small">Rol de sistema — solo lectura</span>
         }
+        <div class="ms-auto d-flex gap-2 flex-wrap">
+            <span class="badge bg-primary-subtle text-primary-emphasis">@_matriz.Select(m => m.ModuloCodigo).Distinct().Count() módulos</span>
+            <span class="badge bg-success-subtle text-success-emphasis">@_permisosLocales.Count(p => p.Value) permisos activos</span>
+        </div>
     </div>
 
     @if (_loadingMatriz)
@@ -29,18 +33,56 @@
     }
     else if (_matriz.Any())
     {
-        @* Agrupar por módulo *@
-        @foreach (var modulo in _matriz.Select(m => m.ModuloNombre).Distinct())
+        <div class="row g-3 mb-3">
+            <div class="col-12 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="material-icons-outlined text-primary">language</span>
+                            <span class="fw-medium">WEB</span>
+                        </div>
+                        <div class="text-muted small">Controla el menú visible y las acciones del sistema web.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="material-icons-outlined text-success">phone_android</span>
+                            <span class="fw-medium">APP</span>
+                        </div>
+                        <div class="text-muted small">El acceso móvil se validará con usuario, rol, ruta y dispositivo.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="material-icons-outlined text-warning">point_of_sale</span>
+                            <span class="fw-medium">POS</span>
+                        </div>
+                        <div class="text-muted small">El acceso POS se validará con sucursal, almacén, caja y equipo.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @foreach (var grupo in _matriz.GroupBy(m => new { m.IdModulo, m.ModuloCodigo, m.ModuloNombre, m.ModuloIcono, m.ModuloOrden }).OrderBy(g => g.Key.ModuloOrden).ThenBy(g => g.Key.ModuloNombre))
         {
-            var items = _matriz.Where(m => m.ModuloNombre == modulo).ToList();
-            var idModulo = items.First().IdModulo;
-            var icono = items.First().ModuloIcono ?? "grid_view";
+            var items = grupo.OrderBy(m => m.AccionNombre).ToList();
+            var idModulo = grupo.Key.IdModulo;
+            var icono = string.IsNullOrWhiteSpace(grupo.Key.ModuloIcono) ? "grid_view" : grupo.Key.ModuloIcono;
+            var activos = items.Count(m => _permisosLocales.GetValueOrDefault((m.IdModulo, m.IdAccion)));
 
             <div class="card mb-3">
                 <div class="card-header d-flex align-items-center gap-2 py-2">
                     <i class="material-icons-outlined text-primary" style="font-size:18px;">@icono</i>
-                    <span class="fw-medium">@modulo</span>
-                    @* Botón "marcar todo el módulo" *@
+                    <div>
+                        <span class="fw-medium">@grupo.Key.ModuloNombre</span>
+                        <div class="text-muted small">@grupo.Key.ModuloCodigo · @activos de @items.Count acciones</div>
+                    </div>
                     @if (!_rolSeleccionado.EsSistema)
                     {
                         <button class="btn btn-outline-secondary btn-sm ms-auto py-0 px-2"

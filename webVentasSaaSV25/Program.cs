@@ -10,6 +10,7 @@ using webVentasSaaSV25.State;
 using webVentasSaaSV25.Services.Almacen;
 using webVentasSaaSV25.Services.Monitor;
 using webVentasSaaSV25.Services.Crm;
+using webVentasSaaSV25.Services.Hmr;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -98,6 +99,7 @@ builder.Services.AddScoped<UsuarioService>();
 builder.Services.AddScoped<RolService>();
 builder.Services.AddScoped<SesionWebService>();
 builder.Services.AddScoped<SuscripcionWebService>();
+builder.Services.AddScoped<EmpleadoWebService>();
 
 
 await builder.Build().RunAsync();

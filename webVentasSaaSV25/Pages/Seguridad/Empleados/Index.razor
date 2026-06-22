@@ -1,23 +1,336 @@
 @page "/seguridad/empleados"
+@using webVentasSaaSV25.Services.Hmr
+@inject EmpleadoWebService Svc
 
-<PageTitle>Empleado - Integra*System</PageTitle>
+<PageTitle>Empleados — VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Empleados" Items="@(new[] { ("Seguridad", "/seguridad"), ("Empleados", "") })" />
+<AlertMessage @ref="_alerta" />
 
-<div class="d-flex align-items-center justify-content-between gap-3 mb-4">
-    <div>
-        <h4 class="mb-1">Empleado</h4>
-        <p class="text-muted mb-0">Captura de datos generales del empleado. Pendiente ligar con el alta de usuario.</p>
-    </div>
-    <button class="btn btn-primary" disabled>
-        <i class="material-icons-outlined align-middle me-1" style="font-size:18px;">add</i>
-        Nuevo empleado
-    </button>
-</div>
+<DataGrid TItem="EmpleadoResponse" Titulo="Empleados" Modulo="seguridad"
+          Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
+          Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
+          OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo"
+          SearchPlaceholder="Nombre, numero, correo o usuario">
+    <FiltrosExtra>
+        <div class="d-flex gap-2 flex-wrap">
+            <select class="form-select form-select-sm" style="width:180px" @onchange="OnFiltroSucursal">
+                <option value="">Todas las sucursales</option>
+                @foreach (var s in _lookups.Sucursales)
+                {
+                    <option value="@s.Id">@s.Nombre</option>
+                }
+            </select>
+            <select class="form-select form-select-sm" style="width:130px" @onchange="OnFiltroEstado">
+                <option value="true">Activos</option>
+                <option value="">Todos</option>
+                <option value="false">Inactivos</option>
+            </select>
+        </div>
+    </FiltrosExtra>
+    <HeaderRow>
+        <th style="width:110px">Numero</th>
+        <th>Empleado</th>
+        <th style="width:150px">Puesto</th>
+        <th style="width:150px">Sucursal</th>
+        <th style="width:150px">Usuario</th>
+        <th style="width:120px">Ingreso</th>
+        <th style="width:100px" class="text-center">Estado</th>
+        <th style="width:110px" class="text-center">Acciones</th>
+    </HeaderRow>
+    <RowTemplate>
+        <td><code class="small">@(context.NumeroEmpleado ?? "—")</code></td>
+        <td>
+            <div class="fw-medium">@context.NombreCompleto</div>
+            <div class="text-muted small">@(context.Email ?? context.Telefono ?? "Sin contacto")</div>
+        </td>
+        <td class="text-muted small">@(context.NombrePuesto ?? "—")</td>
+        <td class="text-muted small">@(context.NombreSucursalBase ?? "—")</td>
+        <td>
+            @if (!string.IsNullOrWhiteSpace(context.Username))
+            {
+                <span class="badge bg-primary-subtle text-primary-emphasis">@context.Username</span>
+            }
+            else
+            {
+                <span class="badge bg-secondary-subtle text-secondary-emphasis">Sin usuario</span>
+            }
+        </td>
+        <td class="text-muted small">@context.FechaIngreso.ToString("dd/MM/yyyy")</td>
+        <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
+        <td class="text-center">
+            <button class="btn btn-sm btn-outline-info me-1 py-1 px-2" title="Usuario" @onclick="() => AbrirVincular(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">manage_accounts</i>
+            </button>
+            <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2" title="Editar" @onclick="() => AbrirEditar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger py-1 px-2" title="Eliminar" @onclick="() => Eliminar(context)">
+                <i class="material-icons-outlined" style="font-size:15px;">delete</i>
+            </button>
+        </td>
+    </RowTemplate>
+</DataGrid>
 
-<div class="alert alert-info d-flex gap-2 align-items-start">
-    <i class="material-icons-outlined">info</i>
-    <div>
-        <strong>Primer corte funcional.</strong>
-        Esta pantalla queda dada de alta para evitar 404 y separar correctamente Empleado de Usuario.
-        El siguiente paso es conectar las tablas reales de empleado y definir el formulario completo.
-    </div>
-</div>
+<FormOffcanvas @ref="_panel" Titulo="@(_edit ? "Editar empleado" : "Nuevo empleado")"
+               Icono="@(_edit ? "edit" : "badge")" Ancho="620px" OnGuardar="Guardar">
+    <Body>
+        <div class="row g-3 mb-3">
+            <div class="col-4">
+                <label class="form-label fw-medium">Numero</label>
+                <input class="form-control" maxlength="30" @bind="_numeroEmpleado" />
+            </div>
+            <div class="col-8">
+                <label class="form-label fw-medium">Sucursal base</label>
+                <select class="form-select" @bind="_idSucursalBase">
+                    <option value="0">Sin sucursal</option>
+                    @foreach (var s in _lookups.Sucursales)
+                    {
+                        <option value="@s.Id">@s.Nombre</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-4">
+                <label class="form-label fw-medium">Nombre <span class="text-danger">*</span></label>
+                <input class="form-control @(_eNombre ? "is-invalid" : "")" maxlength="120" @bind="_nombre" @oninput="() => _eNombre = false" />
+                @if (_eNombre) { <div class="invalid-feedback">Requerido.</div> }
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-medium">Apellido paterno <span class="text-danger">*</span></label>
+                <input class="form-control @(_eApellido ? "is-invalid" : "")" maxlength="80" @bind="_apellidoPat" @oninput="() => _eApellido = false" />
+                @if (_eApellido) { <div class="invalid-feedback">Requerido.</div> }
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-medium">Apellido materno</label>
+                <input class="form-control" maxlength="80" @bind="_apellidoMat" />
+            </div>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <label class="form-label fw-medium">Departamento</label>
+                <select class="form-select" @bind="_idDepartamento">
+                    <option value="0">Sin departamento</option>
+                    @foreach (var d in _lookups.Departamentos)
+                    {
+                        <option value="@d.Id">@d.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-medium">Puesto</label>
+                <select class="form-select" @bind="_idPuesto">
+                    <option value="0">Sin puesto</option>
+                    @foreach (var p in _lookups.Puestos)
+                    {
+                        <option value="@p.Id">@p.Nombre</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <label class="form-label fw-medium">Email</label>
+                <input type="email" class="form-control" maxlength="254" @bind="_email" />
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-medium">Telefono</label>
+                <input class="form-control" maxlength="30" @bind="_telefono" />
+            </div>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-4">
+                <label class="form-label fw-medium">Ingreso</label>
+                <input type="date" class="form-control" @bind="_fechaIngreso" />
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-medium">RFC</label>
+                <input class="form-control text-uppercase" maxlength="13" @bind="_rfc" />
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-medium">CURP</label>
+                <input class="form-control text-uppercase" maxlength="18" @bind="_curp" />
+            </div>
+        </div>
+        @if (_edit)
+        {
+            <div class="mb-3">
+                <label class="form-label fw-medium">Estado</label>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_isActive" />
+                    <label class="form-check-label">@(_isActive ? "Activo" : "Inactivo")</label>
+                </div>
+            </div>
+        }
+    </Body>
+</FormOffcanvas>
+
+<FormOffcanvas @ref="_panelUsuario" Titulo="Vincular usuario" Icono="manage_accounts" Ancho="460px" OnGuardar="GuardarVinculo">
+    <Body>
+        <div class="alert alert-light border">
+            <div class="fw-medium">@_empleadoUsuarioNombre</div>
+            <div class="text-muted small">Usuario actual: @(_usuarioActual ?? "Sin usuario")</div>
+        </div>
+        <label class="form-label fw-medium">Usuario disponible</label>
+        <select class="form-select @(_eUsuario ? "is-invalid" : "")" @bind="_idUsuarioVincular">
+            <option value="0">Seleccione usuario...</option>
+            @foreach (var u in _lookups.UsuariosDisponibles)
+            {
+                <option value="@u.Id">@u.Nombre</option>
+            }
+        </select>
+        @if (_eUsuario) { <div class="invalid-feedback">Seleccione un usuario.</div> }
+    </Body>
+</FormOffcanvas>
+
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    PagedResult<EmpleadoResponse>? _paged;
+    FiltroEmpleadoRequest _f = new();
+    EmpleadoLookupsResponse _lookups = new();
+    AlertMessage? _alerta;
+    FormOffcanvas? _panel;
+    FormOffcanvas? _panelUsuario;
+    ConfirmDialog? _confirm;
+    bool _loading;
+
+    bool _edit; int _id; bool _isActive = true;
+    int _idDepartamento; int _idPuesto; int _idSucursalBase;
+    string _numeroEmpleado = ""; string _nombre = ""; string _apellidoPat = ""; string _apellidoMat = "";
+    string _email = ""; string _telefono = ""; string _rfc = ""; string _curp = "";
+    DateOnly _fechaIngreso = DateOnly.FromDateTime(DateTime.Today);
+    bool _eNombre; bool _eApellido;
+
+    int _idEmpleadoVincular; int _idUsuarioVincular; string _empleadoUsuarioNombre = ""; string? _usuarioActual; bool _eUsuario;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarLookups();
+        await Cargar();
+    }
+
+    async Task Cargar()
+    {
+        _loading = true;
+        var (d, e) = await Svc.GetPagedAsync(_f);
+        _loading = false;
+        if (e != null) _alerta?.MostrarError(e); else _paged = d;
+    }
+
+    async Task CargarLookups()
+    {
+        var (d, e) = await Svc.GetLookupsAsync();
+        if (e != null) _alerta?.MostrarError(e); else _lookups = d ?? new();
+    }
+
+    async Task OnPage(int p) { _f.Page = p; await Cargar(); }
+    async Task OnSearch(string? s) { _f.Search = s; _f.Page = 1; await Cargar(); }
+    async Task OnFiltroSucursal(ChangeEventArgs e)
+    {
+        _f.IdSucursalBase = int.TryParse(e.Value?.ToString(), out var id) && id > 0 ? id : null;
+        _f.Page = 1;
+        await Cargar();
+    }
+    async Task OnFiltroEstado(ChangeEventArgs e)
+    {
+        _f.IsActive = string.IsNullOrWhiteSpace(e.Value?.ToString()) ? null : bool.Parse(e.Value!.ToString()!);
+        _f.Page = 1;
+        await Cargar();
+    }
+
+    void AbrirNuevo()
+    {
+        _edit = false; _id = 0; _isActive = true;
+        _idDepartamento = _idPuesto = _idSucursalBase = 0;
+        _numeroEmpleado = _nombre = _apellidoPat = _apellidoMat = _email = _telefono = _rfc = _curp = "";
+        _fechaIngreso = DateOnly.FromDateTime(DateTime.Today);
+        _eNombre = _eApellido = false;
+        _panel?.Abrir();
+    }
+
+    void AbrirEditar(EmpleadoResponse x)
+    {
+        _edit = true; _id = x.IdEmpleado; _isActive = x.IsActive;
+        _idDepartamento = x.IdDepartamento ?? 0; _idPuesto = x.IdPuesto ?? 0; _idSucursalBase = x.IdSucursalBase ?? 0;
+        _numeroEmpleado = x.NumeroEmpleado ?? ""; _nombre = x.Nombre; _apellidoPat = x.ApellidoPat; _apellidoMat = x.ApellidoMat ?? "";
+        _email = x.Email ?? ""; _telefono = x.Telefono ?? ""; _rfc = x.Rfc ?? ""; _curp = x.Curp ?? "";
+        _fechaIngreso = x.FechaIngreso;
+        _eNombre = _eApellido = false;
+        _panel?.Abrir();
+    }
+
+    async Task Guardar()
+    {
+        _eNombre = string.IsNullOrWhiteSpace(_nombre);
+        _eApellido = string.IsNullOrWhiteSpace(_apellidoPat);
+        if (_eNombre || _eApellido) { _panel?.MostrarError("Corrija los campos marcados."); return; }
+
+        if (_edit)
+        {
+            var (_, e) = await Svc.ActualizarAsync(_id, BuildRequest(new ActualizarEmpleadoRequest { IdEmpleado = _id, IsActive = _isActive }));
+            if (e != null) { _panel?.MostrarError(e); return; }
+        }
+        else
+        {
+            var (_, e) = await Svc.CrearAsync(BuildRequest(new GuardarEmpleadoRequest()));
+            if (e != null) { _panel?.MostrarError(e); return; }
+        }
+
+        _panel?.MostrarExitoYCerrar(_edit ? "Empleado actualizado." : "Empleado creado.");
+        await Cargar();
+    }
+
+    T BuildRequest<T>(T r) where T : GuardarEmpleadoRequest
+    {
+        r.IdDepartamento = _idDepartamento > 0 ? _idDepartamento : null;
+        r.IdPuesto = _idPuesto > 0 ? _idPuesto : null;
+        r.IdSucursalBase = _idSucursalBase > 0 ? _idSucursalBase : null;
+        r.NumeroEmpleado = string.IsNullOrWhiteSpace(_numeroEmpleado) ? null : _numeroEmpleado.Trim();
+        r.Nombre = _nombre.Trim();
+        r.ApellidoPat = _apellidoPat.Trim();
+        r.ApellidoMat = string.IsNullOrWhiteSpace(_apellidoMat) ? null : _apellidoMat.Trim();
+        r.Email = string.IsNullOrWhiteSpace(_email) ? null : _email.Trim();
+        r.Telefono = string.IsNullOrWhiteSpace(_telefono) ? null : _telefono.Trim();
+        r.Rfc = string.IsNullOrWhiteSpace(_rfc) ? null : _rfc.Trim().ToUpperInvariant();
+        r.Curp = string.IsNullOrWhiteSpace(_curp) ? null : _curp.Trim().ToUpperInvariant();
+        r.FechaIngreso = _fechaIngreso;
+        return r;
+    }
+
+    void AbrirVincular(EmpleadoResponse x)
+    {
+        _idEmpleadoVincular = x.IdEmpleado;
+        _empleadoUsuarioNombre = x.NombreCompleto;
+        _usuarioActual = x.Username;
+        _idUsuarioVincular = 0;
+        _eUsuario = false;
+        _panelUsuario?.Abrir();
+    }
+
+    async Task GuardarVinculo()
+    {
+        _eUsuario = _idUsuarioVincular <= 0;
+        if (_eUsuario) { _panelUsuario?.MostrarError("Seleccione un usuario."); return; }
+
+        var (_, e) = await Svc.VincularUsuarioAsync(_idEmpleadoVincular, new VincularEmpleadoUsuarioRequest
+        {
+            IdEmpleado = _idEmpleadoVincular,
+            IdUsuario = _idUsuarioVincular,
+            Asignar = true
+        });
+        if (e != null) { _panelUsuario?.MostrarError(e); return; }
+
+        _panelUsuario?.MostrarExitoYCerrar("Usuario vinculado.");
+        await CargarLookups();
+        await Cargar();
+    }
+
+    async Task Eliminar(EmpleadoResponse x)
+    {
+        if (!await _confirm!.ConfirmarEliminarAsync("empleado")) return;
+        var (_, e) = await Svc.EliminarAsync(x.IdEmpleado);
+        if (e != null) _alerta?.MostrarError(e);
+        else { _alerta?.MostrarExito("Empleado eliminado."); await Cargar(); }
+    }
+}

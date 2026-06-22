@@ -523,7 +523,170 @@ public sealed class FiltroProductoRequest
     public int PageSize { get; set; } = 50;
 }
 
+public sealed class ProductoSucursalConfigResponse
+{
+    public int IdSucursal { get; init; }
+    public string CodigoSucursal { get; init; } = string.Empty;
+    public string NombreSucursal { get; init; } = string.Empty;
+    public long? IdSucursalProducto { get; init; }
+    public bool PermitePos { get; set; }
+    public bool PermiteWeb { get; set; }
+    public bool PermiteApp { get; set; }
+    public bool PermiteRuta { get; set; }
+    public int? IdListaPrecioDefault { get; set; }
+    public string? NombreListaPrecioDefault { get; init; }
+    public bool BloqueadoVenta { get; set; }
+    public string? MotivoBloqueo { get; set; }
+    public bool Configurado { get; init; }
+}
+
+public sealed class ProductoAlmacenConfigResponse
+{
+    public int IdAlmacen { get; init; }
+    public string NombreAlmacen { get; init; } = string.Empty;
+    public int? IdSucursal { get; init; }
+    public string? NombreSucursal { get; init; }
+    public long? IdAlmacenProducto { get; init; }
+    public bool PermiteVenta { get; set; }
+    public bool PermiteCompra { get; set; }
+    public bool PermiteTransferencia { get; set; }
+    public bool PermiteAjuste { get; set; }
+    public decimal? StockMinimo { get; set; }
+    public decimal? StockMaximo { get; set; }
+    public decimal? PuntoReorden { get; set; }
+    public string? UbicacionSugerida { get; set; }
+    public bool BloqueadoMovimiento { get; set; }
+    public string? MotivoBloqueo { get; set; }
+    public bool Configurado { get; init; }
+}
+
+public sealed class ProductoPrecioListaComboResponse
+{
+    public int IdListaPrecio { get; init; }
+    public string Nombre { get; init; } = string.Empty;
+    public bool EsDefault { get; init; }
+}
+
+public sealed class ProductoPrecioReglaResponse
+{
+    public long IdPrecioRegla { get; init; }
+    public int IdProducto { get; init; }
+    public string? Sku { get; init; }
+    public string? CodigoBarra { get; init; }
+    public string NombreProducto { get; init; } = string.Empty;
+    public byte TipoRegla { get; init; }
+    public int? IdListaPrecio { get; init; }
+    public string? NombreListaPrecio { get; init; }
+    public int? IdZona { get; init; }
+    public string? NombreZona { get; init; }
+    public int? IdSucursal { get; init; }
+    public string? NombreSucursal { get; init; }
+    public int? IdAlmacen { get; init; }
+    public string? NombreAlmacen { get; init; }
+    public int? IdRuta { get; init; }
+    public string? NombreRuta { get; init; }
+    public int? IdCliente { get; init; }
+    public string? NombreCliente { get; init; }
+    public int? IdTipoCliente { get; init; }
+    public int? CanalVenta { get; init; }
+    public int ModalidadPago { get; init; }
+    public string? CodigoCupon { get; init; }
+    public decimal CantidadMinima { get; init; }
+    public decimal? CantidadMaxima { get; init; }
+    public decimal Precio { get; init; }
+    public string Moneda { get; init; } = "MXN";
+    public int TipoAjuste { get; init; }
+    public decimal? ValorAjuste { get; init; }
+    public int Prioridad { get; init; }
+    public DateTime? FechaInicioUtc { get; init; }
+    public DateTime? FechaFinUtc { get; init; }
+    public bool PermiteAcumularDescuento { get; init; }
+    public decimal? MargenMinimoPct { get; init; }
+    public decimal? PrecioMinimo { get; init; }
+    public bool PrecioAbierto { get; init; }
+    public bool PermitirBajoCosto { get; init; }
+    public bool RequiereAutorizacionBajoMargen { get; init; }
+    public string? NotasRegla { get; init; }
+    public bool IsActive { get; init; }
+}
+
+public sealed class FiltroProductoPrecioReglaRequest
+{
+    public string? Search { get; set; }
+    public bool? IsActive { get; set; } = true;
+    public int? IdProducto { get; set; }
+    public int? IdListaPrecio { get; set; }
+    public int? TipoRegla { get; set; }
+    public int? IdZona { get; set; }
+    public int? IdSucursal { get; set; }
+    public int? IdAlmacen { get; set; }
+    public int? IdRuta { get; set; }
+    public int? IdCliente { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 50;
+}
+
+public sealed class UpsertProductoSucursalConfigRequest
+{
+    public int IdSucursal { get; set; }
+    public int IdProducto { get; set; }
+    public bool PermitePos { get; set; } = true;
+    public bool PermiteWeb { get; set; }
+    public bool PermiteApp { get; set; } = true;
+    public bool PermiteRuta { get; set; } = true;
+    public int? IdListaPrecioDefault { get; set; }
+    public bool BloqueadoVenta { get; set; }
+    public string? MotivoBloqueo { get; set; }
+}
+
+public sealed class UpsertProductoAlmacenConfigRequest
+{
+    public int IdAlmacen { get; set; }
+    public int IdProducto { get; set; }
+    public bool PermiteVenta { get; set; } = true;
+    public bool PermiteCompra { get; set; } = true;
+    public bool PermiteTransferencia { get; set; } = true;
+    public bool PermiteAjuste { get; set; } = true;
+    public decimal? StockMinimo { get; set; }
+    public decimal? StockMaximo { get; set; }
+    public decimal? PuntoReorden { get; set; }
+    public string? UbicacionSugerida { get; set; }
+    public bool BloqueadoMovimiento { get; set; }
+    public string? MotivoBloqueo { get; set; }
+}
+
 // ── Empresa (solo lectura del tenant activo) ──────────────────────────────
+public sealed class UpsertProductoPrecioReglaRequest
+{
+    public int IdProducto { get; set; }
+    public byte TipoRegla { get; set; } = 1;
+    public int? IdListaPrecio { get; set; }
+    public int? IdZona { get; set; }
+    public int? IdSucursal { get; set; }
+    public int? IdAlmacen { get; set; }
+    public int? IdRuta { get; set; }
+    public int? IdCliente { get; set; }
+    public byte? CanalVenta { get; set; }
+    public byte ModalidadPago { get; set; }
+    public string? CodigoCupon { get; set; }
+    public decimal CantidadMinima { get; set; } = 1;
+    public decimal? CantidadMaxima { get; set; }
+    public decimal Precio { get; set; }
+    public string Moneda { get; set; } = "MXN";
+    public byte TipoAjuste { get; set; }
+    public decimal? ValorAjuste { get; set; }
+    public decimal? MargenMinimoPct { get; set; }
+    public decimal? PrecioMinimo { get; set; }
+    public bool PrecioAbierto { get; set; }
+    public bool PermitirBajoCosto { get; set; }
+    public bool RequiereAutorizacionBajoMargen { get; set; } = true;
+    public int Prioridad { get; set; } = 100;
+    public DateTime? FechaInicioUtc { get; set; }
+    public DateTime? FechaFinUtc { get; set; }
+    public bool PermiteAcumularDescuento { get; set; }
+    public string? NotasRegla { get; set; }
+}
+
 public sealed class EmpresaResponse
 {
     public int IdEmpresa { get; init; }
@@ -654,6 +817,32 @@ public sealed class ProductoService(ApiClient api)
     public Task<(ApiWriteResult? D, string? E)> CrearAsync(CrearProductoRequest r) => api.PostAsync<ApiWriteResult>("api/v1/productos", r);
     public Task<(ApiWriteResult? D, string? E)> ActualizarAsync(int id, ActualizarProductoRequest r) => api.PutAsync<ApiWriteResult>($"api/v1/productos/{id}", r);
     public Task<(bool Ok, string? E)> EliminarAsync(int id) => api.DeleteAsync($"api/v1/productos/{id}");
+    public Task<(IEnumerable<ProductoSucursalConfigResponse>? D, string? E)> GetSucursalConfigAsync(int id)
+        => api.GetAsync<IEnumerable<ProductoSucursalConfigResponse>>($"api/v1/productos/{id}/sucursales");
+    public Task<(IEnumerable<ProductoAlmacenConfigResponse>? D, string? E)> GetAlmacenConfigAsync(int id)
+        => api.GetAsync<IEnumerable<ProductoAlmacenConfigResponse>>($"api/v1/productos/{id}/almacenes");
+    public Task<(IEnumerable<ProductoPrecioListaComboResponse>? D, string? E)> GetListasPrecioAsync()
+        => api.GetAsync<IEnumerable<ProductoPrecioListaComboResponse>>("api/v1/productos/listas-precio");
+    public Task<(PagedResult<ProductoPrecioReglaResponse>? D, string? E)> GetReglasPrecioAsync(FiltroProductoPrecioReglaRequest f)
+    {
+        var extra = "";
+        if (f.IdProducto.HasValue) extra += $"&idProducto={f.IdProducto.Value}";
+        if (f.IdListaPrecio.HasValue) extra += $"&idListaPrecio={f.IdListaPrecio.Value}";
+        if (f.TipoRegla.HasValue) extra += $"&tipoRegla={f.TipoRegla.Value}";
+        if (f.IdZona.HasValue) extra += $"&idZona={f.IdZona.Value}";
+        if (f.IdSucursal.HasValue) extra += $"&idSucursal={f.IdSucursal.Value}";
+        if (f.IdAlmacen.HasValue) extra += $"&idAlmacen={f.IdAlmacen.Value}";
+        if (f.IdRuta.HasValue) extra += $"&idRuta={f.IdRuta.Value}";
+        if (f.IdCliente.HasValue) extra += $"&idCliente={f.IdCliente.Value}";
+        return api.GetAsync<PagedResult<ProductoPrecioReglaResponse>>(
+            $"api/v1/productos/reglas-precio?{Qs.Build(f.Search, f.IsActive, f.Page, f.PageSize, extra)}");
+    }
+    public Task<(ApiWriteResult? D, string? E)> UpsertSucursalConfigAsync(int idProducto, UpsertProductoSucursalConfigRequest r)
+        => api.PutAsync<ApiWriteResult>($"api/v1/productos/{idProducto}/sucursales/{r.IdSucursal}", r);
+    public Task<(ApiWriteResult? D, string? E)> UpsertAlmacenConfigAsync(int idProducto, UpsertProductoAlmacenConfigRequest r)
+        => api.PutAsync<ApiWriteResult>($"api/v1/productos/{idProducto}/almacenes/{r.IdAlmacen}", r);
+    public Task<(ApiWriteResult? D, string? E)> UpsertReglaPrecioAsync(UpsertProductoPrecioReglaRequest r)
+        => api.PostAsync<ApiWriteResult>("api/v1/productos/reglas-precio", r);
 }
 
 public sealed class EmpresaService(ApiClient api)
