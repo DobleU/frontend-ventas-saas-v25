@@ -1,7 +1,10 @@
 @page "/crm/escenarios-comerciales"
 @page "/route/escenarios-comerciales"
 @using webVentasSaaSV25.Services.Crm
+@using webVentasSaaSV25.Services.Catalogos
 @inject CrmWebService Crm
+@inject CatalogoTipoService CatalogoTipos
+@inject CatalogoItemService CatalogoItems
 
 <section class="crm-page">
     <div class="crm-head">
@@ -11,7 +14,7 @@
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-outline-secondary btn-sm" @onclick="Cargar"><span class="material-icons-outlined">refresh</span></button>
-            <button class="btn btn-primary btn-sm" @onclick="Nuevo"><span class="material-icons-outlined">add</span>Nuevo</button>
+            <button class="btn btn-primary btn-sm" @onclick="AbrirNuevo"><span class="material-icons-outlined">add</span>Nuevo</button>
         </div>
     </div>
 
@@ -62,6 +65,10 @@
                         <span>@(detalle.Escenario.objetivo ?? "Sin objetivo")</span>
                     </div>
                     <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary btn-sm" @onclick="AbrirEditar">
+                            <span class="material-icons-outlined">edit</span>
+                            Editar
+                        </button>
                         <button class="btn btn-outline-success btn-sm" @onclick="() => Aprobar(detalle.Escenario.id_escenario, !detalle.Escenario.aprobado)">
                             <span class="material-icons-outlined">published_with_changes</span>
                             @(detalle.Escenario.aprobado ? "Despublicar" : "Publicar")
@@ -69,13 +76,16 @@
                         <button class="btn btn-outline-secondary btn-sm" @onclick="() => Activar(detalle.Escenario.id_escenario, !detalle.Escenario.is_active)">
                             <span class="material-icons-outlined">power_settings_new</span>
                         </button>
+                        <button class="btn btn-outline-danger btn-sm" @onclick="() => Eliminar(detalle.Escenario)">
+                            <span class="material-icons-outlined">delete</span>
+                        </button>
                     </div>
                 </div>
                 <p class="desc">@detalle.Escenario.descripcion</p>
                 <div class="tag-wrap">
                     @foreach (var t in detalle.Tags)
                     {
-                        <span class="crm-badge">@(t.tag ?? $"Tag {t.id_tag_item}") · @t.peso</span>
+                        <span class="crm-badge">@(t.tag ?? $"Tag {t.id_tag_item}") - @t.peso</span>
                     }
                     @foreach (var tn in detalle.TiposNegocio)
                     {
@@ -96,7 +106,9 @@
             }
         </div>
 
-        <EditForm Model="form" OnValidSubmit="Guardar" class="crm-panel form-panel">
+        <AppModal @ref="modalEscenario" Titulo="Escenario comercial" Icono="forum" Tamanio="lg" Scrollable="true" CerrarAlFondo="false">
+        <Cuerpo>
+        <EditForm Model="form" OnValidSubmit="Guardar" class="crm-modal-form">
             <DataAnnotationsValidator />
             <h2>@(form.IdEscenario is null ? "Nuevo escenario" : "Editar escenario")</h2>
             <label>Codigo</label>
@@ -109,9 +121,28 @@
             <InputTextArea class="form-control form-control-sm" rows="2" @bind-Value="form.Objetivo" />
             <label>Descripcion</label>
             <InputTextArea class="form-control form-control-sm" rows="2" @bind-Value="form.Descripcion" />
-            <label>Respuesta principal</label>
-            <InputText class="form-control form-control-sm" @bind-Value="respuesta.titulo" />
-            <InputTextArea class="form-control form-control-sm mt-2" rows="4" @bind-Value="respuesta.texto_respuesta" />
+            <div class="row g-2">
+                <div class="col-6">
+                    <label>Etapa comercial</label>
+                    <InputSelect class="form-select form-select-sm" @bind-Value="form.IdEtapaComercialItem">
+                        <option value="">Seleccionar</option>
+                        @foreach (var item in etapaItems)
+                        {
+                            <option value="@item.IdCatalogoItem">@item.Nombre</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-6">
+                    <label>Tono sugerido</label>
+                    <InputSelect class="form-select form-select-sm" @bind-Value="form.IdTonoSugeridoItem">
+                        <option value="">Seleccionar</option>
+                        @foreach (var item in tonoItems)
+                        {
+                            <option value="@item.IdCatalogoItem">@item.Nombre</option>
+                        }
+                    </InputSelect>
+                </div>
+            </div>
             <div class="row g-2 mt-1">
                 <div class="col-6">
                     <label>Prioridad</label>
@@ -125,15 +156,112 @@
                     </InputSelect>
                 </div>
             </div>
+
+            <div class="crm-form-section">
+                <div class="section-title">
+                    <strong>Tipos de negocio</strong>
+                    <div class="d-flex gap-2">
+                        <InputSelect class="form-select form-select-sm" @bind-Value="tipoNegocioAgregarId">
+                            <option value="">Tipo</option>
+                            @foreach (var item in tipoNegocioItems)
+                            {
+                                <option value="@item.IdCatalogoItem">@item.Nombre</option>
+                            }
+                        </InputSelect>
+                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="AgregarTipoNegocio">Agregar</button>
+                    </div>
+                </div>
+                <div class="chip-list">
+                    @foreach (var item in form.TiposNegocio)
+                    {
+                        <span class="edit-chip">
+                            @NombreItem(tipoNegocioItems, item.id_tipo_negocio_item)
+                            <InputNumber class="chip-input" @bind-Value="item.peso" />
+                            <button type="button" @onclick="() => QuitarTipoNegocio(item)">x</button>
+                        </span>
+                    }
+                </div>
+            </div>
+
+            <div class="crm-form-section">
+                <div class="section-title">
+                    <strong>Tags comerciales</strong>
+                    <div class="d-flex gap-2">
+                        <InputSelect class="form-select form-select-sm" @bind-Value="tagAgregarId">
+                            <option value="">Tag</option>
+                            @foreach (var item in tagItems)
+                            {
+                                <option value="@item.IdCatalogoItem">@item.Nombre</option>
+                            }
+                        </InputSelect>
+                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="AgregarTag">Agregar</button>
+                    </div>
+                </div>
+                <div class="chip-list">
+                    @foreach (var item in form.Tags)
+                    {
+                        <span class="edit-chip">
+                            @NombreItem(tagItems, item.id_tag_item)
+                            <InputNumber class="chip-input" @bind-Value="item.peso" />
+                            <label class="chip-check"><InputCheckbox @bind-Value="item.es_tag_requerido" /> Req.</label>
+                            <button type="button" @onclick="() => QuitarTag(item)">x</button>
+                        </span>
+                    }
+                </div>
+            </div>
+
+            <div class="crm-form-section">
+                <div class="section-title">
+                    <strong>Respuestas</strong>
+                    <button type="button" class="btn btn-outline-primary btn-sm" @onclick="AgregarRespuesta">Agregar respuesta</button>
+                </div>
+                @foreach (var r in form.Respuestas)
+                {
+                    <div class="respuesta-editor">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label>Titulo</label>
+                                <InputText class="form-control form-control-sm" @bind-Value="r.titulo" />
+                            </div>
+                            <div class="col-md-3">
+                                <label>Tono</label>
+                                <InputSelect class="form-select form-select-sm" @bind-Value="r.id_tono_item">
+                                    <option value="">Seleccionar</option>
+                                    @foreach (var item in tonoItems)
+                                    {
+                                        <option value="@item.IdCatalogoItem">@item.Nombre</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-3">
+                                <label>Orden</label>
+                                <InputNumber class="form-control form-control-sm" @bind-Value="r.orden" />
+                            </div>
+                        </div>
+                        <label>Texto respuesta</label>
+                        <InputTextArea class="form-control form-control-sm" rows="3" @bind-Value="r.texto_respuesta" />
+                        <div class="d-flex align-items-center gap-3 mt-2">
+                            <label class="form-check m-0"><InputCheckbox class="form-check-input" @bind-Value="r.es_principal" /> Principal</label>
+                            <label class="form-check m-0"><InputCheckbox class="form-check-input" @bind-Value="r.permite_reproducir" /> Reproducir</label>
+                            <label class="form-check m-0"><InputCheckbox class="form-check-input" @bind-Value="r.aprobado" /> Aprobada</label>
+                            <button type="button" class="btn btn-outline-danger btn-sm ms-auto" @onclick="() => QuitarRespuesta(r)">Quitar</button>
+                        </div>
+                    </div>
+                }
+            </div>
+
             <div class="d-flex justify-content-end gap-2 mt-3">
-                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="Nuevo">Limpiar</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="LimpiarModal">Limpiar</button>
                 <button type="submit" class="btn btn-primary btn-sm"><span class="material-icons-outlined">save</span>Guardar</button>
             </div>
         </EditForm>
+        </Cuerpo>
+        </AppModal>
     </div>
 </section>
 
 @code {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
     private string? error;
     private string search = string.Empty;
     private bool soloAprobados;
@@ -141,14 +269,41 @@
     private CrmEscenarioListItemResponse? seleccion;
     private CrmEscenarioDetalleResponse? detalle;
     private CrmEscenarioGuardarRequest form = new() { AplicaGlobal = true };
-    private CrmEscenarioRespuestaRequest respuesta = new() { titulo = "Respuesta principal", es_principal = true, permite_reproducir = true };
+    private AppModal? modalEscenario;
+    private List<CatalogoItemResponse> etapaItems = [];
+    private List<CatalogoItemResponse> tonoItems = [];
+    private List<CatalogoItemResponse> tagItems = [];
+    private List<CatalogoItemResponse> tipoNegocioItems = [];
+    private int? tipoNegocioAgregarId;
+    private int? tagAgregarId;
 
     private List<CrmEscenarioListItemResponse> Filtrados => escenarios
         .Where(e => string.IsNullOrWhiteSpace(search) || $"{e.nombre} {e.objetivo} {e.situacion_cliente} {e.descripcion}".Contains(search, StringComparison.OrdinalIgnoreCase))
         .OrderBy(e => e.prioridad)
         .ToList();
 
-    protected override async Task OnInitializedAsync() => await Cargar();
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCatalogos();
+        await Cargar();
+    }
+
+    private async Task CargarCatalogos()
+    {
+        etapaItems = await GetItemsCatalogoAsync("CRM_ETAPA_COMERCIAL");
+        tonoItems = await GetItemsCatalogoAsync("CRM_TONO_COMERCIAL");
+        tagItems = await GetItemsCatalogoAsync("CRM_TAG_COMERCIAL");
+        tipoNegocioItems = await GetItemsCatalogoAsync("CRM_TIPO_NEGOCIO");
+    }
+
+    private async Task<List<CatalogoItemResponse>> GetItemsCatalogoAsync(string codigo)
+    {
+        var (tipos, _) = await CatalogoTipos.GetPagedAsync(new FiltroCatalogoTipoRequest { Search = codigo, IsActive = true, PageSize = 20 });
+        var tipo = tipos?.Items.FirstOrDefault(t => string.Equals(t.Codigo, codigo, StringComparison.OrdinalIgnoreCase));
+        if (tipo is null) return [];
+        var (items, _) = await CatalogoItems.GetByTipoAsync(tipo.IdTipoCatalogo);
+        return items?.Items.Where(i => i.IsActive).OrderBy(i => i.Orden ?? 0).ThenBy(i => i.Nombre).ToList() ?? [];
+    }
 
     private async Task Cargar()
     {
@@ -173,39 +328,125 @@
             Descripcion = e.descripcion,
             SituacionCliente = e.situacion_cliente,
             Objetivo = e.objetivo ?? string.Empty,
+            IdEtapaComercialItem = e.id_etapa_comercial_item,
+            IdTonoSugeridoItem = e.id_tono_sugerido_item,
             Prioridad = e.prioridad,
             AplicaGlobal = e.aplica_global,
             Aprobado = e.aprobado,
-            IsActive = e.is_active
+            IsActive = e.is_active,
+            TiposNegocio = detalle?.TiposNegocio.Select(x => new CrmEscenarioTipoNegocioRequest { id_tipo_negocio_item = x.id_tipo_negocio_item, peso = x.peso }).ToList() ?? [],
+            Tags = detalle?.Tags.Select(x => new CrmEscenarioTagRequest { id_tag_item = x.id_tag_item, peso = x.peso, es_tag_requerido = x.es_tag_requerido }).ToList() ?? [],
+            Respuestas = detalle?.Respuestas.OrderBy(x => x.orden).Select(x => new CrmEscenarioRespuestaRequest
+            {
+                id_respuesta = x.id_respuesta,
+                titulo = x.titulo,
+                texto_respuesta = x.texto_respuesta,
+                id_tono_item = x.id_tono_item,
+                orden = x.orden,
+                es_principal = x.es_principal,
+                permite_reproducir = x.permite_reproducir,
+                aprobado = x.aprobado
+            }).ToList() ?? []
         };
-        var r = detalle?.Respuestas.OrderBy(x => x.orden).FirstOrDefault();
-        respuesta = r is null
-            ? new() { titulo = "Respuesta principal", es_principal = true, permite_reproducir = true }
-            : new() { id_respuesta = r.id_respuesta, titulo = r.titulo, texto_respuesta = r.texto_respuesta, orden = r.orden, es_principal = r.es_principal, permite_reproducir = r.permite_reproducir, aprobado = r.aprobado };
+        if (form.Respuestas.Count == 0) AgregarRespuesta();
     }
 
     private void Nuevo()
     {
         seleccion = null;
         detalle = null;
+        LimpiarModal();
+    }
+
+    private void LimpiarModal()
+    {
         form = new() { AplicaGlobal = true, IsActive = true, Prioridad = 100 };
-        respuesta = new() { titulo = "Respuesta principal", es_principal = true, permite_reproducir = true };
+        tipoNegocioAgregarId = null;
+        tagAgregarId = null;
+        AgregarRespuesta();
+    }
+
+    private void AbrirNuevo()
+    {
+        Nuevo();
+        modalEscenario?.Abrir();
+    }
+
+    private void AbrirEditar()
+    {
+        if (detalle?.Escenario is not null)
+            modalEscenario?.Abrir();
     }
 
     private async Task Guardar()
     {
-        form.Respuestas = string.IsNullOrWhiteSpace(respuesta.texto_respuesta) ? [] : [respuesta];
+        form.Respuestas = form.Respuestas
+            .Where(r => !string.IsNullOrWhiteSpace(r.titulo) && !string.IsNullOrWhiteSpace(r.texto_respuesta))
+            .OrderBy(r => r.orden)
+            .ToList();
         var (_, e) = form.IdEscenario is long id
             ? await Crm.ActualizarEscenarioAsync(id, form)
             : await Crm.CrearEscenarioAsync(form);
         error = e;
-        if (e is null) { await Cargar(); }
+        if (e is null) { modalEscenario?.Cerrar(); await Cargar(); }
     }
 
     private async Task Aprobar(long id, bool aprobado) { var (_, e) = await Crm.AprobarEscenarioAsync(id, aprobado); error = e; await Cargar(); if (seleccion is not null) await Seleccionar(seleccion); }
     private async Task Activar(long id, bool activo) { var (_, e) = await Crm.ActivarEscenarioAsync(id, activo); error = e; await Cargar(); if (seleccion is not null) await Seleccionar(seleccion); }
+    private async Task Eliminar(CrmEscenarioListItemResponse e)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Eliminar escenario '{e.nombre}'?")) return;
+        var (_, err) = await Crm.EliminarEscenarioAsync(e.id_escenario);
+        error = err;
+        seleccion = null;
+        detalle = null;
+        await Cargar();
+    }
+
+    private void AgregarTipoNegocio()
+    {
+        if (tipoNegocioAgregarId is not int id || form.TiposNegocio.Any(x => x.id_tipo_negocio_item == id)) return;
+        form.TiposNegocio.Add(new() { id_tipo_negocio_item = id, peso = 10 });
+        tipoNegocioAgregarId = null;
+    }
+
+    private void QuitarTipoNegocio(CrmEscenarioTipoNegocioRequest item) => form.TiposNegocio.Remove(item);
+
+    private void AgregarTag()
+    {
+        if (tagAgregarId is not int id || form.Tags.Any(x => x.id_tag_item == id)) return;
+        form.Tags.Add(new() { id_tag_item = id, peso = 10 });
+        tagAgregarId = null;
+    }
+
+    private void QuitarTag(CrmEscenarioTagRequest item) => form.Tags.Remove(item);
+
+    private void AgregarRespuesta()
+    {
+        form.Respuestas.Add(new()
+        {
+            titulo = form.Respuestas.Count == 0 ? "Respuesta principal" : $"Respuesta {form.Respuestas.Count + 1}",
+            orden = form.Respuestas.Count + 1,
+            es_principal = form.Respuestas.Count == 0,
+            permite_reproducir = true,
+            aprobado = form.Aprobado
+        });
+    }
+
+    private void QuitarRespuesta(CrmEscenarioRespuestaRequest item)
+    {
+        form.Respuestas.Remove(item);
+        var orden = 1;
+        foreach (var respuesta in form.Respuestas.OrderBy(r => r.orden))
+        {
+            respuesta.orden = orden++;
+        }
+    }
+
+    private static string NombreItem(List<CatalogoItemResponse> items, int id)
+        => items.FirstOrDefault(i => i.IdCatalogoItem == id)?.Nombre ?? $"Item {id}";
 }
 
 <style>
-.crm-page{padding:1rem 1.25rem 2rem}.crm-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem}.crm-head h1{font-size:1.35rem;margin:0}.crm-kicker{display:flex;align-items:center;gap:.35rem;color:#667085;font-size:.76rem;font-weight:700;text-transform:uppercase}.crm-panel{background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(16,24,40,.04)}.esc-layout{display:grid;grid-template-columns:minmax(260px,.75fr) minmax(0,1fr) minmax(320px,.7fr);gap:1rem}.crm-toolbar{display:flex;align-items:center;gap:.75rem;padding:.75rem}.esc-list{display:grid;gap:.35rem;padding:.4rem}.esc-row{display:flex;justify-content:space-between;gap:.75rem;text-align:left;background:#fff;border:1px solid transparent;border-radius:8px;padding:.65rem}.esc-row:hover,.esc-row.active{border-color:#93c5fd;background:#eff6ff}.esc-row small,.row-meta{display:block;color:#667085}.row-meta{display:flex;align-items:center;gap:.4rem}.crm-badge{display:inline-flex;align-items:center;border:1px solid #d0d5dd;border-radius:999px;padding:.12rem .45rem;font-size:.76rem;color:#344054;background:#fff}.crm-status{border-radius:999px;padding:.15rem .45rem;font-size:.76rem}.crm-status.ok{background:#ecfdf3;color:#027a48}.crm-status.warn{background:#fffaeb;color:#b54708}.detail-panel,.form-panel{padding:1rem}.detail-title{display:flex;justify-content:space-between;gap:.75rem;margin-bottom:.75rem}.detail-title h2,.form-panel h2{font-size:1.05rem;margin:0}.desc{color:#475467}.tag-wrap{display:flex;flex-wrap:wrap;gap:.35rem;margin:.75rem 0}.detail-panel h3{font-size:.9rem;margin:1rem 0 .5rem}.respuesta{border:1px solid #e5e7eb;border-radius:8px;padding:.7rem;margin-bottom:.6rem}.respuesta div{display:flex;justify-content:space-between;gap:.5rem}.respuesta span,.respuesta p{color:#667085;margin:.25rem 0 0}.form-panel label{margin-top:.65rem;font-size:.78rem;color:#667085;font-weight:700}.empty-state{min-height:260px;display:grid;place-items:center;text-align:center;color:#667085}.empty-state .material-icons-outlined{font-size:2.5rem}.material-icons-outlined{font-size:1.1rem;vertical-align:middle}@@media (max-width: 1200px){.esc-layout{grid-template-columns:1fr 1fr}.form-panel{grid-column:1 / -1}}@@media (max-width: 768px){.esc-layout{grid-template-columns:1fr}.crm-toolbar{align-items:stretch;flex-direction:column}}
+.crm-page{padding:1rem 1.25rem 2rem}.crm-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem}.crm-head h1{font-size:1.35rem;margin:0}.crm-kicker{display:flex;align-items:center;gap:.35rem;color:#667085;font-size:.76rem;font-weight:700;text-transform:uppercase}.crm-panel{background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(16,24,40,.04)}.esc-layout{display:grid;grid-template-columns:minmax(260px,.75fr) minmax(0,1fr);gap:1rem}.crm-toolbar{display:flex;align-items:center;gap:.75rem;padding:.75rem}.esc-list{display:grid;gap:.35rem;padding:.4rem}.esc-row{display:flex;justify-content:space-between;gap:.75rem;text-align:left;background:#fff;border:1px solid transparent;border-radius:8px;padding:.65rem}.esc-row:hover,.esc-row.active{border-color:#93c5fd;background:#eff6ff}.esc-row small,.row-meta{display:block;color:#667085}.row-meta{display:flex;align-items:center;gap:.4rem}.crm-badge{display:inline-flex;align-items:center;border:1px solid #d0d5dd;border-radius:999px;padding:.12rem .45rem;font-size:.76rem;color:#344054;background:#fff}.crm-status{border-radius:999px;padding:.15rem .45rem;font-size:.76rem}.crm-status.ok{background:#ecfdf3;color:#027a48}.crm-status.warn{background:#fffaeb;color:#b54708}.detail-panel{padding:1rem}.detail-title{display:flex;justify-content:space-between;gap:.75rem;margin-bottom:.75rem}.detail-title h2,.crm-modal-form h2{font-size:1.05rem;margin:0}.desc{color:#475467}.tag-wrap,.chip-list{display:flex;flex-wrap:wrap;gap:.35rem;margin:.75rem 0}.detail-panel h3{font-size:.9rem;margin:1rem 0 .5rem}.respuesta,.respuesta-editor{border:1px solid #e5e7eb;border-radius:8px;padding:.7rem;margin-bottom:.6rem}.respuesta div{display:flex;justify-content:space-between;gap:.5rem}.respuesta span,.respuesta p{color:#667085;margin:.25rem 0 0}.crm-modal-form label{margin-top:.65rem;font-size:.78rem;color:#667085;font-weight:700}.crm-form-section{border-top:1px solid #e5e7eb;margin-top:1rem;padding-top:.85rem}.section-title{display:flex;align-items:center;justify-content:space-between;gap:.75rem}.section-title .form-select{min-width:220px}.edit-chip{display:inline-flex;align-items:center;gap:.35rem;border:1px solid #d0d5dd;border-radius:999px;padding:.2rem .45rem;background:#fff;font-size:.8rem}.edit-chip button{border:0;background:transparent;color:#b42318}.chip-input{width:58px;border:1px solid #d0d5dd;border-radius:6px;padding:.1rem .25rem}.chip-check{display:inline-flex;align-items:center;gap:.2rem;margin:0!important}.empty-state{min-height:260px;display:grid;place-items:center;text-align:center;color:#667085}.empty-state .material-icons-outlined{font-size:2.5rem}.material-icons-outlined{font-size:1.1rem;vertical-align:middle}@@media (max-width: 992px){.esc-layout{grid-template-columns:1fr}.crm-toolbar,.section-title{align-items:stretch;flex-direction:column}.section-title .form-select{min-width:0}}
 </style>

@@ -48,6 +48,14 @@ public sealed class ApiClient
         {
             return (default, "Error de conexión con el servidor.");
         }
+        catch (TaskCanceledException)
+        {
+            return (default, "Tiempo de espera agotado al consultar el servidor.");
+        }
+        catch (Exception ex)
+        {
+            return (default, $"Error inesperado al consultar el servidor: {ex.Message}");
+        }
     }
 
     public async Task<(byte[]? Data, string? ContentType, string? Error)> GetBytesAsync(string endpoint)
@@ -68,6 +76,14 @@ public sealed class ApiClient
         {
             return (null, null, "Error de conexión con el servidor.");
         }
+        catch (TaskCanceledException)
+        {
+            return (null, null, "Tiempo de espera agotado al consultar el servidor.");
+        }
+        catch (Exception ex)
+        {
+            return (null, null, $"Error inesperado al consultar el servidor: {ex.Message}");
+        }
     }
 
     // ─── POST ─────────────────────────────────────────────────────────────
@@ -86,6 +102,14 @@ public sealed class ApiClient
         {
             return (default, "Error de conexión con el servidor.");
         }
+        catch (TaskCanceledException)
+        {
+            return (default, "Tiempo de espera agotado al enviar la información.");
+        }
+        catch (Exception ex)
+        {
+            return (default, $"Error inesperado al enviar la información: {ex.Message}");
+        }
     }
 
     // ─── PUT ──────────────────────────────────────────────────────────────
@@ -100,6 +124,14 @@ public sealed class ApiClient
         catch (HttpRequestException)
         {
             return (default, "Error de conexión con el servidor.");
+        }
+        catch (TaskCanceledException)
+        {
+            return (default, "Tiempo de espera agotado al actualizar la información.");
+        }
+        catch (Exception ex)
+        {
+            return (default, $"Error inesperado al actualizar la información: {ex.Message}");
         }
     }
 
@@ -116,6 +148,14 @@ public sealed class ApiClient
         catch (HttpRequestException)
         {
             return (false, "Error de conexión con el servidor.");
+        }
+        catch (TaskCanceledException)
+        {
+            return (false, "Tiempo de espera agotado al eliminar la información.");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Error inesperado al eliminar la información: {ex.Message}");
         }
     }
 

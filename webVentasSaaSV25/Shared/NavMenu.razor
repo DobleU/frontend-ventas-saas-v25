@@ -270,13 +270,23 @@
         </li>
     </text>;
 
-    RenderFragment Item(string href, string icon, string label, bool pronto = false) =>
-        @<a class="dropdown-item nav-dropdown-item @(pronto ? "disabled text-muted" : "") @(Activo(href) ? "active" : "")"
-            href="@(pronto ? "javascript:;" : href)">
-            <i class="material-icons-outlined nav-dropdown-icon">@icon</i>
-            <span class="nav-dropdown-label">@(new MarkupString(label))</span>
-            @if (pronto) { <span class="badge bg-secondary ms-auto" style="font-size:9px;">Pronto</span> }
-        </a>;
+    RenderFragment Item(string href, string icon, string label, bool pronto = false) => @<text>
+        @if (pronto)
+        {
+            <a class="dropdown-item nav-dropdown-item disabled text-muted" href="javascript:;">
+                <i class="material-icons-outlined nav-dropdown-icon">@icon</i>
+                <span class="nav-dropdown-label">@(new MarkupString(label))</span>
+                <span class="badge bg-secondary ms-auto" style="font-size:9px;">Pronto</span>
+            </a>
+        }
+        else
+        {
+            <NavLink class="dropdown-item nav-dropdown-item" ActiveClass="active" href="@href" Match="NavLinkMatch.All">
+                <i class="material-icons-outlined nav-dropdown-icon">@icon</i>
+                <span class="nav-dropdown-label">@(new MarkupString(label))</span>
+            </NavLink>
+        }
+    </text>;
 }
 
 <style>

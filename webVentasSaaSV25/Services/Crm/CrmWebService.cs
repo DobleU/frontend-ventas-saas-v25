@@ -23,6 +23,9 @@ public sealed class CrmWebService(ApiClient api)
     public Task<(ApiWriteResult? D, string? E)> ActivarEscenarioAsync(long id, bool isActive)
         => api.PostAsync<ApiWriteResult>($"api/crm/escenarios/{id}/activar", new { isActive });
 
+    public Task<(bool Ok, string? E)> EliminarEscenarioAsync(long id)
+        => api.DeleteAsync($"api/crm/escenarios/{id}");
+
     public Task<(List<CrmSeguimientoResponse>? D, string? E)> GetSeguimientosAsync(DateTime? fechaIniUtc = null, DateTime? fechaFinUtc = null, bool soloPendientes = false)
     {
         var qs = $"SoloPendientes={soloPendientes}";
@@ -43,6 +46,9 @@ public sealed class CrmWebService(ApiClient api)
     public Task<(ApiWriteResult? D, string? E)> CancelarSeguimientoAsync(long id)
         => api.PostAsync<ApiWriteResult>($"api/crm/seguimientos/{id}/cancelar", new { fechaCanceladoUtc = DateTime.UtcNow });
 
+    public Task<(bool Ok, string? E)> EliminarSeguimientoAsync(long id)
+        => api.DeleteAsync($"api/crm/seguimientos/{id}");
+
     public Task<(CrmSyncProspectosResultadosResponse? D, string? E)> GetProspectosResultadosAsync(int top = 500)
         => api.GetAsync<CrmSyncProspectosResultadosResponse>($"api/app/sync/crm/prospectos-resultados?Top={top}");
 
@@ -61,6 +67,8 @@ public sealed record CrmEscenarioListItemResponse
     public string? descripcion { get; init; }
     public string? situacion_cliente { get; init; }
     public string? objetivo { get; init; }
+    public int? id_etapa_comercial_item { get; init; }
+    public int? id_tono_sugerido_item { get; init; }
     public string? etapa { get; init; }
     public string? tono { get; init; }
     public int prioridad { get; init; }
@@ -100,6 +108,7 @@ public sealed record CrmEscenarioRespuestaResponse
     public long id_respuesta { get; init; }
     public string titulo { get; init; } = string.Empty;
     public string texto_respuesta { get; init; } = string.Empty;
+    public int? id_tono_item { get; init; }
     public string? tono { get; init; }
     public int orden { get; init; }
     public bool es_principal { get; init; }
@@ -116,12 +125,29 @@ public sealed class CrmEscenarioGuardarRequest
     public string? Descripcion { get; set; }
     public string? SituacionCliente { get; set; }
     public string Objetivo { get; set; } = string.Empty;
+    public int? IdEtapaComercialItem { get; set; }
+    public int? IdTonoSugeridoItem { get; set; }
     public int Prioridad { get; set; } = 100;
     public bool AplicaGlobal { get; set; } = true;
     public bool RequiereTipoNegocio { get; set; }
     public bool Aprobado { get; set; }
     public bool IsActive { get; set; } = true;
+    public List<CrmEscenarioTipoNegocioRequest> TiposNegocio { get; set; } = [];
+    public List<CrmEscenarioTagRequest> Tags { get; set; } = [];
     public List<CrmEscenarioRespuestaRequest> Respuestas { get; set; } = [];
+}
+
+public sealed class CrmEscenarioTipoNegocioRequest
+{
+    public int id_tipo_negocio_item { get; set; }
+    public int peso { get; set; } = 10;
+}
+
+public sealed class CrmEscenarioTagRequest
+{
+    public int id_tag_item { get; set; }
+    public int peso { get; set; } = 10;
+    public bool es_tag_requerido { get; set; }
 }
 
 public sealed class CrmEscenarioRespuestaRequest
@@ -129,6 +155,7 @@ public sealed class CrmEscenarioRespuestaRequest
     public long? id_respuesta { get; set; }
     public string titulo { get; set; } = string.Empty;
     public string texto_respuesta { get; set; } = string.Empty;
+    public int? id_tono_item { get; set; }
     public int orden { get; set; } = 1;
     public bool es_principal { get; set; } = true;
     public bool permite_reproducir { get; set; } = true;
@@ -233,8 +260,8 @@ public sealed class CrmProspectoReplicarRequest
     public decimal Latitud { get; set; }
     public decimal Longitud { get; set; }
     public decimal? PrecisionMetros { get; set; }
-    public byte? NivelInteres { get; set; } = 3;
-    public byte? NivelPotencial { get; set; } = 3;
+    public int? NivelInteres { get; set; } = 3;
+    public int? NivelPotencial { get; set; } = 3;
     public int? Score { get; set; }
     public string? ProveedorActual { get; set; }
     public string? ProductosInteres { get; set; }
