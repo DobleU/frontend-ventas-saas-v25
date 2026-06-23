@@ -11,6 +11,29 @@
           Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
           OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo"
           SearchPlaceholder="Nombre, numero, correo o usuario">
+    <AccionesExtra Context="emp">
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2"
+               href="javascript:;" @onclick="() => AbrirVincular(emp)">
+                <span class="material-icons-outlined fs-6">manage_accounts</span>
+                Usuario
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2"
+               href="javascript:;" @onclick="() => AbrirEditar(emp)">
+                <span class="material-icons-outlined fs-6">edit</span>
+                Editar
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 text-danger"
+               href="javascript:;" @onclick="() => Eliminar(emp)">
+                <span class="material-icons-outlined fs-6">delete</span>
+                Eliminar
+            </a>
+        </li>
+    </AccionesExtra>
     <FiltrosExtra>
         <div class="d-flex gap-2 flex-wrap">
             <select class="form-select form-select-sm" style="width:180px" @onchange="OnFiltroSucursal">
@@ -35,7 +58,6 @@
         <th style="width:150px">Usuario</th>
         <th style="width:120px">Ingreso</th>
         <th style="width:100px" class="text-center">Estado</th>
-        <th style="width:110px" class="text-center">Acciones</th>
     </HeaderRow>
     <RowTemplate>
         <td><code class="small">@(context.NumeroEmpleado ?? "—")</code></td>
@@ -57,17 +79,6 @@
         </td>
         <td class="text-muted small">@context.FechaIngreso.ToString("dd/MM/yyyy")</td>
         <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
-        <td class="text-center">
-            <button class="btn btn-sm btn-outline-info me-1 py-1 px-2" title="Usuario" @onclick="() => AbrirVincular(context)">
-                <i class="material-icons-outlined" style="font-size:15px;">manage_accounts</i>
-            </button>
-            <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2" title="Editar" @onclick="() => AbrirEditar(context)">
-                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
-            </button>
-            <button class="btn btn-sm btn-outline-danger py-1 px-2" title="Eliminar" @onclick="() => Eliminar(context)">
-                <i class="material-icons-outlined" style="font-size:15px;">delete</i>
-            </button>
-        </td>
     </RowTemplate>
 </DataGrid>
 
