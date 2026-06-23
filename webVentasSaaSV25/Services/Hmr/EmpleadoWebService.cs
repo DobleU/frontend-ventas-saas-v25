@@ -44,6 +44,7 @@ public sealed class EmpleadoLookupsResponse
     public List<EmpleadoLookupItem> Departamentos { get; init; } = [];
     public List<EmpleadoLookupItem> Puestos { get; init; } = [];
     public List<EmpleadoLookupItem> Sucursales { get; init; } = [];
+    public List<EmpleadoLookupItem> Roles { get; init; } = [];
     public List<EmpleadoLookupItem> UsuariosDisponibles { get; init; } = [];
 }
 
@@ -75,6 +76,12 @@ public class GuardarEmpleadoRequest
     public string? Email { get; set; }
     public string? FotoUrl { get; set; }
     public bool? IsActive { get; set; }
+    public bool CrearUsuario { get; set; }
+    public string? Username { get; set; }
+    public string? Password { get; set; }
+    public int? IdRol { get; set; }
+    public int? IdSucursalUsuario { get; set; }
+    public bool RequiereCambio { get; set; } = true;
 }
 
 public sealed class ActualizarEmpleadoRequest : GuardarEmpleadoRequest

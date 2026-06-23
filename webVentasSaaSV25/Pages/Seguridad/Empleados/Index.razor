@@ -152,6 +152,58 @@
                 <input class="form-control text-uppercase" maxlength="18" @bind="_curp" />
             </div>
         </div>
+        @if (!_edit)
+        {
+            <div class="border rounded-3 p-3 mb-3 bg-light">
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" checked="@_crearUsuario" @onchange="OnCrearUsuarioChanged" />
+                    <label class="form-check-label fw-medium">Crear acceso web para este empleado</label>
+                </div>
+                @if (_crearUsuario)
+                {
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label fw-medium">Usuario <span class="text-danger">*</span></label>
+                            <input class="form-control @(_eUsername ? "is-invalid" : "")" maxlength="80" @bind="_username" @oninput="() => _eUsername = false" />
+                            @if (_eUsername) { <div class="invalid-feedback">Requerido.</div> }
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-medium">Contraseña temporal <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control @(_ePassword ? "is-invalid" : "")" maxlength="80" @bind="_password" @oninput="() => _ePassword = false" />
+                            @if (_ePassword) { <div class="invalid-feedback">Mínimo 6 caracteres.</div> }
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-medium">Perfil de usuario <span class="text-danger">*</span></label>
+                            <select class="form-select @(_eRol ? "is-invalid" : "")" @bind="_idRol">
+                                <option value="0">Seleccione perfil...</option>
+                                @foreach (var r in _lookups.Roles)
+                                {
+                                    <option value="@r.Id">@r.Nombre</option>
+                                }
+                            </select>
+                            @if (_eRol) { <div class="invalid-feedback">Seleccione perfil.</div> }
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-medium">Sucursal de acceso <span class="text-danger">*</span></label>
+                            <select class="form-select @(_eSucursalUsuario ? "is-invalid" : "")" @bind="_idSucursalUsuario">
+                                <option value="0">Seleccione sucursal...</option>
+                                @foreach (var s in _lookups.Sucursales)
+                                {
+                                    <option value="@s.Id">@s.Nombre</option>
+                                }
+                            </select>
+                            @if (_eSucursalUsuario) { <div class="invalid-feedback">Seleccione sucursal.</div> }
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" @bind="_requiereCambio" />
+                                <label class="form-check-label">Solicitar cambio de contraseña al primer ingreso</label>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
         @if (_edit)
         {
             <div class="mb-3">
@@ -196,11 +248,12 @@
     bool _loading;
 
     bool _edit; int _id; bool _isActive = true;
-    int _idDepartamento; int _idPuesto; int _idSucursalBase;
+    int _idDepartamento; int _idPuesto; int _idSucursalBase; int _idRol; int _idSucursalUsuario;
     string _numeroEmpleado = ""; string _nombre = ""; string _apellidoPat = ""; string _apellidoMat = "";
-    string _email = ""; string _telefono = ""; string _rfc = ""; string _curp = "";
+    string _email = ""; string _telefono = ""; string _rfc = ""; string _curp = ""; string _username = ""; string _password = "";
     DateOnly _fechaIngreso = DateOnly.FromDateTime(DateTime.Today);
-    bool _eNombre; bool _eApellido;
+    bool _crearUsuario; bool _requiereCambio = true;
+    bool _eNombre; bool _eApellido; bool _eUsername; bool _ePassword; bool _eRol; bool _eSucursalUsuario;
 
     int _idEmpleadoVincular; int _idUsuarioVincular; string _empleadoUsuarioNombre = ""; string? _usuarioActual; bool _eUsuario;
 
@@ -242,10 +295,11 @@
     void AbrirNuevo()
     {
         _edit = false; _id = 0; _isActive = true;
-        _idDepartamento = _idPuesto = _idSucursalBase = 0;
-        _numeroEmpleado = _nombre = _apellidoPat = _apellidoMat = _email = _telefono = _rfc = _curp = "";
+        _idDepartamento = _idPuesto = _idSucursalBase = _idRol = _idSucursalUsuario = 0;
+        _numeroEmpleado = _nombre = _apellidoPat = _apellidoMat = _email = _telefono = _rfc = _curp = _username = _password = "";
         _fechaIngreso = DateOnly.FromDateTime(DateTime.Today);
-        _eNombre = _eApellido = false;
+        _crearUsuario = false; _requiereCambio = true;
+        _eNombre = _eApellido = _eUsername = _ePassword = _eRol = _eSucursalUsuario = false;
         _panel?.Abrir();
     }
 
@@ -256,7 +310,8 @@
         _numeroEmpleado = x.NumeroEmpleado ?? ""; _nombre = x.Nombre; _apellidoPat = x.ApellidoPat; _apellidoMat = x.ApellidoMat ?? "";
         _email = x.Email ?? ""; _telefono = x.Telefono ?? ""; _rfc = x.Rfc ?? ""; _curp = x.Curp ?? "";
         _fechaIngreso = x.FechaIngreso;
-        _eNombre = _eApellido = false;
+        _crearUsuario = false; _requiereCambio = true; _idRol = _idSucursalUsuario = 0; _username = _password = "";
+        _eNombre = _eApellido = _eUsername = _ePassword = _eRol = _eSucursalUsuario = false;
         _panel?.Abrir();
     }
 
@@ -264,7 +319,15 @@
     {
         _eNombre = string.IsNullOrWhiteSpace(_nombre);
         _eApellido = string.IsNullOrWhiteSpace(_apellidoPat);
-        if (_eNombre || _eApellido) { _panel?.MostrarError("Corrija los campos marcados."); return; }
+        _eUsername = _crearUsuario && string.IsNullOrWhiteSpace(_username);
+        _ePassword = _crearUsuario && (string.IsNullOrWhiteSpace(_password) || _password.Trim().Length < 6);
+        _eRol = _crearUsuario && _idRol <= 0;
+        _eSucursalUsuario = _crearUsuario && _idSucursalUsuario <= 0;
+        if (_eNombre || _eApellido || _eUsername || _ePassword || _eRol || _eSucursalUsuario)
+        {
+            _panel?.MostrarError("Corrija los campos marcados.");
+            return;
+        }
 
         if (_edit)
         {
@@ -295,7 +358,44 @@
         r.Rfc = string.IsNullOrWhiteSpace(_rfc) ? null : _rfc.Trim().ToUpperInvariant();
         r.Curp = string.IsNullOrWhiteSpace(_curp) ? null : _curp.Trim().ToUpperInvariant();
         r.FechaIngreso = _fechaIngreso;
+        r.CrearUsuario = !_edit && _crearUsuario;
+        r.Username = _crearUsuario ? _username.Trim().ToLowerInvariant() : null;
+        r.Password = _crearUsuario ? _password.Trim() : null;
+        r.IdRol = _crearUsuario && _idRol > 0 ? _idRol : null;
+        r.IdSucursalUsuario = _crearUsuario && _idSucursalUsuario > 0 ? _idSucursalUsuario : null;
+        r.RequiereCambio = _requiereCambio;
         return r;
+    }
+
+    void OnCrearUsuarioChanged(ChangeEventArgs e)
+    {
+        _crearUsuario = bool.TryParse(e.Value?.ToString(), out var v) && v;
+        if (_crearUsuario)
+        {
+            _idSucursalUsuario = _idSucursalBase;
+            if (string.IsNullOrWhiteSpace(_username)) _username = SugerirUsername();
+        }
+        else
+        {
+            _eUsername = _ePassword = _eRol = _eSucursalUsuario = false;
+        }
+    }
+
+    string SugerirUsername()
+    {
+        if (!string.IsNullOrWhiteSpace(_email) && _email.Contains('@'))
+            return NormalizarUsername(_email.Split('@')[0]);
+
+        var baseName = $"{_nombre}.{_apellidoPat}".Trim('.');
+        return NormalizarUsername(baseName);
+    }
+
+    static string NormalizarUsername(string value)
+    {
+        var chars = value.Trim().ToLowerInvariant()
+            .Select(c => char.IsLetterOrDigit(c) ? c : '.')
+            .ToArray();
+        return new string(chars).Trim('.').Replace("..", ".");
     }
 
     void AbrirVincular(EmpleadoResponse x)
