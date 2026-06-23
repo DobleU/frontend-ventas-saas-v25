@@ -10,7 +10,7 @@
           Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
           Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
           OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo"
-          SearchPlaceholder="Nombre, numero, correo o usuario">
+          SearchPlaceholder="Nombre, credencial, correo o usuario">
     <AccionesExtra Context="emp">
         <li>
             <button type="button" class="dropdown-item d-flex align-items-center gap-2"
@@ -52,7 +52,7 @@
         </div>
     </FiltrosExtra>
     <HeaderRow>
-        <th style="width:110px">Numero</th>
+        <th style="width:130px">No. credencial</th>
         <th>Empleado</th>
         <th style="width:150px">Puesto</th>
         <th style="width:150px">Sucursal</th>
