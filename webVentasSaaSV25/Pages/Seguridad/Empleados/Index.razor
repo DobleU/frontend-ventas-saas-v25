@@ -13,25 +13,26 @@
           SearchPlaceholder="Nombre, numero, correo o usuario">
     <AccionesExtra Context="emp">
         <li>
-            <a class="dropdown-item d-flex align-items-center gap-2"
-               href="javascript:;" @onclick="() => AbrirVincular(emp)">
+            <button type="button" class="dropdown-item d-flex align-items-center gap-2"
+                    @onclick="() => AbrirVincular(emp)">
                 <span class="material-icons-outlined fs-6">manage_accounts</span>
                 Usuario
-            </a>
+            </button>
         </li>
         <li>
-            <a class="dropdown-item d-flex align-items-center gap-2"
-               href="javascript:;" @onclick="() => AbrirEditar(emp)">
+            <button type="button" class="dropdown-item d-flex align-items-center gap-2"
+                    @onclick="() => AbrirEditar(emp)">
                 <span class="material-icons-outlined fs-6">edit</span>
                 Editar
-            </a>
+            </button>
         </li>
         <li>
-            <a class="dropdown-item d-flex align-items-center gap-2 text-danger"
-               href="javascript:;" @onclick="() => Eliminar(emp)">
+            <button type="button" class="dropdown-item d-flex align-items-center gap-2 text-danger"
+                    @onclick="() => Eliminar(emp)"
+                    disabled="@_eliminando">
                 <span class="material-icons-outlined fs-6">delete</span>
                 Eliminar
-            </a>
+            </button>
         </li>
     </AccionesExtra>
     <FiltrosExtra>
@@ -87,7 +88,7 @@
     <Body>
         <div class="row g-3 mb-3">
             <div class="col-4">
-                <label class="form-label fw-medium">Numero</label>
+                <label class="form-label fw-medium">Número de credencial</label>
                 <input class="form-control" maxlength="30" @bind="_numeroEmpleado" />
             </div>
             <div class="col-8">
@@ -256,7 +257,7 @@
     FormOffcanvas? _panel;
     FormOffcanvas? _panelUsuario;
     ConfirmDialog? _confirm;
-    bool _loading;
+    bool _loading; bool _lookupsCargados; bool _lookupsCargando; bool _eliminando;
 
     bool _edit; int _id; bool _isActive = true;
     int _idDepartamento; int _idPuesto; int _idSucursalBase; int _idRol; int _idSucursalUsuario;
@@ -284,8 +285,12 @@
 
     async Task CargarLookups()
     {
+        if (_lookupsCargados || _lookupsCargando) return;
+        _lookupsCargando = true;
         var (d, e) = await Svc.GetLookupsAsync();
+        _lookupsCargando = false;
         if (e != null) _alerta?.MostrarError(e); else _lookups = d ?? new();
+        if (e == null) _lookupsCargados = true;
     }
 
     async Task OnPage(int p) { _f.Page = p; await Cargar(); }
@@ -439,8 +444,11 @@
 
     async Task Eliminar(EmpleadoResponse x)
     {
-        if (!await _confirm!.ConfirmarEliminarAsync("empleado")) return;
+        if (_eliminando) return;
+        if (!await _confirm!.ConfirmarEliminarAsync(x.NombreCompleto)) return;
+        _eliminando = true;
         var (_, e) = await Svc.EliminarAsync(x.IdEmpleado);
+        _eliminando = false;
         if (e != null) _alerta?.MostrarError(e);
         else { _alerta?.MostrarExito("Empleado eliminado."); await Cargar(); }
     }
