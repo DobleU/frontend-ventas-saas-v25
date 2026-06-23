@@ -11,6 +11,7 @@ using webVentasSaaSV25.Services.Almacen;
 using webVentasSaaSV25.Services.Monitor;
 using webVentasSaaSV25.Services.Crm;
 using webVentasSaaSV25.Services.Hmr;
+using webVentasSaaSV25.Services.Pedidos;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -89,6 +90,7 @@ builder.Services.AddScoped<MonitorMapaService>();
 
 // ─── INVENTARIO / ALMACENES ───────────────────────────────────────────────────
 builder.Services.AddScoped<InventarioAlmacenWebService>();
+builder.Services.AddScoped<PedidoClienteWebService>();
 
 // ─── CRM ──────────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<CrmWebService>();

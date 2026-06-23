@@ -1,0 +1,461 @@
+@page "/almacen/almacenes/{IdAlmacen:int}/entrega-pedidos-clientes"
+@using System.Globalization
+@using webVentasSaaSV25.Services.Pedidos
+@inject PedidoClienteWebService PedidoSvc
+
+<PageTitle>Entrega pedidos clientes - VentasSaaSDU</PageTitle>
+
+<Breadcrumb Titulo="Entrega pedidos clientes" Items="@(new[]{ ("Almacen","/almacen/almacenes"), ("Entrega pedidos clientes","") })" />
+<AlertMessage @ref="_alerta" AutoOcultarMs="5000" />
+
+<section class="pedido-clientes-shell">
+    <div class="pedido-clientes-head">
+        <div>
+            <span class="pc-kicker"><span class="material-icons-outlined">groups</span> Almacen @IdAlmacen</span>
+            <h3>Entrega pedidos clientes</h3>
+            <div class="pc-metrics">
+                <span><strong>@_pedidosVisibles.Count</strong> pedidos</span>
+                <span><strong>@_seleccionados.Count</strong> en preparacion</span>
+                <span><strong>@_consolidado.Count</strong> productos</span>
+                <span><strong>@TotalUnidades.ToString("N2", _mx)</strong> unidades</span>
+            </div>
+        </div>
+        <a class="btn btn-light d-flex align-items-center gap-2" href="javascript:history.back()">
+            <span class="material-icons-outlined">arrow_back</span>
+            Regresar
+        </a>
+    </div>
+
+    <div class="pc-toolbar">
+        <div class="pc-search">
+            <span class="material-icons-outlined">search</span>
+            <input class="form-control" placeholder="Buscar folio o cliente" @bind="_search" />
+        </div>
+        <select class="form-select pc-status" @bind="_estatus">
+            <option value="36">Pendientes</option>
+            <option value="37">En proceso</option>
+            <option value="125">Listos</option>
+            <option value="39">Convertidos</option>
+            <option value="40">Cancelados</option>
+            <option value="0">Todos</option>
+        </select>
+        <input class="form-control pc-number" type="number" min="1" placeholder="Ruta" @bind="_idRutaCarga" />
+        <input class="form-control pc-number" type="number" min="1" placeholder="Almacen ruta" @bind="_idAlmacenRuta" />
+        <button class="btn btn-primary d-flex align-items-center gap-2" disabled="@_loading" @onclick="Cargar">
+            <span class="material-icons-outlined">refresh</span>
+            Actualizar
+        </button>
+    </div>
+
+    <div class="pc-board">
+        <section class="pc-lane">
+            <div class="pc-lane-head">
+                <div>
+                    <span class="material-icons-outlined">pending_actions</span>
+                    <strong>Cola inicial</strong>
+                </div>
+                <span>@_pedidosPendientes.Count</span>
+            </div>
+
+            <div class="pc-list">
+                @if (_loading)
+                {
+                    <div class="pc-empty">
+                        <div class="spinner-border text-primary"></div>
+                        <span>Cargando...</span>
+                    </div>
+                }
+                else if (_pedidosPendientes.Count == 0)
+                {
+                    <div class="pc-empty">
+                        <span class="material-icons-outlined">inbox</span>
+                        <span>Sin pedidos</span>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var pedido in _pedidosPendientes)
+                    {
+                        <article class="pc-order @(pedido.IdPedido == _pedidoActivo ? "active" : "")" @onclick="() => VerDetalle(pedido.IdPedido)">
+                            <div class="pc-order-main">
+                                <strong>@pedido.Folio</strong>
+                                <span>@(pedido.NombreCliente ?? "Cliente")</span>
+                            </div>
+                            <div class="pc-order-meta">
+                                <span>@(pedido.NombreRuta ?? "Sin ruta")</span>
+                                <span>@pedido.TotalCantidadPedida.ToString("N2", _mx)</span>
+                            </div>
+                            <div class="pc-order-actions">
+                                <span class="@BadgeCss(pedido.Estatus)">@TextoEstatus(pedido)</span>
+                                <button class="btn btn-sm btn-outline-primary" @onclick:stopPropagation="true" @onclick="() => AgregarPreparacion(pedido)">
+                                    <span class="material-icons-outlined">arrow_forward</span>
+                                </button>
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+        </section>
+
+        <section class="pc-lane">
+            <div class="pc-lane-head">
+                <div>
+                    <span class="material-icons-outlined">inventory_2</span>
+                    <strong>En preparacion</strong>
+                </div>
+                <span>@_pedidosPreparacion.Count</span>
+            </div>
+
+            <div class="pc-list">
+                @if (_pedidosPreparacion.Count == 0)
+                {
+                    <div class="pc-empty">
+                        <span class="material-icons-outlined">move_to_inbox</span>
+                        <span>Sin seleccion</span>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var pedido in _pedidosPreparacion)
+                    {
+                        <article class="pc-order prep @(pedido.IdPedido == _pedidoActivo ? "active" : "")" @onclick="() => VerDetalle(pedido.IdPedido)">
+                            <div class="pc-order-main">
+                                <strong>@pedido.Folio</strong>
+                                <span>@(pedido.NombreCliente ?? "Cliente")</span>
+                            </div>
+                            <div class="pc-order-meta">
+                                <span>@(pedido.FechaEntregaProg?.ToString("dd/MM/yyyy") ?? "-")</span>
+                                <span>@pedido.TotalSubtotal.ToString("C2", _mx)</span>
+                            </div>
+                            <div class="pc-order-actions">
+                                <span class="badge rounded-pill text-bg-info">EN_PROCESO</span>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick:stopPropagation="true" @onclick="() => QuitarPreparacion(pedido.IdPedido)">
+                                    <span class="material-icons-outlined">arrow_back</span>
+                                </button>
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+        </section>
+
+        <section class="pc-summary">
+            <div class="pc-summary-head">
+                <div>
+                    <span class="material-icons-outlined">summarize</span>
+                    <strong>Consolidado</strong>
+                </div>
+                <button class="btn btn-success btn-sm d-flex align-items-center gap-1"
+                        disabled="@(!PuedeFinalizar)"
+                        title="@TituloFinalizar"
+                        @onclick="FinalizarCarga">
+                    <span class="material-icons-outlined">local_shipping</span>
+                    @(_finalizando ? "Finalizando..." : "Finalizar carga")
+                </button>
+            </div>
+
+            <div class="pc-consolidado">
+                @if (_consolidado.Count == 0)
+                {
+                    <div class="pc-empty compact">
+                        <span class="material-icons-outlined">playlist_add</span>
+                        <span>Agrega pedidos</span>
+                    </div>
+                }
+                else
+                {
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-end">Cant.</th>
+                                <th class="text-end">Pedidos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _consolidado)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">@item.NombreProducto</div>
+                                        <small class="text-secondary">ID @item.IdProducto</small>
+                                    </td>
+                                    <td class="text-end fw-semibold">@item.Cantidad.ToString("N2", _mx)</td>
+                                    <td class="text-end">@item.Pedidos</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+
+            @if (_detalleActual?.Cabecera is not null)
+            {
+                <div class="pc-detail">
+                    <div class="pc-detail-title">
+                        <strong>@_detalleActual.Cabecera.Folio</strong>
+                        <span>@(_detalleActual.Cabecera.NombreCliente ?? "Cliente")</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="text-end">Pedido</th>
+                                    <th class="text-end">Surtido</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var d in _detalleActual.Detalle)
+                                {
+                                    <tr>
+                                        <td>@(d.NombreProducto ?? $"Producto {d.IdProducto}")</td>
+                                        <td class="text-end">@d.CantidadPedida.ToString("N2", _mx)</td>
+                                        <td class="text-end">@d.CantidadSurtida.ToString("N2", _mx)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </section>
+    </div>
+</section>
+
+<style>
+    .pedido-clientes-shell { display: grid; gap: 1rem; }
+    .pedido-clientes-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 1rem;
+        padding: 1.25rem;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #143d64, #0f766e);
+        color: #fff;
+        box-shadow: 0 12px 28px rgba(20, 61, 100, .18);
+    }
+    .pedido-clientes-head h3 { color: #fff; margin: .35rem 0 .75rem; font-weight: 800; }
+    .pc-kicker { display: inline-flex; align-items: center; gap: .35rem; font-weight: 800; color: #dff8f4; }
+    .pc-metrics { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .pc-metrics span { display: inline-flex; gap: .3rem; align-items: center; padding: .35rem .55rem; border: 1px solid rgba(255,255,255,.25); border-radius: 6px; background: rgba(255,255,255,.1); }
+    .pc-toolbar { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; padding: 1rem; border: 1px solid #dce7f2; border-radius: 8px; background: #fff; }
+    .pc-search { position: relative; flex: 1 1 320px; }
+    .pc-search .material-icons-outlined { position: absolute; left: .85rem; top: 50%; transform: translateY(-50%); color: #64748b; }
+    .pc-search input { padding-left: 2.6rem; }
+    .pc-status { max-width: 210px; }
+    .pc-number { max-width: 150px; }
+    .pc-board { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr) minmax(320px, .9fr); gap: 1rem; align-items: start; }
+    .pc-lane, .pc-summary { border: 1px solid #dce7f2; border-radius: 8px; background: #fff; min-height: 520px; overflow: hidden; }
+    .pc-lane-head, .pc-summary-head { display: flex; justify-content: space-between; align-items: center; gap: .75rem; padding: .85rem 1rem; border-bottom: 1px solid #e5edf6; background: #f8fafc; }
+    .pc-lane-head div, .pc-summary-head div { display: inline-flex; align-items: center; gap: .45rem; }
+    .pc-lane-head span:last-child { min-width: 2rem; text-align: center; border-radius: 999px; background: #e0f2fe; color: #075985; font-weight: 800; }
+    .pc-list { display: grid; gap: .7rem; padding: .9rem; max-height: 660px; overflow: auto; }
+    .pc-order { display: grid; gap: .65rem; padding: .85rem; border: 1px solid #dbe7f3; border-radius: 8px; background: #fff; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+    .pc-order:hover, .pc-order.active { border-color: #0ea5e9; box-shadow: 0 10px 20px rgba(14, 165, 233, .12); transform: translateY(-1px); }
+    .pc-order.prep { border-left: 4px solid #0f766e; }
+    .pc-order-main, .pc-order-meta, .pc-order-actions { display: flex; justify-content: space-between; gap: .7rem; align-items: center; }
+    .pc-order-main span, .pc-order-meta span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pc-order-main strong { color: #123f66; }
+    .pc-order-main span { color: #334155; font-weight: 700; }
+    .pc-order-meta { color: #64748b; font-size: .82rem; }
+    .pc-order-actions .btn { width: 34px; height: 30px; display: inline-flex; justify-content: center; align-items: center; padding: 0; }
+    .pc-order-actions .material-icons-outlined { font-size: 1.05rem; }
+    .pc-summary { display: grid; grid-template-rows: auto auto 1fr; }
+    .pc-consolidado { padding: .85rem; max-height: 320px; overflow: auto; border-bottom: 1px solid #e5edf6; }
+    .pc-detail { padding: .85rem; overflow: auto; }
+    .pc-detail-title { display: grid; gap: .15rem; margin-bottom: .7rem; }
+    .pc-detail-title strong { color: #123f66; }
+    .pc-detail-title span { color: #64748b; }
+    .pc-empty { min-height: 140px; display: grid; place-items: center; align-content: center; gap: .45rem; color: #64748b; text-align: center; }
+    .pc-empty .material-icons-outlined { font-size: 2rem; color: #94a3b8; }
+    .pc-empty.compact { min-height: 110px; }
+    @@media (max-width: 1200px) { .pc-board { grid-template-columns: 1fr 1fr; } .pc-summary { grid-column: 1 / -1; min-height: auto; } }
+    @@media (max-width: 768px) { .pedido-clientes-head { flex-direction: column; } .pc-board { grid-template-columns: 1fr; } .pc-status, .pc-number { max-width: none; width: 100%; } }
+</style>
+
+@code {
+    [Parameter] public int IdAlmacen { get; set; }
+
+    private readonly CultureInfo _mx = CultureInfo.GetCultureInfo("es-MX");
+    private AlertMessage? _alerta;
+    private List<PedidoClienteListItemResponse> _pedidos = [];
+    private readonly HashSet<long> _seleccionados = [];
+    private readonly Dictionary<long, PedidoClienteDetalleResponse> _detalles = [];
+    private PedidoClienteDetalleResponse? _detalleActual;
+    private bool _loading;
+    private bool _finalizando;
+    private string? _search;
+    private int _estatus = 36;
+    private int _idRutaCarga;
+    private int _idAlmacenRuta;
+    private long? _pedidoActivo;
+
+    private List<PedidoClienteListItemResponse> _pedidosVisibles => _pedidos
+        .Where(p => !p.IdAlmacenSurtido.HasValue || p.IdAlmacenSurtido == IdAlmacen)
+        .ToList();
+
+    private List<PedidoClienteListItemResponse> _pedidosPendientes => _pedidosVisibles
+        .Where(p => !_seleccionados.Contains(p.IdPedido))
+        .ToList();
+
+    private List<PedidoClienteListItemResponse> _pedidosPreparacion => _pedidosVisibles
+        .Where(p => _seleccionados.Contains(p.IdPedido))
+        .ToList();
+
+    private List<ConsolidadoProducto> _consolidado => CalcularConsolidado();
+    private decimal TotalUnidades => _consolidado.Sum(x => x.Cantidad);
+    private bool PuedeFinalizar => !_finalizando && _seleccionados.Count > 0 && _idRutaCarga > 0 && _idAlmacenRuta > 0;
+    private string TituloFinalizar => PuedeFinalizar
+        ? "Generar carga de pedidos"
+        : "Selecciona pedidos, ruta y almacen ruta";
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    private async Task Cargar()
+    {
+        _loading = true;
+        var (data, error) = await PedidoSvc.GetPedidosAsync(new PedidoClienteFiltro
+        {
+            Estatus = _estatus,
+            Search = _search,
+            Page = 1,
+            PageSize = 200
+        });
+        _loading = false;
+
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return;
+        }
+
+        _pedidos = data?.Items ?? [];
+        _seleccionados.RemoveWhere(id => _pedidos.All(p => p.IdPedido != id));
+        await PrecargarSeleccionados();
+    }
+
+    private async Task AgregarPreparacion(PedidoClienteListItemResponse pedido)
+    {
+        _seleccionados.Add(pedido.IdPedido);
+        if (_idRutaCarga <= 0 && pedido.IdRuta.HasValue)
+            _idRutaCarga = pedido.IdRuta.Value;
+        await VerDetalle(pedido.IdPedido);
+    }
+
+    private void QuitarPreparacion(long idPedido)
+    {
+        _seleccionados.Remove(idPedido);
+        if (_pedidoActivo == idPedido)
+        {
+            _pedidoActivo = null;
+            _detalleActual = null;
+        }
+    }
+
+    private async Task VerDetalle(long idPedido)
+    {
+        _pedidoActivo = idPedido;
+
+        if (!_detalles.TryGetValue(idPedido, out var detalle))
+        {
+            var (data, error) = await PedidoSvc.GetPedidoAsync(idPedido);
+            if (error is not null)
+            {
+                _alerta?.MostrarError(error);
+                return;
+            }
+
+            detalle = data ?? new PedidoClienteDetalleResponse();
+            _detalles[idPedido] = detalle;
+        }
+
+        _detalleActual = detalle;
+    }
+
+    private async Task PrecargarSeleccionados()
+    {
+        foreach (var id in _seleccionados.ToList())
+        {
+            if (!_detalles.ContainsKey(id))
+            {
+                var (data, error) = await PedidoSvc.GetPedidoAsync(id);
+                if (error is null && data is not null)
+                    _detalles[id] = data;
+            }
+        }
+    }
+
+    private async Task FinalizarCarga()
+    {
+        if (!PuedeFinalizar)
+            return;
+
+        _finalizando = true;
+        var (data, error) = await PedidoSvc.FinalizarPreparacionAsync(new FinalizarPreparacionPedidosRequest
+        {
+            IdAlmacenOrigen = IdAlmacen,
+            IdAlmacenRuta = _idAlmacenRuta,
+            IdRuta = _idRutaCarga,
+            IdsPedido = _seleccionados.ToList(),
+            Observaciones = $"Carga pedidos cliente almacen {IdAlmacen}"
+        });
+        _finalizando = false;
+
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return;
+        }
+
+        _alerta?.MostrarExito($"Carga generada. Solicitud {data?.FolioSolicitud ?? data?.IdSolicitudAlmacen.ToString(_mx)}");
+        _seleccionados.Clear();
+        _detalles.Clear();
+        _detalleActual = null;
+        _pedidoActivo = null;
+        await Cargar();
+    }
+
+    private List<ConsolidadoProducto> CalcularConsolidado()
+    {
+        return _seleccionados
+            .Select(id => _detalles.TryGetValue(id, out var det) ? det : null)
+            .Where(det => det is not null)
+            .SelectMany(det => det!.Detalle)
+            .GroupBy(d => d.IdProducto)
+            .Select(g => new ConsolidadoProducto
+            {
+                IdProducto = g.Key,
+                NombreProducto = g.FirstOrDefault()?.NombreProducto ?? $"Producto {g.Key}",
+                Cantidad = g.Sum(x => Math.Max(0, x.CantidadPedida - x.CantidadSurtida)),
+                Pedidos = g.Select(x => x.IdPedido).Distinct().Count()
+            })
+            .Where(x => x.Cantidad > 0)
+            .OrderBy(x => x.NombreProducto)
+            .ToList();
+    }
+
+    private static string TextoEstatus(PedidoClienteListItemResponse pedido)
+        => string.IsNullOrWhiteSpace(pedido.DescEstatus)
+            ? pedido.Estatus.ToString(CultureInfo.InvariantCulture)
+            : pedido.DescEstatus;
+
+    private static string BadgeCss(int estatus) => estatus switch
+    {
+        36 => "badge rounded-pill text-bg-secondary",
+        37 => "badge rounded-pill text-bg-primary",
+        125 => "badge rounded-pill text-bg-info",
+        39 => "badge rounded-pill text-bg-success",
+        40 => "badge rounded-pill text-bg-danger",
+        _ => "badge rounded-pill text-bg-light"
+    };
+
+    private sealed class ConsolidadoProducto
+    {
+        public int IdProducto { get; init; }
+        public string NombreProducto { get; init; } = string.Empty;
+        public decimal Cantidad { get; init; }
+        public int Pedidos { get; init; }
+    }
+}
