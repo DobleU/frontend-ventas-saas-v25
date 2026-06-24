@@ -434,6 +434,7 @@ public sealed class FiltroClienteRequest
     public bool? IsActive { get; set; } = true;
     public bool? BloquearCredito { get; set; }
     public int? IdRuta { get; set; }
+    public int? DiaSemana { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 50;
 }
@@ -788,6 +789,7 @@ public sealed class ClienteService(ApiClient api)
         var extra = "";
         if (f.BloquearCredito.HasValue) extra += $"&bloquearCredito={f.BloquearCredito.Value.ToString().ToLower()}";
         if (f.IdRuta.HasValue) extra += $"&idRuta={f.IdRuta.Value}";
+        if (f.DiaSemana.HasValue) extra += $"&diaSemana={f.DiaSemana.Value}";
         return api.GetAsync<PagedResult<ClienteResponse>>(
             $"api/v1/clientes?{Qs.Build(f.Search, f.IsActive, f.Page, f.PageSize, extra)}");
     }

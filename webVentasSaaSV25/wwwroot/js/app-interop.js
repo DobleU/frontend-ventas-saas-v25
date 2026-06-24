@@ -211,6 +211,18 @@ window.AppNavbar = {
     }
 };
 
+window.downloadTextFile = function (fileName, content, contentType) {
+    var blob = new Blob([content || ""], { type: contentType || "text/plain;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = fileName || "download.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+};
+
 window.printTicketHtml = function (html) {
     try {
         var w = window.open('', '_blank', 'width=900,height=900');

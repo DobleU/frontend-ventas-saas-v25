@@ -1,5 +1,7 @@
 @page "/catalogos/clientes"
 @using webVentasSaaSV25.Services.Catalogos
+@using System.Net
+@using System.Text
 @inject ClienteService Svc
 @inject RutaService RutaSvc
 
@@ -11,41 +13,59 @@
           Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
           Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
           OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo"
+          OnExportar="Exportar"
           AccionesExtra="AccionesCliente"
-          SearchPlaceholder="Nombre, razón social, RFC, correo">
+          SearchPlaceholder="Sucursal, dirección, colonia, referencia">
 
     <FiltrosExtra>
-        <select class="form-select form-select-sm" style="width:170px" @onchange="OnFiltroRuta">
-            <option value="">Todas las rutas</option>
-            @foreach (var r in _rutas)
-            {
-                <option value="@r.IdRuta">@r.Nombre</option>
-            }
-        </select>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <select class="form-select form-select-sm" style="width:170px" @onchange="OnFiltroRuta">
+                <option value="">Todas las rutas</option>
+                @foreach (var r in _rutas)
+                {
+                    <option value="@r.IdRuta">@r.Nombre</option>
+                }
+            </select>
+            <select class="form-select form-select-sm" style="width:150px" @onchange="OnFiltroDia">
+                @foreach (var dia in DiasSemanaFiltro)
+                {
+                    <option value="@dia.Id">@dia.Nombre</option>
+                }
+            </select>
+            <button class="btn btn-filter btn-sm d-flex align-items-center gap-1" @onclick="Imprimir" disabled="@(_loading || !ClientesActuales.Any())" title="Imprimir reporte">
+                <span class="material-icons-outlined fs-6">print</span>
+                <span>Imprimir</span>
+            </button>
+        </div>
     </FiltrosExtra>
 
     <HeaderRow>
-        <th>Nombre / Razón Social</th>
-        <th style="width:120px">RFC</th>
+        <th style="min-width:260px">Sucursal / Cliente</th>
+        <th style="min-width:260px">Dirección</th>
+        <th style="width:160px">Colonia</th>
+        <th style="min-width:320px">Referencias / Cómo llegar</th>
         <th style="width:130px">Teléfono</th>
-        <th style="width:160px">Correo</th>
         <th style="width:130px" class="text-center">Crédito</th>
         <th style="width:110px" class="text-center">Estado</th>
     </HeaderRow>
     <RowTemplate>
         <td>
-            <div class="fw-medium">@context.NombreCompleto</div>
+            <div class="fw-medium">@SucursalCliente(context)</div>
             <div class="text-muted small">
-                @(context.IdTipoPersona == 2 ? "Moral" : "Física")
                 @if (!string.IsNullOrWhiteSpace(context.NombreRuta))
                 {
-                    <span class="ms-2 badge bg-secondary-subtle text-secondary-emphasis">@context.NombreRuta</span>
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis">@context.NombreRuta</span>
+                }
+                @if (context.DiaSemana is > 0)
+                {
+                    <span class="ms-2 badge bg-info-subtle text-info-emphasis">@NombreDia(context.DiaSemana)</span>
                 }
             </div>
         </td>
-        <td class="text-muted small">@(context.Rfc ?? "—")</td>
+        <td class="text-muted small text-wrap">@(context.Direccion1 ?? "—")</td>
+        <td class="text-muted small text-wrap">@(context.Colonia ?? "—")</td>
+        <td class="text-muted small text-wrap">@ReferenciaDireccion(context)</td>
         <td class="text-muted small">@(context.Telefono1 ?? "—")</td>
-        <td class="text-muted small">@(context.Correo ?? "—")</td>
         <td class="text-center">
             @if (context.TieneCredito)
             {
@@ -296,12 +316,26 @@
 @code {
     PagedResult<ClienteResponse>? _paged;
     FiltroClienteRequest _f = new();
+    [Inject] IJSRuntime JS { get; set; } = default!;
     bool _loading;
     bool _cargandoFormulario;
     AlertMessage? _alerta;
     FormOffcanvas? _panel;
     ConfirmDialog? _confirm;
     List<RutaResponse> _rutas = [];
+    static readonly (int Id, string Nombre)[] DiasSemanaFiltro = new[]
+    {
+        (0, "Todos"),
+        (1, "Lunes"),
+        (2, "Martes"),
+        (3, "Miércoles"),
+        (4, "Jueves"),
+        (5, "Viernes"),
+        (6, "Sábado"),
+        (7, "Domingo")
+    };
+
+    List<ClienteResponse> ClientesActuales => _paged?.Items ?? new List<ClienteResponse>();
 
     bool _edit;
     int _id;
@@ -375,32 +409,75 @@
         await Cargar();
     }
 
-    RenderFragment<ClienteResponse> AccionesCliente => cliente => @<text>
-        <li>
-            <a class="dropdown-item d-flex align-items-center gap-2" href="javascript:;" @onclick="() => AbrirEditar(cliente)">
-                <span class="material-icons-outlined fs-6">edit</span>Editar
-            </a>
-        </li>
-        @if (cliente.IdRuta is > 0)
+    async Task OnFiltroDia(ChangeEventArgs e)
+    {
+        _f.DiaSemana = int.TryParse(e.Value?.ToString(), out var id) && id > 0 ? id : null;
+        _f.Page = 1;
+        await Cargar();
+    }
+
+    RenderFragment<ClienteResponse> AccionesCliente => cliente => builder =>
+    {
+        var seq = 0;
+        builder.OpenElement(seq++, "li");
+        builder.OpenElement(seq++, "a");
+        builder.AddAttribute(seq++, "class", "dropdown-item d-flex align-items-center gap-2");
+        builder.AddAttribute(seq++, "href", "javascript:;");
+        builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(this, () => AbrirEditar(cliente)));
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "material-icons-outlined fs-6");
+        builder.AddContent(seq++, "edit");
+        builder.CloseElement();
+        builder.AddContent(seq++, "Editar");
+        builder.CloseElement();
+        builder.CloseElement();
+
+        if (cliente.IdRuta is > 0)
         {
-            <li>
-                <a class="dropdown-item d-flex align-items-center gap-2" href="@($"/monitor/clientes?ruta={cliente.IdRuta}&cliente={cliente.IdCliente}")">
-                    <span class="material-icons-outlined fs-6">person_search</span>Monitor
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item d-flex align-items-center gap-2" href="@($"/monitor/mapa?ruta={cliente.IdRuta}&cliente={cliente.IdCliente}")">
-                    <span class="material-icons-outlined fs-6">map</span>Mapa
-                </a>
-            </li>
+            builder.OpenElement(seq++, "li");
+            builder.OpenElement(seq++, "a");
+            builder.AddAttribute(seq++, "class", "dropdown-item d-flex align-items-center gap-2");
+            builder.AddAttribute(seq++, "href", $"/monitor/clientes?ruta={cliente.IdRuta}&cliente={cliente.IdCliente}");
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "material-icons-outlined fs-6");
+            builder.AddContent(seq++, "person_search");
+            builder.CloseElement();
+            builder.AddContent(seq++, "Monitor");
+            builder.CloseElement();
+            builder.CloseElement();
+
+            builder.OpenElement(seq++, "li");
+            builder.OpenElement(seq++, "a");
+            builder.AddAttribute(seq++, "class", "dropdown-item d-flex align-items-center gap-2");
+            builder.AddAttribute(seq++, "href", $"/monitor/mapa?ruta={cliente.IdRuta}&cliente={cliente.IdCliente}");
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "material-icons-outlined fs-6");
+            builder.AddContent(seq++, "map");
+            builder.CloseElement();
+            builder.AddContent(seq++, "Mapa");
+            builder.CloseElement();
+            builder.CloseElement();
         }
-        <li><hr class="dropdown-divider" /></li>
-        <li>
-            <a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="javascript:;" @onclick="() => Eliminar(cliente)">
-                <span class="material-icons-outlined fs-6">delete</span>Eliminar
-            </a>
-        </li>
-    </text>;
+
+        builder.OpenElement(seq++, "li");
+        builder.OpenElement(seq++, "hr");
+        builder.AddAttribute(seq++, "class", "dropdown-divider");
+        builder.CloseElement();
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "li");
+        builder.OpenElement(seq++, "a");
+        builder.AddAttribute(seq++, "class", "dropdown-item d-flex align-items-center gap-2 text-danger");
+        builder.AddAttribute(seq++, "href", "javascript:;");
+        builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(this, () => Eliminar(cliente)));
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "material-icons-outlined fs-6");
+        builder.AddContent(seq++, "delete");
+        builder.CloseElement();
+        builder.AddContent(seq++, "Eliminar");
+        builder.CloseElement();
+        builder.CloseElement();
+    };
 
     void AbrirNuevo()
     {
@@ -542,6 +619,122 @@
         else { _alerta?.MostrarExito("Cliente eliminado."); await Cargar(); }
     }
 
+    async Task Exportar()
+    {
+        var clientes = await ObtenerClientesReporte();
+        var csv = new StringBuilder();
+        csv.AppendLine("Sucursal / Cliente,Direccion,Colonia,Referencias / Como llegar,Telefono,Ruta,Dia,Credito,Estado");
+        foreach (var c in clientes)
+        {
+            csv.AppendLine(string.Join(",",
+                Csv(SucursalCliente(c)),
+                Csv(c.Direccion1),
+                Csv(c.Colonia),
+                Csv(ReferenciaDireccion(c)),
+                Csv(c.Telefono1),
+                Csv(c.NombreRuta),
+                Csv(NombreDia(c.DiaSemana)),
+                Csv(c.TieneCredito ? $"${c.LimiteCredito:N0} / {c.DiasCredito} dias" : ""),
+                Csv(c.IsActive ? "Activo" : "Inactivo")));
+        }
+
+        await JS.InvokeVoidAsync("downloadTextFile",
+            $"clientes_ruta_dia_{DateTime.Now:yyyyMMdd_HHmm}.csv",
+            csv.ToString(),
+            "text/csv;charset=utf-8");
+    }
+
+    async Task Imprimir()
+    {
+        var clientes = await ObtenerClientesReporte();
+        var html = new StringBuilder();
+        html.AppendLine("<!doctype html>");
+        html.AppendLine("<html>");
+        html.AppendLine("<head>");
+        html.AppendLine("<meta charset=\"utf-8\">");
+        html.AppendLine("<title>Lista de clientes por ruta y día</title>");
+        html.AppendLine("<style>");
+        html.AppendLine("body{font-family:Arial,sans-serif;color:#111827;margin:24px;font-size:12px}");
+        html.AppendLine("h1{font-size:20px;margin:0 0 4px}");
+        html.AppendLine(".meta{color:#4b5563;margin-bottom:14px}");
+        html.AppendLine("table{width:100%;border-collapse:collapse}");
+        html.AppendLine("th,td{border:1px solid #d1d5db;padding:6px;vertical-align:top}");
+        html.AppendLine("th{background:#f3f4f6;text-align:left;font-size:11px;text-transform:uppercase}");
+        html.AppendLine(".sucursal{font-weight:700}");
+        html.AppendLine(".muted{color:#6b7280}");
+        html.AppendLine(".wrap{white-space:normal}");
+        html.AppendLine("</style>");
+        html.AppendLine("</head>");
+        html.AppendLine("<body>");
+        html.Append("<h1>Lista de clientes por ruta y dia</h1>");
+        html.Append("<div class=\"meta\">Ruta: ");
+        html.Append(H(RutaFiltroNombre()));
+        html.Append(" | Dia: ");
+        html.Append(H(NombreDia(_f.DiaSemana)));
+        html.Append(" | Registros: ");
+        html.Append(clientes.Count);
+        html.Append("</div>");
+        html.Append("<table><thead><tr><th>Sucursal / Cliente</th><th>Dirección</th><th>Colonia</th><th>Referencias / Cómo llegar</th><th>Teléfono</th></tr></thead><tbody>");
+        foreach (var c in clientes)
+        {
+            html.Append("<tr>");
+            html.Append("<td><div class=\"sucursal\">");
+            html.Append(H(SucursalCliente(c)));
+            html.Append("</div><div class=\"muted\">");
+            html.Append(H(c.NombreRuta));
+            html.Append(" ");
+            html.Append(H(NombreDia(c.DiaSemana)));
+            html.Append("</div></td>");
+            html.Append("<td class=\"wrap\">");
+            html.Append(H(c.Direccion1));
+            html.Append("</td><td>");
+            html.Append(H(c.Colonia));
+            html.Append("</td><td class=\"wrap\">");
+            html.Append(H(ReferenciaDireccion(c)));
+            html.Append("</td><td>");
+            html.Append(H(c.Telefono1));
+            html.Append("</td>");
+            html.Append("</tr>");
+        }
+        html.Append("</tbody></table></body></html>");
+        await JS.InvokeVoidAsync("printTicketHtml", html.ToString());
+    }
+
+    async Task<List<ClienteResponse>> ObtenerClientesReporte()
+    {
+        const int pageSize = 500;
+        var page = 1;
+        var clientes = new List<ClienteResponse>();
+
+        while (true)
+        {
+            var filtro = new FiltroClienteRequest
+            {
+                Search = _f.Search,
+                IsActive = _f.IsActive,
+                BloquearCredito = _f.BloquearCredito,
+                IdRuta = _f.IdRuta,
+                DiaSemana = _f.DiaSemana,
+                Page = page,
+                PageSize = pageSize
+            };
+
+            var (d, e) = await Svc.GetPagedAsync(filtro);
+            if (e != null)
+            {
+                _alerta?.MostrarError(e);
+                break;
+            }
+
+            if (d?.Items is null || d.Items.Count == 0) break;
+            clientes.AddRange(d.Items);
+            if (clientes.Count >= d.TotalRecords || d.Items.Count < pageSize) break;
+            page++;
+        }
+
+        return clientes;
+    }
+
     bool TieneDatosFacturacion()
         => !string.IsNullOrWhiteSpace(_factRfc)
         || !string.IsNullOrWhiteSpace(_factRazonSocial)
@@ -550,4 +743,46 @@
 
     static string? NullIfWhite(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    static string SucursalCliente(ClienteResponse c)
+    {
+        var sucursal = string.IsNullOrWhiteSpace(c.NombreSucursal) ? c.NombreCompleto : c.NombreSucursal.Trim();
+        return $"{sucursal} ({c.NombreCompleto})";
+    }
+
+    static string ReferenciaDireccion(ClienteResponse c)
+    {
+        var partes = new[] { c.Referencias, c.Direccion1, c.Colonia }
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x!.Trim());
+        var texto = string.Join(" | ", partes);
+        return string.IsNullOrWhiteSpace(texto) ? "—" : texto;
+    }
+
+    static string NombreDia(int? dia) => dia switch
+    {
+        1 => "Lunes",
+        2 => "Martes",
+        3 => "Miércoles",
+        4 => "Jueves",
+        5 => "Viernes",
+        6 => "Sábado",
+        7 => "Domingo",
+        _ => "Todos"
+    };
+
+    string RutaFiltroNombre()
+        => _f.IdRuta is > 0
+            ? _rutas.FirstOrDefault(x => x.IdRuta == _f.IdRuta)?.Nombre ?? $"Ruta {_f.IdRuta}"
+            : "Todas las rutas";
+
+    static string Csv(string? value)
+    {
+        var v = value ?? "";
+        const string quote = "\"";
+        return quote + v.Replace(quote, quote + quote) + quote;
+    }
+
+    static string H(string? value)
+        => WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(value) ? "—" : value);
 }
