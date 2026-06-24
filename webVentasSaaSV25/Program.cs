@@ -12,6 +12,7 @@ using webVentasSaaSV25.Services.Monitor;
 using webVentasSaaSV25.Services.Crm;
 using webVentasSaaSV25.Services.Hmr;
 using webVentasSaaSV25.Services.Pedidos;
+using webVentasSaaSV25.Services.Sec;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -30,6 +31,7 @@ builder.Services.AddSingleton<AppState>();
 // En Blazor WASM hay un solo Scope por pestaña — equivale a Singleton en práctica.
 builder.Services.AddScoped<PermisoClienteService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<MenuClienteService>();
 
 // ─── HTTP CLIENTS ─────────────────────────────────────────────────────────────
 // Requiere NuGet: Microsoft.Extensions.Http 8.0.0

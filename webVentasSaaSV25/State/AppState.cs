@@ -4,6 +4,7 @@
 // Los componentes suscriben al evento OnChange para reaccionar a cambios.
 
 using webVentasSaaSV25.Models.Auth;
+using webVentasSaaSV25.Services.Sec;
 //using webVentasSaaSV25.Models.Responses.Auth;
 
 namespace webVentasSaaSV25.State;
@@ -33,6 +34,8 @@ public sealed class AppState
     public bool SuscripcionActiva =>
         EstadoSusc is "Active" or "Trial" or "Grace";
 
+    public IReadOnlyList<MenuNodo> MenuPrincipal { get; private set; } = Array.Empty<MenuNodo>();
+
     // ─── Evento de cambio de estado ───────────────────────────────────────
     /// <summary>
     /// Se dispara cuando cambia el estado de autenticación.
@@ -52,12 +55,19 @@ public sealed class AppState
         NotificarCambio();
     }
 
+    public void SetMenuPrincipal(IReadOnlyList<MenuNodo> menu)
+    {
+        MenuPrincipal = menu;
+        NotificarCambio();
+    }
+
     /// <summary>
     /// Limpia el estado al hacer logout o expirar la sesión.
     /// </summary>
     public void LimpiarSesion()
     {
         Usuario = null;
+        MenuPrincipal = Array.Empty<MenuNodo>();
         NotificarCambio();
     }
 

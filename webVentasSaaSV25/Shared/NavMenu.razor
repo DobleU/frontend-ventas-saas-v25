@@ -1,7 +1,10 @@
 @* Shared/NavMenu.razor *@
-@inject PermisoClienteService Permisos
+@using Microsoft.AspNetCore.Components.Routing
+@using webVentasSaaSV25.Services.Sec
 @inject AppState Estado
+@inject MenuClienteService MenuSvc
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 @implements IDisposable
 
 <div class="primary-menu">
@@ -22,7 +25,78 @@
             </div>
             <div class="offcanvas-body p-0">
                 <ul class="navbar-nav align-items-start">
-                    @MenuCompleto()
+                    <li class="nav-item">
+                        <NavLink class="nav-link d-flex align-items-center gap-1" href="/dashboard" Match="NavLinkMatch.All">
+                            <i class="material-icons-outlined fs-5">home</i>
+                            <span>Inicio</span>
+                        </NavLink>
+                    </li>
+
+                    @if (_cargando && Estado.MenuPrincipal.Count == 0)
+                    {
+                        <li class="nav-item">
+                            <span class="nav-link d-flex align-items-center gap-1 text-muted">
+                                <i class="material-icons-outlined fs-5">hourglass_empty</i>
+                                <span>Cargando</span>
+                            </span>
+                        </li>
+                    }
+                    else
+                    {
+                        @foreach (var raiz in Estado.MenuPrincipal)
+                        {
+                            var menuId = $"menu-{raiz.IdModulo}";
+                            <li class="nav-item dropdown" data-menu-id="@menuId">
+                                <a class="nav-link d-flex align-items-center gap-1 @(NodoActivo(raiz) ? "active" : "") @(raiz.EsProximo ? "disabled text-muted" : "")"
+                                   href="javascript:;"
+                                   @onclick="() => ToggleRaizAsync(raiz, menuId)"
+                                   @onclick:preventDefault="true">
+                                    <i class="material-icons-outlined fs-5">@Icono(raiz, "apps")</i>
+                                    <span>@raiz.Nombre</span>
+                                    @if (raiz.EsProximo)
+                                    {
+                                        <span class="badge bg-secondary ms-1">Pronto</span>
+                                    }
+                                    @if (raiz.TieneHijos)
+                                    {
+                                        <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
+                                    }
+                                </a>
+
+                                @if (raiz.TieneHijos)
+                                {
+                                    <div class="dropdown-menu menu-dynamic">
+                                        <div class="menu-dynamic-grid">
+                                            <div class="menu-dynamic-list">
+                                                @foreach (var nivel2 in raiz.Hijos)
+                                                {
+                                                    <button type="button"
+                                                            class="dropdown-item nav-dropdown-item menu-branch @(NodoSeleccionado(raiz, nivel2) ? "active" : "") @(nivel2.EsProximo ? "disabled text-muted" : "")"
+                                                            @onmouseenter="() => SeleccionarNivel2(raiz, nivel2)"
+                                                            @onclick="() => ClickNivel2(nivel2)">
+                                                        <i class="material-icons-outlined nav-dropdown-icon">@Icono(nivel2, "chevron_right")</i>
+                                                        <span class="nav-dropdown-label">@nivel2.Nombre</span>
+                                                        @if (nivel2.EsProximo)
+                                                        {
+                                                            <span class="badge bg-secondary ms-auto">Pronto</span>
+                                                        }
+                                                        else if (nivel2.TieneHijos)
+                                                        {
+                                                            <i class="material-icons-outlined ms-auto menu-chevron">chevron_right</i>
+                                                        }
+                                                    </button>
+                                                }
+                                            </div>
+
+                                            <div class="menu-dynamic-panel">
+                                                @RenderPanelNivel3(raiz)
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </li>
+                        }
+                    }
                 </ul>
             </div>
         </div>
@@ -30,19 +104,283 @@
 </div>
 
 @code {
+    private const int MaxVisibleNivel4 = 6;
+    private readonly Dictionary<int, int> _nivel2Activo = new();
+    private readonly Dictionary<int, int> _nivel3Activo = new();
+    private readonly Dictionary<int, int> _paginaNivel4 = new();
     private string _ruta = string.Empty;
+    private bool _cargando;
+    private string? _error;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         Estado.OnChange += StateHasChanged;
         _ruta = Nav.ToBaseRelativePath(Nav.Uri);
         Nav.LocationChanged += OnNav;
+        await CargarMenuAsync();
     }
 
-    private void OnNav(object? s, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    private async Task CargarMenuAsync()
+    {
+        _cargando = true;
+        var (_, error) = await MenuSvc.CargarAsync();
+        _error = error;
+        _cargando = false;
+    }
+
+    private void OnNav(object? s, LocationChangedEventArgs e)
     {
         _ruta = Nav.ToBaseRelativePath(e.Location);
         StateHasChanged();
+    }
+
+    private async Task ToggleRaizAsync(MenuNodo raiz, string menuId)
+    {
+        if (raiz.EsProximo)
+            return;
+
+        AsegurarSeleccionNivel2(raiz);
+        await JS.InvokeVoidAsync("NavMenu.toggle", menuId);
+    }
+
+    private void SeleccionarNivel2(MenuNodo raiz, MenuNodo nivel2)
+    {
+        _nivel2Activo[raiz.IdModulo] = nivel2.IdModulo;
+        AsegurarSeleccionNivel3(nivel2);
+    }
+
+    private void ClickNivel2(MenuNodo nivel2)
+    {
+        if (nivel2.EsProximo)
+            return;
+
+        if (nivel2.EsHoja && !string.IsNullOrWhiteSpace(nivel2.RutaWeb))
+            Nav.NavigateTo(nivel2.RutaWeb);
+        else
+            AsegurarSeleccionNivel3(nivel2);
+    }
+
+    private void ClickNivel3(MenuNodo nivel2, MenuNodo nivel3)
+    {
+        if (nivel3.EsProximo)
+            return;
+
+        if (nivel3.EsHoja && !string.IsNullOrWhiteSpace(nivel3.RutaWeb))
+        {
+            Nav.NavigateTo(nivel3.RutaWeb);
+            return;
+        }
+
+        _nivel3Activo[nivel2.IdModulo] = nivel3.IdModulo;
+        _paginaNivel4[nivel3.IdModulo] = 0;
+
+        var primerDestino = PrimerDestinoNavegable(nivel3);
+        if (!string.IsNullOrWhiteSpace(primerDestino) && !Activo(primerDestino))
+            Nav.NavigateTo(primerDestino);
+    }
+
+    private RenderFragment RenderPanelNivel3(MenuNodo raiz) => @<text>
+        @{
+            var nivel2 = Nivel2Seleccionado(raiz);
+        }
+        @if (nivel2 is null)
+        {
+            <div class="menu-empty">Sin opciones disponibles.</div>
+        }
+        else if (nivel2.EsHoja)
+        {
+            @RenderNodoHoja(nivel2, grande: true)
+        }
+        else
+        {
+            <div class="menu-panel-title">
+                <i class="material-icons-outlined">@Icono(nivel2, "folder")</i>
+                <span>@nivel2.Nombre</span>
+            </div>
+
+            <div class="menu-level3-list">
+                @foreach (var nivel3 in nivel2.Hijos)
+                {
+                    <button type="button"
+                            class="dropdown-item nav-dropdown-item @(Nivel3Seleccionado(nivel2, nivel3) ? "active" : "") @(nivel3.EsProximo ? "disabled text-muted" : "")"
+                            @onclick="() => ClickNivel3(nivel2, nivel3)">
+                        <i class="material-icons-outlined nav-dropdown-icon">@Icono(nivel3, nivel3.TieneHijos ? "widgets" : "radio_button_unchecked")</i>
+                        <span class="nav-dropdown-label">@nivel3.Nombre</span>
+                        @if (nivel3.EsProximo)
+                        {
+                            <span class="badge bg-secondary ms-auto">Pronto</span>
+                        }
+                        else if (nivel3.TieneHijos)
+                        {
+                            <i class="material-icons-outlined ms-auto menu-chevron">chevron_right</i>
+                        }
+                    </button>
+                }
+            </div>
+
+            @if (Nivel3Seleccionado(nivel2) is { TieneHijos: true } nivel3Activo)
+            {
+                @RenderNivel4(nivel3Activo)
+            }
+        }
+    </text>;
+
+    private RenderFragment RenderNodoHoja(MenuNodo nodo, bool grande = false) => @<text>
+        @if (nodo.EsProximo || string.IsNullOrWhiteSpace(nodo.RutaWeb))
+        {
+            <a class="@HojaClass(grande, disabled: true)" href="javascript:;">
+                <i class="material-icons-outlined nav-dropdown-icon">@Icono(nodo, "radio_button_unchecked")</i>
+                <span class="nav-dropdown-label">@nodo.Nombre</span>
+                <span class="badge bg-secondary ms-auto">Pronto</span>
+            </a>
+        }
+        else
+        {
+            <NavLink class="@HojaClass(grande)"
+                     ActiveClass="active"
+                     href="@nodo.RutaWeb"
+                     Match="NavLinkMatch.All">
+                <i class="material-icons-outlined nav-dropdown-icon">@Icono(nodo, "radio_button_unchecked")</i>
+                <span class="nav-dropdown-label">@nodo.Nombre</span>
+            </NavLink>
+        }
+    </text>;
+
+    private RenderFragment RenderNivel4(MenuNodo padre) => @<text>
+        @{
+            var pagina = PaginaNivel4(padre);
+            var totalPaginas = TotalPaginasNivel4(padre);
+            var visibles = padre.Hijos
+                .Skip(pagina * MaxVisibleNivel4)
+                .Take(MaxVisibleNivel4)
+                .ToList();
+        }
+        <div class="menu-level4">
+            <button type="button"
+                    class="menu-level4-arrow"
+                    disabled="@(pagina <= 0)"
+                    @onclick="() => CambiarPaginaNivel4(padre, -1)">
+                <i class="material-icons-outlined">chevron_left</i>
+            </button>
+
+            <div class="menu-level4-items">
+                @foreach (var item in visibles)
+                {
+                    <div class="menu-level4-item">
+                        @if (item.EsProximo || string.IsNullOrWhiteSpace(item.RutaWeb))
+                        {
+                            <a href="javascript:;" class="menu-level4-icon disabled">
+                                <i class="material-icons-outlined">@Icono(item, "apps")</i>
+                            </a>
+                            <span>@item.Nombre</span>
+                            <small>Pronto</small>
+                        }
+                        else
+                        {
+                            <NavLink class="menu-level4-icon" ActiveClass="active" href="@item.RutaWeb" Match="NavLinkMatch.All">
+                                <i class="material-icons-outlined">@Icono(item, "apps")</i>
+                            </NavLink>
+                            <span>@item.Nombre</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <button type="button"
+                    class="menu-level4-arrow"
+                    disabled="@(pagina >= totalPaginas - 1)"
+                    @onclick="() => CambiarPaginaNivel4(padre, 1)">
+                <i class="material-icons-outlined">chevron_right</i>
+            </button>
+        </div>
+    </text>;
+
+    private void CambiarPaginaNivel4(MenuNodo padre, int delta)
+    {
+        var total = TotalPaginasNivel4(padre);
+        var siguiente = Math.Clamp(PaginaNivel4(padre) + delta, 0, Math.Max(0, total - 1));
+        _paginaNivel4[padre.IdModulo] = siguiente;
+    }
+
+    private void AsegurarSeleccionNivel2(MenuNodo raiz)
+    {
+        if (!_nivel2Activo.ContainsKey(raiz.IdModulo) && raiz.Hijos.Count > 0)
+            _nivel2Activo[raiz.IdModulo] = raiz.Hijos[0].IdModulo;
+
+        var nivel2 = Nivel2Seleccionado(raiz);
+        if (nivel2 is not null)
+            AsegurarSeleccionNivel3(nivel2);
+    }
+
+    private void AsegurarSeleccionNivel3(MenuNodo nivel2)
+    {
+        if (nivel2.Hijos.Count == 0 || _nivel3Activo.ContainsKey(nivel2.IdModulo))
+            return;
+
+        var primeraRama = nivel2.Hijos.FirstOrDefault(x => x.TieneHijos) ?? nivel2.Hijos[0];
+        _nivel3Activo[nivel2.IdModulo] = primeraRama.IdModulo;
+    }
+
+    private MenuNodo? Nivel2Seleccionado(MenuNodo raiz)
+    {
+        AsegurarSeleccionNivel2(raiz);
+        return _nivel2Activo.TryGetValue(raiz.IdModulo, out var id)
+            ? raiz.Hijos.FirstOrDefault(x => x.IdModulo == id)
+            : raiz.Hijos.FirstOrDefault();
+    }
+
+    private MenuNodo? Nivel3Seleccionado(MenuNodo nivel2)
+    {
+        AsegurarSeleccionNivel3(nivel2);
+        return _nivel3Activo.TryGetValue(nivel2.IdModulo, out var id)
+            ? nivel2.Hijos.FirstOrDefault(x => x.IdModulo == id)
+            : nivel2.Hijos.FirstOrDefault(x => x.TieneHijos);
+    }
+
+    private bool NodoSeleccionado(MenuNodo raiz, MenuNodo nivel2) =>
+        Nivel2Seleccionado(raiz)?.IdModulo == nivel2.IdModulo;
+
+    private bool Nivel3Seleccionado(MenuNodo nivel2, MenuNodo nivel3) =>
+        Nivel3Seleccionado(nivel2)?.IdModulo == nivel3.IdModulo;
+
+    private int PaginaNivel4(MenuNodo padre) =>
+        _paginaNivel4.TryGetValue(padre.IdModulo, out var pagina) ? pagina : 0;
+
+    private static int TotalPaginasNivel4(MenuNodo padre) =>
+        Math.Max(1, (int)Math.Ceiling(padre.Hijos.Count / (double)MaxVisibleNivel4));
+
+    private string? PrimerDestinoNavegable(MenuNodo nodo)
+    {
+        if (!nodo.EsProximo && nodo.EsHoja && !string.IsNullOrWhiteSpace(nodo.RutaWeb))
+            return nodo.RutaWeb;
+
+        return nodo.Hijos.Select(PrimerDestinoNavegable).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+    }
+
+    private bool NodoActivo(MenuNodo nodo)
+    {
+        if (!string.IsNullOrWhiteSpace(nodo.RutaWeb) && Activo(nodo.RutaWeb))
+            return true;
+
+        return nodo.Hijos.Any(NodoActivo);
+    }
+
+    private bool Activo(string ruta)
+    {
+        var actual = _ruta.Trim('/').Split('?', 2)[0];
+        var objetivo = ruta.Trim('/').Split('?', 2)[0];
+        return actual.StartsWith(objetivo, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string Icono(MenuNodo nodo, string fallback) =>
+        string.IsNullOrWhiteSpace(nodo.Icono) ? fallback : nodo.Icono;
+
+    private static string HojaClass(bool grande, bool disabled = false)
+    {
+        var classes = "dropdown-item nav-dropdown-item";
+        if (disabled) classes += " disabled text-muted";
+        if (grande) classes += " menu-leaf-large";
+        return classes;
     }
 
     public void Dispose()
@@ -50,250 +388,149 @@
         Estado.OnChange -= StateHasChanged;
         Nav.LocationChanged -= OnNav;
     }
-
-    private bool Activo(string ruta) =>
-        _ruta.StartsWith(ruta.TrimStart('/'), StringComparison.OrdinalIgnoreCase);
-
-    private bool TienePermiso(params string[] modulos) =>
-        modulos.Any(m => Permisos.TieneAlgunoEn(m));
-
-    RenderFragment MenuCompleto() => @<text>
-        <li class="nav-item">
-            <NavLink class="nav-link d-flex align-items-center gap-1" href="/dashboard" Match="NavLinkMatch.All">
-                <i class="material-icons-outlined fs-5">home</i>
-                <span>Inicio</span>
-            </NavLink>
-        </li>
-
-        <li class="nav-item dropdown" data-menu-id="monitor">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/monitor") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('monitor')">
-                <i class="material-icons-outlined fs-5">sensors</i>
-                <span>Monitor</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/monitor/mapa", "map", "Mapa General")</li>
-                <li>@Item("/monitor/prospectos", "person_search", "Monitor Prospectos", pronto: true)</li>
-                <li>@Item("/monitor/rutas", "monitoring", "Monitor Recorrido")</li>
-                <li>@Item("/monitor/clientes", "groups", "Monitor Clientes")</li>
-                <li>@Item("/monitor/pos", "point_of_sale", "Monitor POS")</li>
-            </ul>
-        </li>
-
-        <li class="nav-item dropdown" data-menu-id="crm">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/crm") || Activo("/catalogos/clientes") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('crm')">
-                <i class="material-icons-outlined fs-5">support_agent</i>
-                <span>CRM</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/catalogos/clientes", "people", "Clientes")</li>
-                <li>@Item("/crm/prospectos", "person_add", "Prospectos")</li>
-                <li>@Item("/crm/seguimiento-comercial", "event_note", "Seguimiento Comercial")</li>
-                <li>@Item("/crm/escenarios-comerciales", "forum", "Escenarios Comerciales")</li>
-            </ul>
-        </li>
-
-        <li class="nav-item dropdown" data-menu-id="pos">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/pos") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('pos')">
-                <i class="material-icons-outlined fs-5">point_of_sale</i>
-                <span>POS</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/pos/ventas", "shopping_cart", "Ventas POS", pronto: true)</li>
-                <li>@Item("/pos/caja", "payments", "Caja", pronto: true)</li>
-                <li>@Item("/pos/tickets", "receipt_long", "Reimpresión de Ticket", pronto: true)</li>
-            </ul>
-        </li>
-
-        <li class="nav-item dropdown" data-menu-id="route">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/route") || Activo("/ventas/ruta") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('route')">
-                <i class="material-icons-outlined fs-5">route</i>
-                <span>ROUTE</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/ventas/ruta/recorridos", "directions_car", "Recorridos")</li>
-                <li>@Item("/ventas/ruta/visitas", "location_on", "Visitas")</li>
-                <li>@Item("/ventas/ruta/eventos", "notifications", "Eventos")</li>
-                <li>@Item("/route/clientes-ruta", "groups", "Clientes por Ruta")</li>
-                <li>@Item("/route/planeacion-visitas", "calendar_month", "Planeación de Visitas")</li>
-                <li>@Item("/route/liquidacion-ruta", "task_alt", "Liquidación de Ruta")</li>
-                <li>@Item("/crm/escenarios-comerciales", "forum", "Escenarios Comerciales")</li>
-                <li>@Item("/route/sincronizacion-app", "sync", "Sincronización App")</li>
-            </ul>
-        </li>
-
-        <li class="nav-item dropdown" data-menu-id="erp">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/erp") || Activo("/ia-comercial") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('erp')">
-                <i class="material-icons-outlined fs-5">business_center</i>
-                <span>ERP</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/erp/compras", "shopping_bag", "Compras")</li>
-                <li>@Item("/erp/promociones-campanas", "campaign", "Promociones y Campañas")</li>
-                <li>@Item("/erp/rh", "badge", "RH")</li>
-                <li>@Item("/ia-comercial/respuestas-vendedores", "record_voice_over", "Respuestas para Vendedores")</li>
-                <li>@Item("/erp/proveedores", "local_shipping", "Proveedores")</li>
-                <li>@Item("/erp/ordenes-compra", "assignment", "Órdenes de Compra")</li>
-                <li>@Item("/erp/recepcion-mercancia", "inventory_2", "Recepción de Mercancía")</li>
-            </ul>
-        </li>
-
-        <li class="nav-item dropdown" data-menu-id="core">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/core") || Activo("/catalogos") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('core')">
-                <i class="material-icons-outlined fs-5">dataset</i>
-                <span>CORE</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/core/empresas", "domain", "Empresa")</li>
-                <li>@Item("/core/sucursales", "store", "Sucursales")</li>
-                <li>@Item("/core/zonas", "map", "Zonas")</li>
-                <li>@Item("/core/rutas", "route", "Rutas")</li>
-                <li>@Item("/catalogos/productos", "inventory_2", "Productos")</li>
-                <li>@Item("/core/precios", "sell", "Precios")</li>
-                <li>@Item("/core/marcas", "branding_watermark", "Marcas", pronto: true)</li>
-                <li>@Item("/core/presentaciones", "widgets", "Presentaciones", pronto: true)</li>
-                <li>@Item("/core/monedas", "currency_exchange", "Monedas")</li>
-                <li>@Item("/core/series-documento", "tag", "Series de Documento")</li>
-                <li>@Item("/core/parametros", "tune", "Parámetros")</li>
-                <li>@Item("/catalogos/catalogo-tipos", "category", "Catálogos Tipo", pronto: true)</li>
-                <li>@Item("/catalogos/catalogo-items", "list", "Catálogos Item", pronto: true)</li>
-                <li>@Item("/catalogos/clasificaciones", "account_tree", "Clasificaciones", pronto: true)</li>
-                <li>@Item("/catalogos/unidades", "straighten", "Unidades", pronto: true)</li>
-                <li>@Item("/catalogos/impuestos", "receipt_long", "Impuestos", pronto: true)</li>
-            </ul>
-        </li>
-
-        <li class="nav-item dropdown" data-menu-id="inventarios">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/almacen") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('inventarios')">
-                <i class="material-icons-outlined fs-5">warehouse</i>
-                <span>INV</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/almacen/almacenes", "warehouse", "Almacenes")</li>
-                <li>@Item("/almacen/vehiculos", "local_shipping", "Vehículos")</li>
-                <li>@Item("/reportes/inventario/movimientos", "swap_vert", "Movimientos")</li>
-            </ul>
-        </li>
-
-        <li class="nav-item dropdown" data-menu-id="finanzas">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/finanzas") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('finanzas')">
-                <i class="material-icons-outlined fs-5">attach_money</i>
-                <span>FIN</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/finanzas/cxc", "account_balance_wallet", "Cuentas por Cobrar")</li>
-                <li>@Item("/finanzas/cxp", "money_off", "Cuentas por Pagar")</li>
-                <li>@Item("/finanzas/bancos", "account_balance", "Bancos")</li>
-                <li>@Item("/finanzas/conciliacion", "balance", "Conciliación")</li>
-                <li>@Item("/finanzas/reportes-financieros", "query_stats", "Reportes Financieros")</li>
-                <li>@Item("/facturacion/ventas", "receipt_long", "Facturación de Ventas")</li>
-                <li>@Item("/facturacion/global", "description", "Facturación Global")</li>
-                <li>@Item("/facturacion/cancelaciones", "block", "Cancelaciones")</li>
-            </ul>
-        </li>
-
-        <li class="nav-item dropdown" data-menu-id="reportes">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/reportes") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('reportes')">
-                <i class="material-icons-outlined fs-5">bar_chart</i>
-                <span>REP</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/reportes/ventas", "trending_up", "Ventas")</li>
-                <li>@Item("/reportes/clientes", "people", "Clientes")</li>
-                <li>@Item("/reportes/ruta", "route", "Reportes de Ruta")</li>
-                <li>@Item("/reportes/inventario/movimientos", "inventory", "Movimientos de Almacén")</li>
-                <li>@Item("/reportes/utilidad-margen", "monitoring", "Utilidad y Margen", pronto: true)</li>
-            </ul>
-        </li>
-
-        <li class="nav-item dropdown" data-menu-id="admin">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/seguridad") || Activo("/auditoria") || Activo("/suscripcion") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('admin')">
-                <i class="material-icons-outlined fs-5">admin_panel_settings</i>
-                <span>ADM</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/seguridad/empleados", "badge", "Empleados")</li>
-                <li>@Item("/seguridad/usuarios", "manage_accounts", "Usuarios")</li>
-                <li>@Item("/seguridad/permisos", "fact_check", "Permisos", pronto: true)</li>
-                <li>@Item("/seguridad/roles", "shield", "Roles")</li>
-                <li>@Item("/admin/dispositivos-moviles", "devices", "Dispositivos Móviles")</li>
-                <li>@Item("/seguridad/sesiones", "sensors", "Sesiones", pronto: true)</li>
-                <li>@Item("/admin/auditoria", "history", "Auditoría")</li>
-                <li>@Item("/admin/bitacora-errores", "bug_report", "Bitácora de Errores")</li>
-                <li>@Item("/suscripcion", "workspace_premium", "Suscripción")</li>
-            </ul>
-        </li>
-
-        <li class="nav-item dropdown" data-menu-id="config">
-            <a class="nav-link d-flex align-items-center gap-1 @(Activo("/config") ? "active" : "")"
-               href="javascript:;" onclick="NavMenu.toggle('config')">
-                <i class="material-icons-outlined fs-5">settings</i>
-                <span>CONF</span>
-                <i class="material-icons-outlined fs-6 ms-1">expand_more</i>
-            </a>
-            <ul class="dropdown-menu">
-                <li>@Item("/config/datos-empresa", "domain", "Datos de Empresa")</li>
-                <li>@Item("/config/parametros-generales", "tune", "Parámetros Generales")</li>
-                <li>@Item("/config/parametros-venta", "point_of_sale", "Parámetros de Venta")</li>
-                <li>@Item("/config/parametros-ruta", "route", "Parámetros de Ruta")</li>
-                <li>@Item("/config/parametros-inventario", "inventory", "Parámetros de Inventario")</li>
-                <li>@Item("/config/parametros-credito", "credit_score", "Parámetros de Crédito")</li>
-                <li>@Item("/config/parametros-facturacion", "receipt_long", "Parámetros de Facturación")</li>
-                <li>@Item("/config/reglas-comerciales", "rule", "Reglas Comerciales")</li>
-                <li>@Item("/config/alertas-sistema", "warning", "Alertas del Sistema")</li>
-                <li>@Item("/config/app-movil", "phone_android", "Configuración App Móvil")</li>
-                <li>@Item("/config/app/dispositivos", "phone_android", "Dispositivos App")</li>
-                <li>@Item("/config/pos/dispositivos", "computer", "Dispositivos POS")</li>
-                <li>@Item("/config/audio", "graphic_eq", "Configuración de Audio")</li>
-                <li>@Item("/config/ia", "psychology", "Configuración de IA")</li>
-                <li>@Item("/config/catalogos-generales", "category", "Catálogos Generales")</li>
-            </ul>
-        </li>
-    </text>;
-
-    RenderFragment Item(string href, string icon, string label, bool pronto = false) => @<text>
-        @if (pronto)
-        {
-            <a class="dropdown-item nav-dropdown-item disabled text-muted" href="javascript:;">
-                <i class="material-icons-outlined nav-dropdown-icon">@icon</i>
-                <span class="nav-dropdown-label">@(new MarkupString(label))</span>
-                <span class="badge bg-secondary ms-auto" style="font-size:9px;">Pronto</span>
-            </a>
-        }
-        else
-        {
-            <NavLink class="dropdown-item nav-dropdown-item" ActiveClass="active" href="@href" Match="NavLinkMatch.All">
-                <i class="material-icons-outlined nav-dropdown-icon">@icon</i>
-                <span class="nav-dropdown-label">@(new MarkupString(label))</span>
-            </NavLink>
-        }
-    </text>;
 }
 
 <style>
-    .primary-menu .dropdown-menu {
-        width: max-content;
-        min-width: 240px;
-        max-width: 360px;
+    .primary-menu .dropdown-menu.menu-dynamic {
+        min-width: 640px;
+        max-width: min(860px, calc(100vw - 24px));
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .primary-menu .menu-dynamic-grid {
+        display: grid;
+        grid-template-columns: minmax(220px, 280px) minmax(320px, 1fr);
+        min-height: 280px;
+    }
+
+    .primary-menu .menu-dynamic-list {
+        padding: 8px;
+        border-right: 1px solid var(--bs-border-color);
+        max-height: 68vh;
+        overflow: auto;
+    }
+
+    .primary-menu .menu-dynamic-panel {
+        padding: 12px;
+        min-width: 0;
+        max-height: 68vh;
+        overflow: auto;
+    }
+
+    .primary-menu .menu-panel-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: .86rem;
+        font-weight: 700;
+        padding: 2px 4px 10px;
+        color: var(--bs-heading-color);
+    }
+
+    .primary-menu .menu-level3-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4px;
+    }
+
+    .primary-menu .menu-branch {
+        border: 0;
+        background: transparent;
+        text-align: left;
+    }
+
+    .primary-menu .menu-chevron {
+        font-size: 16px;
+        opacity: .65;
+    }
+
+    .primary-menu .menu-empty {
+        color: var(--bs-secondary);
+        font-size: .82rem;
+        padding: 12px;
+    }
+
+    .primary-menu .menu-leaf-large {
+        max-width: 340px;
+    }
+
+    .primary-menu .menu-level4 {
+        margin-top: 12px;
+        border-top: 1px solid var(--bs-border-color);
+        padding-top: 12px;
+        display: grid;
+        grid-template-columns: 32px minmax(0, 1fr) 32px;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .primary-menu .menu-level4-items {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(64px, 1fr));
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .primary-menu .menu-level4-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 6px;
+        min-width: 0;
+        text-align: center;
+    }
+
+    .primary-menu .menu-level4-item span {
+        display: block;
+        width: 100%;
+        font-size: .72rem;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+    }
+
+    .primary-menu .menu-level4-item small {
+        font-size: .62rem;
+        color: var(--bs-secondary);
+    }
+
+    .primary-menu .menu-level4-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        background: linear-gradient(135deg, #0d6efd, #20c997);
+        text-decoration: none;
+    }
+
+    .primary-menu .menu-level4-icon.active {
+        box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), .18);
+    }
+
+    .primary-menu .menu-level4-icon.disabled {
+        background: var(--bs-secondary);
+        opacity: .55;
+        pointer-events: none;
+    }
+
+    .primary-menu .menu-level4-arrow {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 1px solid var(--bs-border-color);
+        background: var(--bs-body-bg);
+        color: var(--bs-body-color);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .primary-menu .menu-level4-arrow:disabled {
+        opacity: .35;
     }
 
     .primary-menu .nav-dropdown-item {
@@ -314,5 +551,37 @@
 
     .primary-menu .nav-dropdown-label {
         flex: 0 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    @@media (max-width: 1199.98px) {
+        .primary-menu .dropdown-menu.menu-dynamic {
+            min-width: unset;
+            max-width: 100%;
+            width: 100% !important;
+        }
+
+        .primary-menu .menu-dynamic-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .primary-menu .menu-dynamic-list {
+            border-right: 0;
+            border-bottom: 1px solid var(--bs-border-color);
+            max-height: none;
+        }
+
+        .primary-menu .menu-dynamic-panel {
+            max-height: none;
+        }
+
+        .primary-menu .menu-level3-list {
+            grid-template-columns: 1fr;
+        }
+
+        .primary-menu .menu-level4-items {
+            grid-template-columns: repeat(3, minmax(64px, 1fr));
+        }
     }
 </style>

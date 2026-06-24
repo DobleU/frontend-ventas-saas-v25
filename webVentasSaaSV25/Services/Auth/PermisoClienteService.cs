@@ -46,6 +46,9 @@ public sealed class PermisoClienteService
     /// <param name="modulo">Código del módulo. Ej: "inventario"</param>
     public bool TieneAlgunoEn(string modulo)
     {
+        if (_permisos.TryGetValue(modulo, out var directo) && directo)
+            return true;
+
         var prefijo = $"{modulo}:";
         return _permisos.Any(p =>
             p.Key.StartsWith(prefijo, StringComparison.OrdinalIgnoreCase) && p.Value);
