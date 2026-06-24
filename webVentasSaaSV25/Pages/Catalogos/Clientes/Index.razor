@@ -15,7 +15,7 @@
           OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo"
           OnExportar="Exportar"
           AccionesExtra="AccionesCliente"
-          SearchPlaceholder="Sucursal, dirección, colonia, referencia">
+          SearchPlaceholder="Sucursal, dirección, colonia">
 
     <FiltrosExtra>
         <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -43,7 +43,6 @@
         <th style="min-width:260px">Sucursal / Cliente</th>
         <th style="min-width:260px">Dirección</th>
         <th style="width:160px">Colonia</th>
-        <th style="min-width:320px">Referencias / Cómo llegar</th>
         <th style="width:130px">Teléfono</th>
         <th style="width:130px" class="text-center">Crédito</th>
         <th style="width:110px" class="text-center">Estado</th>
@@ -64,7 +63,6 @@
         </td>
         <td class="text-muted small text-wrap">@(context.Direccion1 ?? "—")</td>
         <td class="text-muted small text-wrap">@(context.Colonia ?? "—")</td>
-        <td class="text-muted small text-wrap">@ReferenciaDireccion(context)</td>
         <td class="text-muted small">@(context.Telefono1 ?? "—")</td>
         <td class="text-center">
             @if (context.TieneCredito)
@@ -623,14 +621,13 @@
     {
         var clientes = await ObtenerClientesReporte();
         var csv = new StringBuilder();
-        csv.AppendLine("Sucursal / Cliente,Direccion,Colonia,Referencias / Como llegar,Telefono,Ruta,Dia,Credito,Estado");
+        csv.AppendLine("Sucursal / Cliente,Direccion,Colonia,Telefono,Ruta,Dia,Credito,Estado");
         foreach (var c in clientes)
         {
             csv.AppendLine(string.Join(",",
                 Csv(SucursalCliente(c)),
                 Csv(c.Direccion1),
                 Csv(c.Colonia),
-                Csv(ReferenciaDireccion(c)),
                 Csv(c.Telefono1),
                 Csv(c.NombreRuta),
                 Csv(NombreDia(c.DiaSemana)),
@@ -674,7 +671,7 @@
         html.Append(" | Registros: ");
         html.Append(clientes.Count);
         html.Append("</div>");
-        html.Append("<table><thead><tr><th>Sucursal / Cliente</th><th>Dirección</th><th>Colonia</th><th>Referencias / Cómo llegar</th><th>Teléfono</th></tr></thead><tbody>");
+        html.Append("<table><thead><tr><th>Sucursal / Cliente</th><th>Dirección</th><th>Colonia</th><th>Teléfono</th></tr></thead><tbody>");
         foreach (var c in clientes)
         {
             html.Append("<tr>");
@@ -689,8 +686,6 @@
             html.Append(H(c.Direccion1));
             html.Append("</td><td>");
             html.Append(H(c.Colonia));
-            html.Append("</td><td class=\"wrap\">");
-            html.Append(H(ReferenciaDireccion(c)));
             html.Append("</td><td>");
             html.Append(H(c.Telefono1));
             html.Append("</td>");
@@ -748,15 +743,6 @@
     {
         var sucursal = string.IsNullOrWhiteSpace(c.NombreSucursal) ? c.NombreCompleto : c.NombreSucursal.Trim();
         return $"{sucursal} ({c.NombreCompleto})";
-    }
-
-    static string ReferenciaDireccion(ClienteResponse c)
-    {
-        var partes = new[] { c.Referencias, c.Direccion1, c.Colonia }
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => x!.Trim());
-        var texto = string.Join(" | ", partes);
-        return string.IsNullOrWhiteSpace(texto) ? "—" : texto;
     }
 
     static string NombreDia(int? dia) => dia switch
