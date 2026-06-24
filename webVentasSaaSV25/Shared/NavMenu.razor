@@ -304,21 +304,34 @@
 
     private void AsegurarSeleccionNivel2(MenuNodo raiz)
     {
-        if (!_nivel2Activo.ContainsKey(raiz.IdModulo) && raiz.Hijos.Count > 0)
-            _nivel2Activo[raiz.IdModulo] = raiz.Hijos[0].IdModulo;
+        if (raiz.Hijos.Count == 0)
+            return;
 
-        var nivel2 = Nivel2Seleccionado(raiz);
+        if (!_nivel2Activo.TryGetValue(raiz.IdModulo, out var id) ||
+            raiz.Hijos.All(x => x.IdModulo != id))
+        {
+            id = raiz.Hijos[0].IdModulo;
+            _nivel2Activo[raiz.IdModulo] = id;
+        }
+
+        var nivel2 = raiz.Hijos.FirstOrDefault(x => x.IdModulo == id);
         if (nivel2 is not null)
             AsegurarSeleccionNivel3(nivel2);
     }
 
     private void AsegurarSeleccionNivel3(MenuNodo nivel2)
     {
-        if (nivel2.Hijos.Count == 0 || _nivel3Activo.ContainsKey(nivel2.IdModulo))
+        if (nivel2.Hijos.Count == 0)
             return;
 
-        var primeraRama = nivel2.Hijos.FirstOrDefault(x => x.TieneHijos) ?? nivel2.Hijos[0];
-        _nivel3Activo[nivel2.IdModulo] = primeraRama.IdModulo;
+        if (_nivel3Activo.TryGetValue(nivel2.IdModulo, out var id) &&
+            nivel2.Hijos.Any(x => x.IdModulo == id))
+        {
+            return;
+        }
+
+        var seleccion = nivel2.Hijos.FirstOrDefault(x => x.TieneHijos) ?? nivel2.Hijos[0];
+        _nivel3Activo[nivel2.IdModulo] = seleccion.IdModulo;
     }
 
     private MenuNodo? Nivel2Seleccionado(MenuNodo raiz)
