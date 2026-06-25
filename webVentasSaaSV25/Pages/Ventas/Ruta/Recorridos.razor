@@ -84,7 +84,7 @@
                         <span class="material-icons-outlined">warning</span>
                         <div>
                             <strong>No existen recorridos activos</strong>
-                            <span>Para la fecha y ruta seleccionadas sólo se encontraron recorridos concluidos.</span>
+                            <span>Para la fecha y ruta seleccionadas solo se encontraron recorridos concluidos.</span>
                         </div>
                     </div>
                 }
@@ -100,7 +100,7 @@
                             <div class="route-row-main">
                                 <div>
                                     <strong>@r.Ruta</strong>
-                                    <span>@r.FechaRecorrido.ToString("dd/MM/yyyy") · @(r.Vendedor ?? "Sin vendedor")</span>
+                                    <span>@r.FechaRecorrido.ToString("dd/MM/yyyy") - @(r.Vendedor ?? "Sin vendedor")</span>
                                 </div>
                                 <span class="@EstatusClass(r)">@EstatusTexto(r)</span>
                             </div>
@@ -170,6 +170,7 @@
     private const int EstatusConcluido = 52;
 
     [SupplyParameterFromQuery(Name = "ruta")] public int? QueryRouteId { get; set; }
+    [SupplyParameterFromQuery(Name = "estatus")] public int? QueryEstatus { get; set; }
 
     private readonly CultureInfo _mx = CultureInfo.GetCultureInfo("es-MX");
     private readonly Dictionary<long, ReporteVisitasResponse> _visitasCache = [];
@@ -184,6 +185,8 @@
     private bool _loadingVisits;
     private bool _filteringSearch;
     private bool _exportando;
+    private bool _inicializado;
+    private int? _estatusQueryAplicado;
     private int _idRuta;
     private int _estatus = EstatusActivo;
     private DateTime _fechaInicio = DateTime.Today;
@@ -204,7 +207,7 @@
 
     private string DetalleSubtitulo => _selected is null
         ? "Sin recorrido seleccionado"
-        : $"{_selected.FechaRecorrido:dd/MM/yyyy} · {(_selected.Vendedor ?? "Sin vendedor")}";
+        : $"{_selected.FechaRecorrido:dd/MM/yyyy} - {(_selected.Vendedor ?? "Sin vendedor")}";
 
     private bool MostrarAvisoSinActivos => !_loading
         && _estatus == EstatusActivo
@@ -216,7 +219,31 @@
         var (rutas, error) = await MapaSvc.GetRutasAsync();
         if (error is null && rutas is not null) _rutas = rutas.ToList();
         if (QueryRouteId is > 0) _idRuta = QueryRouteId.Value;
+        AplicarEstatusDesdeQuery();
         await Cargar();
+        _inicializado = true;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!_inicializado)
+            return;
+
+        var estatus = EstatusDesdeQuery();
+        if (_estatusQueryAplicado == estatus)
+            return;
+
+        _estatus = estatus;
+        _estatusQueryAplicado = estatus;
+        await AplicarBusquedaSucursalAsync();
+        var actualSigueVisible = _selected is not null && RecorridosVisibles.Any(x => x.IdRecorrido == _selected.IdRecorrido);
+        if (!actualSigueVisible)
+        {
+            _selected = null;
+            _visitasData = new();
+            var primero = RecorridosVisibles.FirstOrDefault();
+            if (primero is not null) await SeleccionarRecorrido(primero);
+        }
     }
 
     private async Task Cargar()
@@ -251,6 +278,7 @@
     private async Task CambiarEstatus(int estatus)
     {
         _estatus = estatus;
+        _estatusQueryAplicado = estatus;
         await AplicarBusquedaSucursalAsync();
         var actualSigueVisible = _selected is not null && RecorridosVisibles.Any(x => x.IdRecorrido == _selected.IdRecorrido);
         if (!actualSigueVisible)
@@ -334,6 +362,20 @@
 
     private int ContarPorEstatus(int estatus)
         => _items.Count(r => CoincideEstatus(r, estatus));
+
+    private void AplicarEstatusDesdeQuery()
+    {
+        _estatus = EstatusDesdeQuery();
+        _estatusQueryAplicado = _estatus;
+    }
+
+    private int EstatusDesdeQuery()
+        => QueryEstatus switch
+        {
+            EstatusConcluido => EstatusConcluido,
+            0 => 0,
+            _ => EstatusActivo
+        };
 
     private async Task Exportar()
     {

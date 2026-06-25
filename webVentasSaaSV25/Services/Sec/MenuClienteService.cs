@@ -19,6 +19,9 @@ public sealed class MenuClienteService(ApiClient api, AppState estado)
         ["POS.TICKETS"] = "/pos/tickets",
 
         ["ROUTE.RECORRIDOS"] = "/ventas/ruta/recorridos",
+        ["ROUTE.RECORRIDOS.RECORRIDOS_ACTIVOS"] = "/ventas/ruta/recorridos?estatus=51",
+        ["ROUTE.RECORRIDOS.RECORRIDOS_CERRADOS"] = "/ventas/ruta/recorridos?estatus=52",
+        ["ROUTE.RECORRIDOS.RECORRIDOS_CONCLUIDOS"] = "/ventas/ruta/recorridos?estatus=52",
         ["ROUTE.VISITAS"] = "/ventas/ruta/visitas",
         ["ROUTE.EVENTOS"] = "/ventas/ruta/eventos",
         ["ROUTE.CLIENTES_RUTA"] = "/route/clientes-ruta",
