@@ -14,7 +14,7 @@
         <div>
             <span class="route-kicker"><span class="material-icons-outlined">directions_car</span> ROUTE</span>
             <h3>Recorridos</h3>
-            <p>Consulta recorridos activos o concluidos y revisa las visitas asociadas.</p>
+            <p>Consulta recorridos activos o concluidos y revisa la informacion de cierre disponible.</p>
         </div>
         <button class="btn btn-outline-primary" disabled="@(!RecorridosVisibles.Any() || _exportando)" @onclick="Exportar">
             <span class="material-icons-outlined fs-6">download</span>
@@ -131,10 +131,10 @@
         <div class="visits-panel">
             <div class="visits-head">
                 <div>
-                    <strong>@(_selected is null ? "Visitas del recorrido" : _selected.Ruta)</strong>
+                    <strong>@(_selected is null ? "Cierre del recorrido" : _selected.Ruta)</strong>
                     <span>@DetalleSubtitulo</span>
                 </div>
-                <span class="visit-count">@VisitasSeleccionadas.Count</span>
+                <span class="visit-count">@ConteoDetalle</span>
             </div>
 
             <div class="visit-kpis">
@@ -146,32 +146,65 @@
                 @Kpi("Cancelaciones", KpiMontoCancelaciones.ToString("C2", _mx), "money_off")
             </div>
 
-            <div class="visit-list">
-                @if (_loadingVisits)
+            <div class="close-summary">
+                @if (_loadingCierre)
                 {
-                    <div class="empty-state">Cargando visitas...</div>
+                    <div class="empty-state">Cargando cierre...</div>
                 }
                 else if (_selected is null)
                 {
-                    <div class="empty-state">Selecciona un recorrido para ver sus visitas.</div>
-                }
-                else if (!VisitasSeleccionadas.Any())
-                {
-                    <div class="empty-state">Este recorrido no tiene visitas para mostrar.</div>
+                    <div class="empty-state">Selecciona un recorrido para ver su cierre.</div>
                 }
                 else
                 {
-                    @for (var i = 0; i < VisitasSeleccionadas.Count; i++)
+                    <div class="close-card">
+                        <h6>Resumen de cierre</h6>
+                        <pre>@TextoOPlaceholder(_cierreData.TxtResumenCierre)</pre>
+                    </div>
+                    <div class="close-card">
+                        <h6>Ventas cierre</h6>
+                        <pre>@TextoOPlaceholder(_cierreData.TxtVentasCierre)</pre>
+                    </div>
+                    <div class="close-card">
+                        <h6>Inventario inicio</h6>
+                        <pre>@TextoOPlaceholder(_cierreData.TxtInventarioInicio)</pre>
+                    </div>
+                    <div class="close-card">
+                        <h6>Inventario cierre</h6>
+                        <pre>@TextoOPlaceholder(_cierreData.TxtInventarioCierre)</pre>
+                    </div>
+                    <div class="close-card">
+                        <h6>Recargas en ruta</h6>
+                        <pre>@TextoOPlaceholder(_cierreData.TxtRecargas)</pre>
+                    </div>
+                    @if (_cierreData.DetalleMovimientos.Any())
                     {
-                        var v = VisitasSeleccionadas[i];
-                        <div class="visit-item">
-                            <span class="visit-order">@(i + 1)</span>
-                            <div class="visit-body">
-                                <strong>@(v.Sucursal ?? v.Cliente)</strong>
-                                <span>@(string.IsNullOrWhiteSpace(v.Direccion) ? v.Cliente : v.Direccion)</span>
-                                <small class="@TrasladoClass(v)">@TrasladoTexto(v)</small>
+                        <div class="close-card">
+                            <h6>Movimientos</h6>
+                            <div class="close-table">
+                                @foreach (var m in _cierreData.DetalleMovimientos)
+                                {
+                                    <div>
+                                        <span>@m.TipoDescripcion</span>
+                                        <strong>@m.MontoTotal.ToString("C2", _mx)</strong>
+                                    </div>
+                                }
                             </div>
-                            <span class="@VisitDotClass(v)" title="@v.Estatus"></span>
+                        </div>
+                    }
+                    @if (_cierreData.ProductosVendidos.Any())
+                    {
+                        <div class="close-card">
+                            <h6>Productos vendidos</h6>
+                            <div class="close-table">
+                                @foreach (var p in _cierreData.ProductosVendidos.Take(12))
+                                {
+                                    <div>
+                                        <span>@(p.NombreProducto ?? p.Sku ?? $"Producto {p.IdProducto}")</span>
+                                        <strong>@p.Total.ToString("C2", _mx)</strong>
+                                    </div>
+                                }
+                            </div>
                         </div>
                     }
                 }
@@ -189,15 +222,17 @@
 
     private readonly CultureInfo _mx = CultureInfo.GetCultureInfo("es-MX");
     private readonly Dictionary<long, ReporteVisitasResponse> _visitasCache = [];
+    private readonly Dictionary<long, RecorridoCierreCompletoResponse> _cierreCache = [];
     private readonly HashSet<long> _recorridosConSucursal = [];
     private AlertMessage? _alerta;
     private List<MapaRutaOptionResponse> _rutas = [];
     private ReporteRecorridosResponse _data = new();
     private ReporteVisitasResponse _visitasData = new();
+    private RecorridoCierreCompletoResponse _cierreData = new();
     private IReadOnlyList<ReporteRecorridoRowResponse> _items => _data.Recorridos;
     private ReporteRecorridoRowResponse? _selected;
     private bool _loading;
-    private bool _loadingVisits;
+    private bool _loadingCierre;
     private bool _filteringSearch;
     private bool _exportando;
     private bool _inicializado;
@@ -226,17 +261,20 @@
     private int KpiProgramadas => _selected?.VisitasProgramadas > 0
         ? _selected.VisitasProgramadas
         : _visitasData.Kpi.VisitasProgramadas;
-    private int KpiRealizadas => _visitasData.Kpi.TotalVisitas > 0
-        ? _visitasData.Kpi.TotalVisitas
-        : _selected?.VisitasRealizadas ?? 0;
-    private int KpiConVenta => _visitasData.Kpi.VisitasConVenta > 0
-        ? _visitasData.Kpi.VisitasConVenta
-        : VisitasSeleccionadas.Count(x => x.Ventas > 0 || x.MontoVentas > 0);
+    private int KpiRealizadas => _cierreData.TotalVisitas > 0
+        ? _cierreData.TotalVisitas
+        : (_visitasData.Kpi.TotalVisitas > 0 ? _visitasData.Kpi.TotalVisitas : _selected?.VisitasRealizadas ?? 0);
+    private int KpiConVenta => _cierreData.VisitasConVenta > 0
+        ? _cierreData.VisitasConVenta
+        : (_visitasData.Kpi.VisitasConVenta > 0 ? _visitasData.Kpi.VisitasConVenta : VisitasSeleccionadas.Count(x => x.Ventas > 0 || x.MontoVentas > 0));
     private int KpiSinVenta => Math.Max(KpiRealizadas - KpiConVenta, 0);
-    private decimal KpiMontoVentas => _visitasData.Kpi.MontoVentas != 0
-        ? _visitasData.Kpi.MontoVentas
-        : _selected?.MontoVentas ?? 0m;
-    private decimal KpiMontoCancelaciones => _selected?.MontoCancelaciones ?? 0m;
+    private decimal KpiMontoVentas => _cierreData.TotalVentas != 0
+        ? _cierreData.TotalVentas
+        : (_visitasData.Kpi.MontoVentas != 0 ? _visitasData.Kpi.MontoVentas : _selected?.MontoVentas ?? 0m);
+    private decimal KpiMontoCancelaciones => _cierreData.TotalCancelaciones != 0
+        ? _cierreData.TotalCancelaciones
+        : _selected?.MontoCancelaciones ?? 0m;
+    private int ConteoDetalle => _cierreData.TotalVisitas > 0 ? _cierreData.TotalVisitas : (_selected?.VisitasRealizadas ?? 0);
 
     private bool MostrarAvisoSinActivos => !_loading
         && _estatus == EstatusActivo
@@ -270,6 +308,7 @@
         {
             _selected = null;
             _visitasData = new();
+            _cierreData = new();
             var primero = RecorridosVisibles.FirstOrDefault();
             if (primero is not null) await SeleccionarRecorrido(primero);
         }
@@ -286,7 +325,9 @@
         _loading = true;
         _selected = null;
         _visitasData = new();
+        _cierreData = new();
         _visitasCache.Clear();
+        _cierreCache.Clear();
         _recorridosConSucursal.Clear();
 
         var (data, error) = await MapaSvc.GetReporteRecorridosAsync(_idRuta > 0 ? _idRuta : null, _fechaInicio, _fechaFin, 50000);
@@ -314,6 +355,7 @@
         {
             _selected = null;
             _visitasData = new();
+            _cierreData = new();
             var primero = RecorridosVisibles.FirstOrDefault();
             if (primero is not null) await SeleccionarRecorrido(primero);
         }
@@ -322,11 +364,28 @@
     private async Task SeleccionarRecorrido(ReporteRecorridoRowResponse recorrido)
     {
         _selected = recorrido;
-        _loadingVisits = true;
+        _loadingCierre = true;
 
-        var visitas = await ObtenerVisitasAsync(recorrido);
-        _visitasData = visitas ?? new();
-        _loadingVisits = false;
+        var cierre = await ObtenerCierreAsync(recorrido);
+        _cierreData = cierre ?? new();
+        _loadingCierre = false;
+    }
+
+    private async Task<RecorridoCierreCompletoResponse?> ObtenerCierreAsync(ReporteRecorridoRowResponse recorrido)
+    {
+        if (_cierreCache.TryGetValue(recorrido.IdRecorrido, out var cached))
+            return cached;
+
+        var (data, error) = await MapaSvc.GetRecorridoCierreCompletoAsync(recorrido.IdRecorrido);
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return null;
+        }
+
+        var cierre = data ?? new();
+        _cierreCache[recorrido.IdRecorrido] = cierre;
+        return cierre;
     }
 
     private async Task AplicarBusquedaSucursalAsync()
@@ -517,6 +576,7 @@
     }
 
     private static string Csv(string? value) => string.Concat("\"", (value ?? string.Empty).Replace("\"", "\"\""), "\"");
+    private static string TextoOPlaceholder(string? value) => string.IsNullOrWhiteSpace(value) ? "Sin dato" : value.Trim();
 
     private RenderFragment Kpi(string titulo, string valor, string icono) => @<div class="visit-kpi">
         <span class="material-icons-outlined">@icono</span>
@@ -572,6 +632,14 @@
     .visit-kpi small { display: block; color: #667085; }
     .visit-kpi strong { color: #12263a; }
     .visit-list { max-height: 58vh; overflow: auto; }
+    .close-summary { max-height: 58vh; overflow: auto; padding: .75rem; display: grid; gap: .75rem; background: #fbfdff; }
+    .close-card h6 { margin: 0 0 .45rem; color: #172b4d; font-weight: 800; }
+    .close-card pre { margin: 0; padding: .75rem; min-height: 48px; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; color: #111827; font-size: .84rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .close-table { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #fff; }
+    .close-table div { display: flex; justify-content: space-between; gap: .75rem; padding: .55rem .7rem; border-bottom: 1px solid #edf2f7; }
+    .close-table div:last-child { border-bottom: 0; }
+    .close-table span { color: #475569; overflow-wrap: anywhere; }
+    .close-table strong { color: #172b4d; white-space: nowrap; }
     .visit-item { display: grid; grid-template-columns: 36px 1fr 16px; gap: .65rem; align-items: center; padding: .75rem 1rem; border-bottom: 1px solid #edf2f7; }
     .visit-item:nth-child(odd) { background: #f8fbff; }
     .visit-order { width: 30px; height: 30px; border-radius: 50%; background: #eef2f7; display: inline-flex; align-items: center; justify-content: center; color: #475569; font-weight: 800; font-size: .85rem; }
@@ -596,5 +664,6 @@
         .route-filterbar { grid-template-columns: 1fr; }
         .route-list { max-height: none; }
         .visit-list { max-height: none; }
+        .close-summary { max-height: none; }
     }
 </style>
