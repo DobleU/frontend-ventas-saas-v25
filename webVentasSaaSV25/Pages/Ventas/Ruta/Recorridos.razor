@@ -9,131 +9,192 @@
 <Breadcrumb Titulo="Recorridos" Items="@(new[] { ("Ventas", "/ventas"), ("Ruta", ""), ("Recorridos", "") })" />
 <AlertMessage @ref="_alerta" />
 
-<section class="report-shell">
-    <div class="report-header">
+<section class="route-page">
+    <div class="route-titlebar">
         <div>
-            <span class="report-kicker"><span class="material-icons-outlined">directions_car</span> Operacion de ruta</span>
+            <span class="route-kicker"><span class="material-icons-outlined">directions_car</span> ROUTE</span>
             <h3>Recorridos</h3>
-            <p>Consulta cierre, efectividad, ventas y cancelaciones por recorrido.</p>
+            <p>Consulta recorridos activos o concluidos y revisa las visitas asociadas.</p>
         </div>
-        <button class="btn btn-outline-primary" disabled="@(!_items.Any())" @onclick="Exportar">
+        <button class="btn btn-outline-primary" disabled="@(!RecorridosVisibles.Any() || _exportando)" @onclick="Exportar">
             <span class="material-icons-outlined fs-6">download</span>
             Exportar
         </button>
     </div>
 
-    <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body">
-            <div class="row g-3 align-items-end">
-                <div class="col-12 col-md-3">
-                    <label class="form-label">Ruta</label>
-                    <select class="form-select" @bind="_idRuta">
-                        <option value="0">Todas</option>
-                        @foreach (var r in _rutas)
-                        {
-                            <option value="@r.IdRuta">@r.Nombre</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-6 col-md-3">
-                    <label class="form-label">Desde</label>
-                    <input class="form-control" type="date" @bind="_fechaInicio" />
-                </div>
-                <div class="col-6 col-md-3">
-                    <label class="form-label">Hasta</label>
-                    <input class="form-control" type="date" @bind="_fechaFin" />
-                </div>
-                <div class="col-12 col-md-3">
-                    <button class="btn btn-primary w-100" disabled="@_loading" @onclick="Cargar">
-                        <span class="material-icons-outlined fs-6">search</span>
-                        Consultar
-                    </button>
-                </div>
-            </div>
+    <div class="route-filterbar">
+        <div class="search-box">
+            <span class="material-icons-outlined">search</span>
+            <input class="form-control" placeholder="Sucursal, cliente o direccion" @bind="_searchSucursal" @bind:event="oninput" />
         </div>
+        <select class="form-select route-select" @bind="_idRuta">
+            <option value="0">Todas las rutas</option>
+            @foreach (var r in _rutas)
+            {
+                <option value="@r.IdRuta">@r.Nombre</option>
+            }
+        </select>
+        <input class="form-control route-date" type="date" @bind="_fechaInicio" />
+        <input class="form-control route-date" type="date" @bind="_fechaFin" />
+        <button class="btn btn-primary route-action" disabled="@_loading" @onclick="Cargar">
+            <span class="material-icons-outlined fs-6">search</span>
+            Buscar
+        </button>
     </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-6 col-xl-3">@Kpi("Recorridos", _data.Kpi.TotalRecorridos.ToString("N0", _mx), "route")</div>
-        <div class="col-6 col-xl-3">@Kpi("Completos", _data.Kpi.RecorridosCompletos.ToString("N0", _mx), "task_alt")</div>
-        <div class="col-6 col-xl-3">@Kpi("Efectividad", $"{_data.Kpi.EfectividadPromedio:N1}%", "speed", EfectividadCss(_data.Kpi.EfectividadPromedio))</div>
-        <div class="col-6 col-xl-3">@Kpi("Ventas", _data.Kpi.MontoVentas.ToString("C2", _mx), "payments")</div>
+    <div class="status-tabs">
+        <button type="button" class="@StatusTabClass(51)" @onclick="() => CambiarEstatus(51)">
+            <span class="material-icons-outlined">play_circle</span>
+            Activos
+            <strong>@ContarPorEstatus(51)</strong>
+        </button>
+        <button type="button" class="@StatusTabClass(52)" @onclick="() => CambiarEstatus(52)">
+            <span class="material-icons-outlined">task_alt</span>
+            Concluidos
+            <strong>@ContarPorEstatus(52)</strong>
+        </button>
+        <button type="button" class="@StatusTabClass(0)" @onclick="() => CambiarEstatus(0)">
+            <span class="material-icons-outlined">list_alt</span>
+            Todos
+            <strong>@_items.Count</strong>
+        </button>
     </div>
 
-    @if (_data.ProgramacionDias.Any())
-    {
-        <div class="card border-0 shadow-sm mb-3">
-            <div class="card-body py-3">
-                <div class="d-flex flex-wrap gap-2">
-                    @foreach (var d in _data.ProgramacionDias)
-                    {
-                        <span class="day-pill">@d.DiaNombre: <strong>@d.TotalProgramado</strong></span>
-                    }
+    <div class="route-workspace">
+        <div class="route-list-panel">
+            <div class="panel-head">
+                <div>
+                    <strong>Lista de recorridos</strong>
+                    <span>@RecorridosVisibles.Count() resultado(s)</span>
                 </div>
+                @if (_loading || _filteringSearch)
+                {
+                    <span class="loading-pill">Cargando</span>
+                }
+            </div>
+
+            <div class="route-list">
+                @if (_loading)
+                {
+                    <div class="empty-state">Cargando recorridos...</div>
+                }
+                else if (!RecorridosVisibles.Any())
+                {
+                    <div class="empty-state">Sin recorridos para el filtro.</div>
+                }
+                else
+                {
+                    @foreach (var r in RecorridosVisibles)
+                    {
+                        <button type="button" class="@RecorridoClass(r)" @onclick="() => SeleccionarRecorrido(r)">
+                            <div class="route-row-main">
+                                <div>
+                                    <strong>@r.Ruta</strong>
+                                    <span>@r.FechaRecorrido.ToString("dd/MM/yyyy") · @(r.Vendedor ?? "Sin vendedor")</span>
+                                </div>
+                                <span class="@EstatusClass(r)">@EstatusTexto(r)</span>
+                            </div>
+                            <div class="route-row-metrics">
+                                <span><b>@r.VisitasRealizadas</b>/@r.VisitasProgramadas visitas</span>
+                                <span>@r.Efectividad.ToString("N1", _mx)%</span>
+                                <span>@r.MontoVentas.ToString("C2", _mx)</span>
+                            </div>
+                        </button>
+                    }
+                }
             </div>
         </div>
-    }
 
-    <div class="card border-0 shadow-sm">
-        <div class="table-responsive">
-            <table class="table align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Ruta</th>
-                        <th>Fecha</th>
-                        <th>Vendedor</th>
-                        <th>Estatus</th>
-                        <th class="text-end">Visitas</th>
-                        <th class="text-end">Efectividad</th>
-                        <th class="text-end">Ventas</th>
-                        <th class="text-end">Cancelaciones</th>
-                        <th class="text-end">Pausa</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (_loading)
+        <div class="visits-panel">
+            <div class="visits-head">
+                <div>
+                    <strong>@(_selected is null ? "Visitas del recorrido" : _selected.Ruta)</strong>
+                    <span>@DetalleSubtitulo</span>
+                </div>
+                <span class="visit-count">@VisitasSeleccionadas.Count</span>
+            </div>
+
+            <div class="visit-kpis">
+                @Kpi("Programadas", _visitasData.Kpi.VisitasProgramadas.ToString("N0", _mx), "fact_check")
+                @Kpi("Realizadas", _visitasData.Kpi.TotalVisitas.ToString("N0", _mx), "where_to_vote")
+                @Kpi("Con venta", _visitasData.Kpi.VisitasConVenta.ToString("N0", _mx), "shopping_cart")
+                @Kpi("Ventas", _visitasData.Kpi.MontoVentas.ToString("C2", _mx), "payments")
+            </div>
+
+            <div class="visit-list">
+                @if (_loadingVisits)
+                {
+                    <div class="empty-state">Cargando visitas...</div>
+                }
+                else if (_selected is null)
+                {
+                    <div class="empty-state">Selecciona un recorrido para ver sus visitas.</div>
+                }
+                else if (!VisitasSeleccionadas.Any())
+                {
+                    <div class="empty-state">Este recorrido no tiene visitas para mostrar.</div>
+                }
+                else
+                {
+                    @for (var i = 0; i < VisitasSeleccionadas.Count; i++)
                     {
-                        <tr><td colspan="9" class="text-center py-4 text-secondary">Cargando...</td></tr>
+                        var v = VisitasSeleccionadas[i];
+                        <div class="visit-item">
+                            <span class="visit-order">@(i + 1)</span>
+                            <div class="visit-body">
+                                <strong>@(v.Sucursal ?? v.Cliente)</strong>
+                                <span>@(string.IsNullOrWhiteSpace(v.Direccion) ? v.Cliente : v.Direccion)</span>
+                                <small class="@TrasladoClass(v)">@TrasladoTexto(v)</small>
+                            </div>
+                            <span class="@VisitDotClass(v)" title="@v.Estatus"></span>
+                        </div>
                     }
-                    else if (!_items.Any())
-                    {
-                        <tr><td colspan="9" class="text-center py-4 text-secondary">Sin recorridos para el filtro.</td></tr>
-                    }
-                    else
-                    {
-                        @foreach (var r in _items)
-                        {
-                            <tr>
-                                <td class="fw-semibold">@r.Ruta</td>
-                                <td>@r.FechaRecorrido.ToString("dd/MM/yyyy")</td>
-                                <td>@r.Vendedor</td>
-                                <td><span class="badge bg-light text-dark">@r.Estatus</span></td>
-                                <td class="text-end">@r.VisitasRealizadas / @r.VisitasProgramadas</td>
-                                <td class="text-end"><span class="@EfectividadBadge(r.Efectividad)">@r.Efectividad.ToString("N1", _mx)%</span></td>
-                                <td class="text-end">@r.MontoVentas.ToString("C2", _mx)</td>
-                                <td class="text-end">@r.MontoCancelaciones.ToString("C2", _mx)</td>
-                                <td class="text-end">@r.MinutosPausa min</td>
-                            </tr>
-                        }
-                    }
-                </tbody>
-            </table>
+                }
+            </div>
         </div>
     </div>
 </section>
 
 @code {
+    private const int EstatusActivo = 51;
+    private const int EstatusConcluido = 52;
+
     [SupplyParameterFromQuery(Name = "ruta")] public int? QueryRouteId { get; set; }
 
     private readonly CultureInfo _mx = CultureInfo.GetCultureInfo("es-MX");
+    private readonly Dictionary<long, ReporteVisitasResponse> _visitasCache = [];
+    private readonly HashSet<long> _recorridosConSucursal = [];
     private AlertMessage? _alerta;
     private List<MapaRutaOptionResponse> _rutas = [];
     private ReporteRecorridosResponse _data = new();
+    private ReporteVisitasResponse _visitasData = new();
     private IReadOnlyList<ReporteRecorridoRowResponse> _items => _data.Recorridos;
+    private ReporteRecorridoRowResponse? _selected;
     private bool _loading;
+    private bool _loadingVisits;
+    private bool _filteringSearch;
+    private bool _exportando;
     private int _idRuta;
-    private DateTime _fechaInicio = DateTime.Today.AddDays(-7);
+    private int _estatus = EstatusActivo;
+    private DateTime _fechaInicio = DateTime.Today;
     private DateTime _fechaFin = DateTime.Today;
+    private string? _searchSucursal;
+
+    private IEnumerable<ReporteRecorridoRowResponse> RecorridosVisibles => _items
+        .Where(x => CoincideEstatus(x))
+        .Where(CoincideBusqueda)
+        .OrderByDescending(x => x.FechaRecorrido)
+        .ThenByDescending(x => x.IdRecorrido);
+
+    private List<ReporteVisitaRowResponse> VisitasSeleccionadas => _visitasData.Visitas
+        .Where(CoincideBusquedaVisita)
+        .OrderBy(x => x.FechaInicioUtc ?? DateTime.MaxValue)
+        .ThenBy(x => x.IdVisita)
+        .ToList();
+
+    private string DetalleSubtitulo => _selected is null
+        ? "Sin recorrido seleccionado"
+        : $"{_selected.FechaRecorrido:dd/MM/yyyy} · {(_selected.Vendedor ?? "Sin vendedor")}";
 
     protected override async Task OnInitializedAsync()
     {
@@ -145,8 +206,19 @@
 
     private async Task Cargar()
     {
+        if (_fechaInicio > _fechaFin)
+        {
+            _alerta?.MostrarAdvertencia("La fecha inicial no puede ser mayor a la fecha final.");
+            return;
+        }
+
         _loading = true;
-        var (data, error) = await MapaSvc.GetReporteRecorridosAsync(_idRuta > 0 ? _idRuta : null, _fechaInicio, _fechaFin);
+        _selected = null;
+        _visitasData = new();
+        _visitasCache.Clear();
+        _recorridosConSucursal.Clear();
+
+        var (data, error) = await MapaSvc.GetReporteRecorridosAsync(_idRuta > 0 ? _idRuta : null, _fechaInicio, _fechaFin, 50000);
         _loading = false;
 
         if (error is not null)
@@ -156,19 +228,113 @@
         }
 
         _data = data ?? new();
+        await AplicarBusquedaSucursalAsync();
+        var primero = RecorridosVisibles.FirstOrDefault();
+        if (primero is not null) await SeleccionarRecorrido(primero);
     }
+
+    private async Task CambiarEstatus(int estatus)
+    {
+        _estatus = estatus;
+        await AplicarBusquedaSucursalAsync();
+        var actualSigueVisible = _selected is not null && RecorridosVisibles.Any(x => x.IdRecorrido == _selected.IdRecorrido);
+        if (!actualSigueVisible)
+        {
+            _selected = null;
+            _visitasData = new();
+            var primero = RecorridosVisibles.FirstOrDefault();
+            if (primero is not null) await SeleccionarRecorrido(primero);
+        }
+    }
+
+    private async Task SeleccionarRecorrido(ReporteRecorridoRowResponse recorrido)
+    {
+        _selected = recorrido;
+        _loadingVisits = true;
+
+        var visitas = await ObtenerVisitasAsync(recorrido);
+        _visitasData = visitas ?? new();
+        _loadingVisits = false;
+    }
+
+    private async Task AplicarBusquedaSucursalAsync()
+    {
+        _recorridosConSucursal.Clear();
+        if (string.IsNullOrWhiteSpace(_searchSucursal))
+            return;
+
+        _filteringSearch = true;
+        foreach (var r in _items.Where(x => CoincideEstatus(x)))
+        {
+            var visitas = await ObtenerVisitasAsync(r);
+            if (visitas is not null && visitas.Visitas.Any(CoincideBusquedaVisita))
+                _recorridosConSucursal.Add(r.IdRecorrido);
+        }
+        _filteringSearch = false;
+    }
+
+    private async Task<ReporteVisitasResponse?> ObtenerVisitasAsync(ReporteRecorridoRowResponse recorrido)
+    {
+        if (_visitasCache.TryGetValue(recorrido.IdRecorrido, out var cached))
+            return cached;
+
+        var (data, error) = await MapaSvc.GetReporteVisitasAsync(recorrido.IdRuta, recorrido.FechaRecorrido.Date, recorrido.IdRecorrido);
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return null;
+        }
+
+        var visitas = data ?? new();
+        _visitasCache[recorrido.IdRecorrido] = visitas;
+        return visitas;
+    }
+
+    private bool CoincideEstatus(ReporteRecorridoRowResponse r)
+    {
+        if (_estatus == 0) return true;
+        if (r.IdEstatus > 0) return r.IdEstatus == _estatus;
+
+        var texto = Normalizar(r.Estatus);
+        return _estatus == EstatusActivo
+            ? texto.Contains("ACTIVO") || texto.Contains("TRANSITO") || texto.Contains("PAUSA")
+            : texto.Contains("CONCLUIDO") || texto.Contains("CERRADO");
+    }
+
+    private bool CoincideBusqueda(ReporteRecorridoRowResponse r)
+    {
+        if (string.IsNullOrWhiteSpace(_searchSucursal)) return true;
+        return Contiene(r.Ruta, _searchSucursal)
+            || Contiene(r.Vendedor, _searchSucursal)
+            || _recorridosConSucursal.Contains(r.IdRecorrido);
+    }
+
+    private bool CoincideBusquedaVisita(ReporteVisitaRowResponse v)
+    {
+        if (string.IsNullOrWhiteSpace(_searchSucursal)) return true;
+        return Contiene(v.Sucursal, _searchSucursal)
+            || Contiene(v.Cliente, _searchSucursal)
+            || Contiene(v.Direccion, _searchSucursal);
+    }
+
+    private int ContarPorEstatus(int estatus)
+        => _items.Count(r => CoincideEstatus(r, estatus));
 
     private async Task Exportar()
     {
+        _exportando = true;
+        var visibles = RecorridosVisibles.ToList();
         var csv = new StringBuilder();
-        csv.AppendLine("Ruta,Fecha,Vendedor,Estatus,VisitasProgramadas,VisitasRealizadas,Efectividad,MontoVentas,MontoEfectivo,MontoCredito,MontoCancelaciones,MinutosRecorrido,MinutosPausa");
-        foreach (var r in _items)
+        csv.AppendLine("SECCION,Ruta,Fecha,Vendedor,Estatus,VisitasProgramadas,VisitasRealizadas,Efectividad,MontoVentas,MontoEfectivo,MontoCredito,MontoCancelaciones,MinutosRecorrido,MinutosPausa,Cliente,Sucursal,Direccion,EstatusVisita,Inicio,Fin,SegundosVisita,MinutosTraslado,TieneQr,Ventas,MontoVisita,Observaciones");
+
+        foreach (var r in visibles)
         {
             csv.AppendLine(string.Join(",",
+                Csv("RECORRIDO"),
                 Csv(r.Ruta),
                 Csv(r.FechaRecorrido.ToString("dd/MM/yyyy")),
                 Csv(r.Vendedor),
-                Csv(r.Estatus),
+                Csv(EstatusTexto(r)),
                 r.VisitasProgramadas,
                 r.VisitasRealizadas,
                 r.Efectividad.ToString(CultureInfo.InvariantCulture),
@@ -177,37 +343,146 @@
                 r.MontoCredito.ToString(CultureInfo.InvariantCulture),
                 r.MontoCancelaciones.ToString(CultureInfo.InvariantCulture),
                 r.MinutosRecorrido,
-                r.MinutosPausa));
+                r.MinutosPausa,
+                "", "", "", "", "", "", "", "", "", "", "", ""));
+
+            var visitas = await ObtenerVisitasAsync(r);
+            foreach (var v in (visitas?.Visitas ?? []).Where(CoincideBusquedaVisita))
+            {
+                csv.AppendLine(string.Join(",",
+                    Csv("VISITA"),
+                    Csv(r.Ruta),
+                    Csv(r.FechaRecorrido.ToString("dd/MM/yyyy")),
+                    Csv(r.Vendedor),
+                    Csv(EstatusTexto(r)),
+                    "", "", "", "", "", "", "", "", "",
+                    Csv(v.Cliente),
+                    Csv(v.Sucursal),
+                    Csv(v.Direccion),
+                    Csv(v.Estatus),
+                    Csv(v.FechaInicioUtc?.ToString("dd/MM/yyyy HH:mm")),
+                    Csv(v.FechaFinUtc?.ToString("dd/MM/yyyy HH:mm")),
+                    v.SegundosVisita,
+                    v.MinutosTraslado?.ToString(CultureInfo.InvariantCulture) ?? "",
+                    v.TieneQr ? "1" : "0",
+                    v.Ventas,
+                    v.MontoVentas.ToString(CultureInfo.InvariantCulture),
+                    Csv(v.Observaciones)));
+            }
         }
 
-        var serialized = System.Text.Json.JsonSerializer.Serialize(csv.ToString());
-        await JS.InvokeVoidAsync("eval",
-            $"const blob=new Blob([{serialized}],{{type:'text/csv;charset=utf-8;'}});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='recorridos-ruta.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);");
+        await JS.InvokeVoidAsync("downloadTextFile", $"recorridos-visitas-{DateTime.Now:yyyyMMdd-HHmm}.csv", csv.ToString(), "text/csv;charset=utf-8;");
+        _exportando = false;
+    }
+
+    private string StatusTabClass(int estatus) => _estatus == estatus ? "status-tab active" : "status-tab";
+    private string RecorridoClass(ReporteRecorridoRowResponse r) => _selected?.IdRecorrido == r.IdRecorrido ? "route-row active" : "route-row";
+    private string EstatusTexto(ReporteRecorridoRowResponse r) => string.IsNullOrWhiteSpace(r.Estatus) ? $"Estatus {r.IdEstatus}" : r.Estatus!;
+    private string EstatusClass(ReporteRecorridoRowResponse r) => CoincideEstatus(r, EstatusActivo) ? "status-badge active" : "status-badge done";
+    private static string TrasladoClass(ReporteVisitaRowResponse v) => v.SegundosTraslado <= 0 ? "text-danger" : "text-success";
+    private static string VisitDotClass(ReporteVisitaRowResponse v) => v.Ventas > 0 ? "visit-dot sale" : "visit-dot";
+    private static string TrasladoTexto(ReporteVisitaRowResponse v)
+        => v.SegundosTraslado <= 0
+            ? "Traslado sin lectura"
+            : $"Traslado OK · {Math.Max(1, v.SegundosTraslado / 60)} min · {v.SegundosTraslado} seg";
+
+    private static bool CoincideEstatus(ReporteRecorridoRowResponse r, int estatus)
+    {
+        if (estatus == 0) return true;
+        if (r.IdEstatus > 0) return r.IdEstatus == estatus;
+
+        var texto = Normalizar(r.Estatus);
+        return estatus == EstatusActivo
+            ? texto.Contains("ACTIVO") || texto.Contains("TRANSITO") || texto.Contains("PAUSA")
+            : texto.Contains("CONCLUIDO") || texto.Contains("CERRADO");
+    }
+
+    private static bool Contiene(string? value, string? search)
+        => Normalizar(value).Contains(Normalizar(search), StringComparison.Ordinal);
+
+    private static string Normalizar(string? value)
+    {
+        var text = (value ?? string.Empty).Trim().ToUpperInvariant();
+        var normalized = text.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(normalized.Length);
+        foreach (var c in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        }
+        return sb.ToString().Normalize(NormalizationForm.FormC);
     }
 
     private static string Csv(string? value) => string.Concat("\"", (value ?? string.Empty).Replace("\"", "\"\""), "\"");
-    private static string EfectividadCss(decimal value) => value < 75 ? "kpi-danger" : "kpi-ok";
-    private static string EfectividadBadge(decimal value) => value < 75 ? "badge bg-danger" : "badge bg-success";
 
-    private RenderFragment Kpi(string titulo, string valor, string icono, string? css = null) => @<div class="card border-0 shadow-sm h-100 kpi-card @css">
-        <div class="card-body d-flex align-items-center justify-content-between">
-            <div>
-                <div class="text-secondary small">@titulo</div>
-                <div class="fs-5 fw-bold">@valor</div>
-            </div>
-            <span class="material-icons-outlined text-primary">@icono</span>
+    private RenderFragment Kpi(string titulo, string valor, string icono) => @<div class="visit-kpi">
+        <span class="material-icons-outlined">@icono</span>
+        <div>
+            <small>@titulo</small>
+            <strong>@valor</strong>
         </div>
     </div>;
 }
 
 <style>
-    .report-shell { padding-bottom: 2rem; }
-    .report-header { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:1rem; }
-    .report-header h3 { margin:0; font-weight:800; }
-    .report-header p { margin:.25rem 0 0; color:#6c757d; }
-    .report-kicker { display:flex; align-items:center; gap:.35rem; color:#f05a1a; font-weight:700; font-size:.78rem; text-transform:uppercase; }
-    .day-pill { border:1px solid #e5e7eb; border-radius:999px; padding:.35rem .7rem; background:#fff; }
-    .kpi-card.kpi-danger { border-left:4px solid #dc3545 !important; }
-    .kpi-card.kpi-ok { border-left:4px solid #198754 !important; }
-    @@media (max-width: 768px) { .report-header { flex-direction:column; } }
+    .route-page { padding-bottom: 2rem; }
+    .route-titlebar { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+    .route-titlebar h3 { margin: 0; color: #12324a; font-weight: 800; }
+    .route-titlebar p { margin: .25rem 0 0; color: #6b7280; }
+    .route-kicker { display: flex; align-items: center; gap: .4rem; color: #0f7ddf; font-weight: 800; font-size: .78rem; letter-spacing: 0; }
+    .route-filterbar { display: grid; grid-template-columns: minmax(260px, 1fr) 190px 150px 150px 126px; gap: .75rem; align-items: center; margin-bottom: .75rem; }
+    .search-box { position: relative; }
+    .search-box .material-icons-outlined { position: absolute; left: .8rem; top: .55rem; color: #667085; font-size: 1.2rem; }
+    .search-box .form-control { padding-left: 2.35rem; }
+    .status-tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+    .status-tab { border: 1px solid #d9e2ec; background: #fff; color: #44515f; border-radius: 8px; padding: .55rem .8rem; display: inline-flex; align-items: center; gap: .45rem; min-height: 40px; }
+    .status-tab strong { color: #0d6efd; }
+    .status-tab.active { background: #e8f1ff; border-color: #a9caff; color: #0d6efd; font-weight: 700; }
+    .status-tab .material-icons-outlined { font-size: 1.1rem; }
+    .route-workspace { display: grid; grid-template-columns: minmax(520px, 1fr) 360px; gap: 1rem; align-items: start; }
+    .route-list-panel, .visits-panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 3px 12px rgba(15, 23, 42, .06); overflow: hidden; }
+    .panel-head, .visits-head { min-height: 58px; padding: .8rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #edf2f7; background: linear-gradient(90deg, #f7fbff, #eefaf8); }
+    .panel-head div, .visits-head div { display: flex; flex-direction: column; gap: .1rem; }
+    .panel-head strong, .visits-head strong { color: #12324a; }
+    .panel-head span, .visits-head span { color: #667085; font-size: .82rem; }
+    .loading-pill, .visit-count { background: #0d6efd; color: #fff !important; border-radius: 999px; padding: .2rem .55rem; font-weight: 700; }
+    .route-list { max-height: 63vh; overflow: auto; }
+    .route-row { width: 100%; border: 0; border-bottom: 1px solid #edf2f7; background: #fff; padding: .8rem 1rem; text-align: left; display: block; }
+    .route-row:hover, .route-row.active { background: #eef5ff; }
+    .route-row-main { display: flex; justify-content: space-between; gap: .75rem; align-items: flex-start; }
+    .route-row-main div { min-width: 0; display: flex; flex-direction: column; gap: .15rem; }
+    .route-row-main strong { color: #243447; overflow-wrap: anywhere; }
+    .route-row-main span { color: #667085; font-size: .84rem; }
+    .route-row-metrics { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .55rem; color: #4b5563; font-size: .84rem; }
+    .route-row-metrics span { background: #f3f6f9; border-radius: 999px; padding: .2rem .45rem; }
+    .status-badge { border-radius: 999px; padding: .22rem .55rem; font-size: .75rem !important; font-weight: 800; white-space: nowrap; }
+    .status-badge.active { background: #dcfce7; color: #15803d; }
+    .status-badge.done { background: #e0f2fe; color: #075985; }
+    .visit-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: .5rem; padding: .75rem; border-bottom: 1px solid #edf2f7; }
+    .visit-kpi { border: 1px solid #e5e7eb; border-radius: 8px; padding: .55rem; display: flex; align-items: center; gap: .5rem; min-height: 58px; }
+    .visit-kpi .material-icons-outlined { color: #0d6efd; font-size: 1.2rem; }
+    .visit-kpi small { display: block; color: #667085; }
+    .visit-kpi strong { color: #12263a; }
+    .visit-list { max-height: 58vh; overflow: auto; }
+    .visit-item { display: grid; grid-template-columns: 36px 1fr 16px; gap: .65rem; align-items: center; padding: .75rem 1rem; border-bottom: 1px solid #edf2f7; }
+    .visit-item:nth-child(odd) { background: #f8fbff; }
+    .visit-order { width: 30px; height: 30px; border-radius: 50%; background: #eef2f7; display: inline-flex; align-items: center; justify-content: center; color: #475569; font-weight: 800; font-size: .85rem; }
+    .visit-body { min-width: 0; }
+    .visit-body strong { display: block; color: #172b4d; overflow-wrap: anywhere; }
+    .visit-body span { display: block; color: #667085; font-size: .84rem; overflow-wrap: anywhere; }
+    .visit-body small { display: block; font-weight: 800; }
+    .visit-dot { width: 11px; height: 11px; border-radius: 50%; background: #0d6efd; display: inline-block; }
+    .visit-dot.sale { background: #16a34a; }
+    .empty-state { padding: 2rem 1rem; color: #667085; text-align: center; }
+    @@media (max-width: 1180px) {
+        .route-filterbar { grid-template-columns: 1fr 1fr; }
+        .route-action { min-height: 38px; }
+        .route-workspace { grid-template-columns: 1fr; }
+    }
+    @@media (max-width: 720px) {
+        .route-titlebar { flex-direction: column; }
+        .route-filterbar { grid-template-columns: 1fr; }
+        .route-list { max-height: none; }
+        .visit-list { max-height: none; }
+    }
 </style>

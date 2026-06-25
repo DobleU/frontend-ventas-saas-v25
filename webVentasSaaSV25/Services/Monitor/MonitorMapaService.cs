@@ -220,6 +220,7 @@ public sealed class ReporteRecorridoRowResponse
     public DateTime FechaRecorrido { get; init; }
     public DateTime? FechaInicioUtc { get; init; }
     public DateTime? FechaFinUtc { get; init; }
+    public int IdEstatus { get; init; }
     public string? Estatus { get; init; }
     public int VisitasProgramadas { get; init; }
     public int VisitasRealizadas { get; init; }
