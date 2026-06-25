@@ -292,15 +292,19 @@
     }
 
     private RenderFragment VisitasView() => @<div class="visit-list">
-        @if (!VisitasModo.Any())
+        @{
+            var visitas = VisitasModo;
+        }
+        @if (!visitas.Any())
         {
             <div class="empty-state">Sin visitas para el filtro.</div>
         }
         else
         {
-            @for (var i = 0; i < VisitasModo.Count; i++)
+            @for (var i = 0; i < visitas.Count; i++)
             {
-                var visita = VisitasModo[i];
+                var visita = visitas[i];
+                var visitaAnterior = i > 0 ? visitas[i - 1] : null;
                 <div class="visit-row @(EsVentaCancelada(visita) ? "cancelled" : "")">
                     <div class="visit-order">@((i + 1).ToString("N0", _mx))</div>
                     <div class="visit-main">
@@ -314,7 +318,7 @@
                         }
                         <div class="visit-meta">
                             <span>@Hora(visita.FechaInicioUtc) - @Hora(visita.FechaFinUtc)</span>
-                            <span>@TrasladoTexto(visita)</span>
+                            <span>@TrasladoTexto(visita, visitaAnterior)</span>
                             @if (ModoActual == "repetidas")
                             {
                                 <span>@RepetidaTexto(visita)</span>
@@ -486,8 +490,21 @@
 
     private string TabClass(string modo) => ModoActual == modo ? "mode-tab active" : "mode-tab";
     private static string Hora(DateTime? value) => value?.ToString("HH:mm") ?? "-";
-    private static string TrasladoTexto(ReporteVisitaRowResponse v)
-        => v.SegundosTraslado <= 0 ? "Traslado sin lectura" : $"Traslado {v.MinutosTraslado ?? Math.Max(1, v.SegundosTraslado / 60)} min";
+    private static string TrasladoTexto(ReporteVisitaRowResponse actual, ReporteVisitaRowResponse? anterior)
+    {
+        if (anterior is null)
+            return "Primer cliente";
+
+        if (actual.FechaInicioUtc is null || anterior.FechaFinUtc is null)
+            return "Traslado sin horario";
+
+        var segundos = (int)Math.Max(0, (actual.FechaInicioUtc.Value - anterior.FechaFinUtc.Value).TotalSeconds);
+        if (segundos < 60)
+            return $"Traslado {segundos} seg";
+
+        var minutos = Math.Max(1, (int)Math.Round(segundos / 60m));
+        return $"Traslado {minutos} min";
+    }
     private static bool EsVentaCancelada(ReporteVisitaRowResponse v)
         => Contiene(v.Estatus, "cancel") || Contiene(v.MotivoNoVenta, "cancel");
     private static string ResumenProductos(ReporteVisitaRowResponse v)
