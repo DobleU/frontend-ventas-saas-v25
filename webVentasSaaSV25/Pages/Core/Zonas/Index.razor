@@ -1,5 +1,6 @@
 @* Pages/Core/Zonas/Index.razor *@
 @page "/core/zonas"
+@page "/core/zonas/zonas-comerciales"
 @using webVentasSaaSV25.Services.Catalogos
 @inject ZonaService Svc
 @inject AppState Estado
@@ -12,25 +13,18 @@
           Titulo="Zonas" Modulo="configuracion"
           Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
           Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
-          OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo">
+          OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo"
+          OnEditar="AbrirEditar" OnEliminar="Eliminar"
+          MostrarImportar="false" MostrarExportar="false">
     <HeaderRow>
         <th>Nombre</th>
         <th style="width:110px" class="text-center">Estado</th>
         <th style="width:150px" class="text-muted small">Creado</th>
-        <th style="width:90px"  class="text-center">Acciones</th>
     </HeaderRow>
     <RowTemplate>
         <td class="fw-medium">@context.Nombre</td>
         <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
         <td class="text-muted small">@MxTime.Date(context.CreatedUtc)</td>
-        <td class="text-center">
-            <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2" @onclick="()=>AbrirEditar(context)">
-                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
-            </button>
-            <button class="btn btn-sm btn-outline-danger py-1 px-2" @onclick="()=>Eliminar(context)">
-                <i class="material-icons-outlined" style="font-size:15px;">delete</i>
-            </button>
-        </td>
     </RowTemplate>
 </DataGrid>
 

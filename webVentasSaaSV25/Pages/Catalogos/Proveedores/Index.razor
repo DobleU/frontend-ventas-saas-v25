@@ -1,5 +1,6 @@
 @* Pages/Catalogos/Proveedores/Index.razor *@
 @page "/catalogos/proveedores"
+@page "/erp/proveedores/catalogo-de-proveedores"
 @using webVentasSaaSV25.Services.Catalogos
 @inject ProveedorService Svc
 
@@ -11,6 +12,8 @@
           Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
           Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
           OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo"
+          OnEditar="AbrirEditar" OnEliminar="Eliminar"
+          MostrarImportar="false" MostrarExportar="false"
           SearchPlaceholder="Nombre, RFC, código...">
     <HeaderRow>
         <th style="width:110px">Código</th>
@@ -19,7 +22,6 @@
         <th style="width:150px">Correo</th>
         <th style="width:80px"  class="text-center">Crédito</th>
         <th style="width:110px" class="text-center">Estado</th>
-        <th style="width:90px"  class="text-center">Acciones</th>
     </HeaderRow>
     <RowTemplate>
         <td><code class="small">@context.Codigo</code></td>
@@ -28,21 +30,13 @@
         <td class="text-muted small">@(context.Correo ?? "—")</td>
         <td class="text-center text-muted small">@context.DiasCredito d</td>
         <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
-        <td class="text-center">
-            <button class="btn btn-sm btn-outline-primary me-1 py-1 px-2" @onclick="()=>AbrirEditar(context)">
-                <i class="material-icons-outlined" style="font-size:15px;">edit</i>
-            </button>
-            <button class="btn btn-sm btn-outline-danger py-1 px-2" @onclick="()=>Eliminar(context)">
-                <i class="material-icons-outlined" style="font-size:15px;">delete</i>
-            </button>
-        </td>
     </RowTemplate>
 </DataGrid>
 
 <FormOffcanvas @ref="_panel" Titulo="@(_edit?"Editar Proveedor":"Nuevo Proveedor")"
                Icono="@(_edit?"edit":"add_circle")" Ancho="520px" OnGuardar="Guardar">
     <Body>
-        {{!-- Fila: Código + RFC --}}
+        @* Fila: Codigo + RFC *@
         <div class="row g-3 mb-3">
             <div class="col-6">
                 <label class="form-label fw-medium">Código <span class="text-danger">*</span></label>
@@ -56,14 +50,14 @@
                        @bind="_rfc" placeholder="Ej. ABC010101XYZ" />
             </div>
         </div>
-        {{!-- Nombre --}}
+        @* Nombre *@
         <div class="mb-3">
             <label class="form-label fw-medium">Nombre / Razón Social <span class="text-danger">*</span></label>
             <input class="form-control @(_eNombre?"is-invalid":"")" maxlength="200"
                    @bind="_nombre" @oninput="()=>_eNombre=false" placeholder="Ej. Distribuidora ABC S.A. de C.V." />
             @if (_eNombre) { <div class="invalid-feedback">Requerido.</div> }
         </div>
-        {{!-- Contacto --}}
+        @* Contacto *@
         <div class="row g-3 mb-3">
             <div class="col-6">
                 <label class="form-label fw-medium">Teléfono</label>
@@ -74,15 +68,69 @@
                 <input type="email" class="form-control" maxlength="150" @bind="_correo" placeholder="contacto@prov.com" />
             </div>
         </div>
-        {{!-- Dirección --}}
+        @* Direccion *@
         <div class="mb-3">
             <label class="form-label fw-medium">Dirección</label>
             <input class="form-control" maxlength="300" @bind="_direccion1" placeholder="Calle, número, colonia..." />
         </div>
-        {{!-- Crédito --}}
+        <div class="row g-3 mb-3">
+            <div class="col-5">
+                <label class="form-label fw-medium">Codigo Postal</label>
+                <input class="form-control" maxlength="10" @bind="_codigoPostal" placeholder="Ej. 64000" />
+            </div>
+            <div class="col-7">
+                <label class="form-label fw-medium">Colonia</label>
+                <input class="form-control" maxlength="100" @bind="_colonia" placeholder="Ej. Centro" />
+            </div>
+        </div>
+        @* Credito *@
         <div class="mb-3">
             <label class="form-label fw-medium">Días de Crédito</label>
             <input type="number" class="form-control" min="0" max="365" @bind="_diasCredito" />
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <label class="form-label fw-medium">Forma Pago SAT</label>
+                <input class="form-control text-uppercase" maxlength="10" @bind="_formaPagoSat" placeholder="Ej. 03" />
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-medium">Regimen Fiscal</label>
+                <input class="form-control text-uppercase" maxlength="10" @bind="_regimenFiscal" placeholder="Ej. 601" />
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Cuenta bancaria</label>
+            <input class="form-control" maxlength="50" @bind="_cuentaBancaria" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Observaciones</label>
+            <textarea class="form-control" maxlength="500" rows="3" @bind="_observaciones"></textarea>
+        </div>
+        <div class="row g-2 mb-3">
+            <div class="col-12 col-sm-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_sendMail" />
+                    <label class="form-check-label">Enviar correo</label>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_seFacturaProductos" />
+                    <label class="form-check-label">Factura productos</label>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_requiereAnticipo" />
+                    <label class="form-check-label">Requiere anticipo</label>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_pagoExtraFletera" />
+                    <label class="form-check-label">Pago extra fletera</label>
+                </div>
+            </div>
         </div>
         @if (_edit)
         {
@@ -103,7 +151,9 @@
     AlertMessage? _alerta; FormOffcanvas? _panel; ConfirmDialog? _confirm;
     bool _edit; int _id;
     string _codigo=""; string _nombre=""; string _rfc=""; string _correo="";
-    string _telefono=""; string _direccion1=""; int _diasCredito=0; bool _isActive=true;
+    string _telefono=""; string _direccion1=""; string _codigoPostal=""; string _colonia="";
+    string _formaPagoSat=""; string _regimenFiscal=""; string _cuentaBancaria=""; string _observaciones="";
+    int _diasCredito=0; bool _isActive=true; bool _sendMail; bool _seFacturaProductos; bool _requiereAnticipo; bool _pagoExtraFletera;
     bool _eCodigo,_eNombre;
 
     protected override async Task OnInitializedAsync() => await Cargar();
@@ -114,12 +164,21 @@
     void AbrirNuevo()
     {
         _edit=false; _codigo=""; _nombre=""; _rfc=""; _correo=""; _telefono="";
-        _direccion1=""; _diasCredito=0; _eCodigo=_eNombre=false; _panel?.Abrir();
+        _direccion1=""; _codigoPostal=""; _colonia=""; _formaPagoSat=""; _regimenFiscal="";
+        _cuentaBancaria=""; _observaciones=""; _diasCredito=0; _isActive=true;
+        _sendMail=false; _seFacturaProductos=false; _requiereAnticipo=false; _pagoExtraFletera=false;
+        _eCodigo=_eNombre=false; _panel?.Abrir();
     }
     void AbrirEditar(ProveedorResponse x)
     {
         _edit=true; _id=x.IdProveedor; _codigo=x.Codigo; _nombre=x.Nombre;
         _rfc=x.Rfc??""; _correo=x.Correo??""; _telefono=x.Telefono??"";
+        _direccion1=x.Direccion1??"";
+        _codigoPostal=x.CodigoPostal??""; _colonia=x.Colonia??"";
+        _formaPagoSat=x.FormaPagoSat??""; _regimenFiscal=x.RegimenFiscal??"";
+        _cuentaBancaria=x.CuentaBancaria??""; _observaciones=x.Observaciones??"";
+        _sendMail=x.SendMail; _seFacturaProductos=x.SeFacturaProductos;
+        _requiereAnticipo=x.RequiereAnticipo; _pagoExtraFletera=x.PagoExtraFletera;
         _diasCredito=x.DiasCredito; _isActive=x.IsActive; _eCodigo=_eNombre=false; _panel?.Abrir();
     }
 
@@ -133,7 +192,16 @@
             { IdProveedor=_id,Codigo=_codigo.ToUpper(),Nombre=_nombre,
               Rfc=string.IsNullOrWhiteSpace(_rfc)?null:_rfc.ToUpper(),
               Correo=_correo,Telefono=_telefono,Direccion1=_direccion1,
-              DiasCredito=_diasCredito,IsActive=_isActive });
+              CodigoPostal=string.IsNullOrWhiteSpace(_codigoPostal)?null:_codigoPostal,
+              Colonia=string.IsNullOrWhiteSpace(_colonia)?null:_colonia,
+              DiasCredito=_diasCredito,
+              FormaPagoSat=string.IsNullOrWhiteSpace(_formaPagoSat)?null:_formaPagoSat.ToUpper(),
+              RegimenFiscal=string.IsNullOrWhiteSpace(_regimenFiscal)?null:_regimenFiscal.ToUpper(),
+              CuentaBancaria=string.IsNullOrWhiteSpace(_cuentaBancaria)?null:_cuentaBancaria,
+              Observaciones=string.IsNullOrWhiteSpace(_observaciones)?null:_observaciones,
+              SendMail=_sendMail,SeFacturaProductos=_seFacturaProductos,
+              RequiereAnticipo=_requiereAnticipo,PagoExtraFletera=_pagoExtraFletera,
+              IsActive=_isActive });
             if(e!=null){_panel?.MostrarError(e);return;}
         }
         else
@@ -141,7 +209,16 @@
             var(_,e)=await Svc.CrearAsync(new CrearProveedorRequest
             { Codigo=_codigo.ToUpper(),Nombre=_nombre,
               Rfc=string.IsNullOrWhiteSpace(_rfc)?null:_rfc.ToUpper(),
-              Correo=_correo,Telefono=_telefono,Direccion1=_direccion1,DiasCredito=_diasCredito });
+              Correo=_correo,Telefono=_telefono,Direccion1=_direccion1,
+              CodigoPostal=string.IsNullOrWhiteSpace(_codigoPostal)?null:_codigoPostal,
+              Colonia=string.IsNullOrWhiteSpace(_colonia)?null:_colonia,
+              DiasCredito=_diasCredito,
+              FormaPagoSat=string.IsNullOrWhiteSpace(_formaPagoSat)?null:_formaPagoSat.ToUpper(),
+              RegimenFiscal=string.IsNullOrWhiteSpace(_regimenFiscal)?null:_regimenFiscal.ToUpper(),
+              CuentaBancaria=string.IsNullOrWhiteSpace(_cuentaBancaria)?null:_cuentaBancaria,
+              Observaciones=string.IsNullOrWhiteSpace(_observaciones)?null:_observaciones,
+              SendMail=_sendMail,SeFacturaProductos=_seFacturaProductos,
+              RequiereAnticipo=_requiereAnticipo,PagoExtraFletera=_pagoExtraFletera });
             if(e!=null){_panel?.MostrarError(e);return;}
         }
         _panel?.MostrarExitoYCerrar(_edit?"Proveedor actualizado.":"Proveedor creado."); await Cargar();

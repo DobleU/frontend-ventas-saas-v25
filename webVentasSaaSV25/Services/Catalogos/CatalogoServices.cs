@@ -143,14 +143,116 @@ public sealed class ProveedorResponse
     public string?   Rfc            { get; init; }
     public string?   Correo         { get; init; }
     public string?   Telefono       { get; init; }
+    public string?   Direccion1     { get; init; }
+    public int?      IdPais         { get; init; }
+    public int?      IdEstado       { get; init; }
+    public int?      IdMunicipio    { get; init; }
+    public string?   CodigoPostal   { get; init; }
+    public string?   Colonia        { get; init; }
+    public bool      SendMail       { get; init; }
     public int       DiasCredito    { get; init; }
+    public string?   FormaPagoSat   { get; init; }
+    public string?   RegimenFiscal  { get; init; }
+    public string?   CuentaBancaria { get; init; }
+    public string?   Observaciones  { get; init; }
+    public bool      SeFacturaProductos { get; init; }
+    public bool      RequiereAnticipo   { get; init; }
+    public bool      PagoExtraFletera   { get; init; }
     public bool      IsActive       { get; init; }
     public DateTime  CreatedUtc     { get; init; }
     public DateTime? UpdatedUtc     { get; init; }
 }
-public sealed class CrearProveedorRequest    { public string Codigo { get; set; } = string.Empty; public string Nombre { get; set; } = string.Empty; public string? Rfc { get; set; } public string? Correo { get; set; } public string? Telefono { get; set; } public string? Direccion1 { get; set; } public int DiasCredito { get; set; } = 0; }
-public sealed class ActualizarProveedorRequest { public int IdProveedor { get; set; } public string? Codigo { get; set; } public string? Nombre { get; set; } public string? Rfc { get; set; } public string? Correo { get; set; } public string? Telefono { get; set; } public string? Direccion1 { get; set; } public int? DiasCredito { get; set; } public bool? IsActive { get; set; } }
+public sealed class CrearProveedorRequest
+{
+    public string Codigo { get; set; } = string.Empty;
+    public string Nombre { get; set; } = string.Empty;
+    public string? Rfc { get; set; }
+    public string? Correo { get; set; }
+    public string? Telefono { get; set; }
+    public string? Direccion1 { get; set; }
+    public int? IdPais { get; set; }
+    public int? IdEstado { get; set; }
+    public int? IdMunicipio { get; set; }
+    public string? CodigoPostal { get; set; }
+    public string? Colonia { get; set; }
+    public bool SendMail { get; set; }
+    public int DiasCredito { get; set; } = 0;
+    public string? FormaPagoSat { get; set; }
+    public string? RegimenFiscal { get; set; }
+    public string? CuentaBancaria { get; set; }
+    public string? Observaciones { get; set; }
+    public bool SeFacturaProductos { get; set; }
+    public bool RequiereAnticipo { get; set; }
+    public bool PagoExtraFletera { get; set; }
+}
+public sealed class ActualizarProveedorRequest
+{
+    public int IdProveedor { get; set; }
+    public string? Codigo { get; set; }
+    public string? Nombre { get; set; }
+    public string? Rfc { get; set; }
+    public string? Correo { get; set; }
+    public string? Telefono { get; set; }
+    public string? Direccion1 { get; set; }
+    public int? IdPais { get; set; }
+    public int? IdEstado { get; set; }
+    public int? IdMunicipio { get; set; }
+    public string? CodigoPostal { get; set; }
+    public string? Colonia { get; set; }
+    public bool? SendMail { get; set; }
+    public int? DiasCredito { get; set; }
+    public string? FormaPagoSat { get; set; }
+    public string? RegimenFiscal { get; set; }
+    public string? CuentaBancaria { get; set; }
+    public string? Observaciones { get; set; }
+    public bool? SeFacturaProductos { get; set; }
+    public bool? RequiereAnticipo { get; set; }
+    public bool? PagoExtraFletera { get; set; }
+    public bool? IsActive { get; set; }
+}
 public sealed class FiltroProveedorRequest  { public string? Search { get; set; } public bool? IsActive { get; set; } = true; public int Page { get; set; } = 1; public int PageSize { get; set; } = 50; }
+
+public sealed class ProductoProveedorResponse
+{
+    public int IdProducto { get; init; }
+    public string? Sku { get; init; }
+    public string? CodigoBarra { get; init; }
+    public string NombreProducto { get; init; } = string.Empty;
+    public int IdProveedor { get; init; }
+    public string? CodigoProveedor { get; init; }
+    public string NombreProveedor { get; init; } = string.Empty;
+    public bool IsPreferente { get; init; }
+    public short Prioridad { get; init; }
+    public decimal? CostoReferencia { get; init; }
+    public string? Moneda { get; init; }
+    public int? LeadTimeDias { get; init; }
+    public string? SkuProveedor { get; init; }
+    public string? Notas { get; init; }
+    public bool IsActive { get; init; }
+    public DateTime CreatedUtc { get; init; }
+    public DateTime? UpdatedUtc { get; init; }
+}
+public sealed class FiltroProductoProveedorRequest
+{
+    public string? Search { get; set; }
+    public bool? IsActive { get; set; } = true;
+    public int? IdProducto { get; set; }
+    public int? IdProveedor { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 50;
+}
+public sealed class UpsertProductoProveedorRequest
+{
+    public int IdProducto { get; set; }
+    public int IdProveedor { get; set; }
+    public bool IsPreferente { get; set; }
+    public short Prioridad { get; set; } = 1;
+    public decimal? CostoReferencia { get; set; }
+    public string? Moneda { get; set; } = "MXN";
+    public int? LeadTimeDias { get; set; }
+    public string? SkuProveedor { get; set; }
+    public string? Notas { get; set; }
+}
 
 // ── Sucursal ──────────────────────────────────────────────────────────────
 public sealed class SucursalResponse
@@ -270,6 +372,23 @@ public sealed class ProveedorService(ApiClient api)
     public Task<(ApiWriteResult? D, string? E)>                  CrearAsync(CrearProveedorRequest r)          => api.PostAsync<ApiWriteResult>("api/v1/proveedores", r);
     public Task<(ApiWriteResult? D, string? E)>                  ActualizarAsync(int id, ActualizarProveedorRequest r) => api.PutAsync<ApiWriteResult>($"api/v1/proveedores/{id}", r);
     public Task<(bool Ok, string? E)>                            EliminarAsync(int id)  => api.DeleteAsync($"api/v1/proveedores/{id}");
+}
+
+public sealed class ProductoProveedorService(ApiClient api)
+{
+    public Task<(PagedResult<ProductoProveedorResponse>? D, string? E)> GetPagedAsync(FiltroProductoProveedorRequest f)
+    {
+        var extra = "";
+        if (f.IdProducto.HasValue) extra += $"&idProducto={f.IdProducto.Value}";
+        if (f.IdProveedor.HasValue) extra += $"&idProveedor={f.IdProveedor.Value}";
+        return api.GetAsync<PagedResult<ProductoProveedorResponse>>($"api/v1/productos/proveedores?{Qs.Build(f.Search, f.IsActive, f.Page, f.PageSize, extra)}");
+    }
+
+    public Task<(ApiWriteResult? D, string? E)> UpsertAsync(UpsertProductoProveedorRequest r)
+        => api.PostAsync<ApiWriteResult>($"api/v1/productos/{r.IdProducto}/proveedores", r);
+
+    public Task<(bool Ok, string? E)> EliminarAsync(int idProducto, int idProveedor)
+        => api.DeleteAsync($"api/v1/productos/{idProducto}/proveedores/{idProveedor}");
 }
 
 public sealed class SucursalService(ApiClient api)

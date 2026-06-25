@@ -73,6 +73,7 @@ builder.Services.AddScoped<CatalogoTipoService>();
 builder.Services.AddScoped<CatalogoItemService>();
 builder.Services.AddScoped<ImpuestoService>();
 builder.Services.AddScoped<ProveedorService>();
+builder.Services.AddScoped<ProductoProveedorService>();
 
 // ─── CATÁLOGOS FASE 1 ─────────────────────────────────────────────────────────
 builder.Services.AddScoped<ClienteService>();

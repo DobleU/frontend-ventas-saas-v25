@@ -199,11 +199,24 @@ public sealed class AuthService
 
     // ─── HELPERS ─────────────────────────────────────────────────────────
 
-    public async Task<string?> ObtenerAccessTokenAsync() =>
-        await _js.InvokeAsync<string?>("AppInterop.localStorageGet", KeyAccess);
+    public async Task<string?> ObtenerAccessTokenAsync()
+    {
+        var token = await _js.InvokeAsync<string?>("AppInterop.localStorageGet", KeyAccess);
+        if (string.IsNullOrWhiteSpace(token))
+            return null;
+
+        if (EsAccessTokenValido(token))
+            return token;
+
+        await LimpiarSesionLocalAsync();
+        return null;
+    }
 
     private async Task PersistirSesionAsync(LoginResponse data)
     {
+        if (!EsAccessTokenValido(data.AccessToken))
+            throw new InvalidOperationException("Token de acceso invalido o demasiado grande.");
+
         await _js.InvokeVoidAsync("AppInterop.localStorageSet", KeyAccess, data.AccessToken);
         await _js.InvokeVoidAsync("AppInterop.localStorageSet", KeyRefresh, data.RefreshToken);
 
@@ -234,5 +247,13 @@ public sealed class AuthService
         {
             return default;
         }
+    }
+
+    private static bool EsAccessTokenValido(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token) || token.Length > 6000)
+            return false;
+
+        return token.Count(c => c == '.') == 2;
     }
 }

@@ -1,0 +1,266 @@
+@page "/erp/proveedores/productos-por-proveedor"
+@using webVentasSaaSV25.Services.Catalogos
+@inject ProductoProveedorService Svc
+@inject ProductoService ProductoSvc
+@inject ProveedorService ProveedorSvc
+
+<PageTitle>Productos por Proveedor - VentasSaaSDU</PageTitle>
+<Breadcrumb Titulo="Productos por Proveedor" Items="@(new[]{ ("ERP",""), ("Proveedores","/erp/proveedores/catalogo-de-proveedores"), ("Productos por Proveedor","") })" />
+<AlertMessage @ref="_alerta" />
+
+<DataGrid TItem="ProductoProveedorResponse" Titulo="Productos por Proveedor" Modulo="proveedores"
+          Items="_paged?.Items" TotalRecords="_paged?.TotalRecords ?? 0"
+          Page="_f.Page" PageSize="_f.PageSize" Loading="_loading"
+          OnPageChanged="OnPage" OnPageSizeChange="OnPageSize" OnSearch="OnSearch" OnNuevo="AbrirNuevo"
+          OnEditar="AbrirEditar" OnEliminar="Eliminar"
+          MostrarImportar="false" MostrarExportar="false"
+          SearchPlaceholder="Producto, proveedor, SKU o codigo de barras...">
+    <FiltrosExtra>
+        <div class="d-flex flex-wrap gap-2">
+            <select class="form-select form-select-sm catalog-filter" value="@(_f.IdProducto?.ToString() ?? "")" @onchange="OnProductoFiltro">
+                <option value="">Todos los productos</option>
+                @foreach (var p in _productos)
+                {
+                    <option value="@p.IdProducto">@p.Nombre</option>
+                }
+            </select>
+            <select class="form-select form-select-sm catalog-filter" value="@(_f.IdProveedor?.ToString() ?? "")" @onchange="OnProveedorFiltro">
+                <option value="">Todos los proveedores</option>
+                @foreach (var p in _proveedores)
+                {
+                    <option value="@p.IdProveedor">@p.Nombre</option>
+                }
+            </select>
+        </div>
+    </FiltrosExtra>
+    <HeaderRow>
+        <th>Producto</th>
+        <th>Proveedor</th>
+        <th style="width:120px">SKU Prov.</th>
+        <th style="width:110px" class="text-end">Costo</th>
+        <th style="width:90px" class="text-center">Pref.</th>
+        <th style="width:80px" class="text-center">Prior.</th>
+        <th style="width:90px" class="text-center">Estado</th>
+    </HeaderRow>
+    <RowTemplate>
+        <td>
+            <div class="fw-medium">@context.NombreProducto</div>
+            <div class="text-muted small">@(!string.IsNullOrWhiteSpace(context.CodigoBarra) ? context.CodigoBarra : context.Sku)</div>
+        </td>
+        <td>
+            <div class="fw-medium">@context.NombreProveedor</div>
+            <div class="text-muted small">@context.CodigoProveedor</div>
+        </td>
+        <td><code class="small">@context.SkuProveedor</code></td>
+        <td class="text-end">@((context.CostoReferencia ?? 0).ToString("C2"))</td>
+        <td class="text-center"><StatusBadge Value="@context.IsPreferente" /></td>
+        <td class="text-center">@context.Prioridad</td>
+        <td class="text-center"><StatusBadge Value="@context.IsActive" /></td>
+    </RowTemplate>
+</DataGrid>
+
+<FormOffcanvas @ref="_panel" Titulo="@(_edit ? "Editar Producto por Proveedor" : "Nuevo Producto por Proveedor")"
+               Icono="@(_edit ? "edit" : "add_circle")" Ancho="520px" OnGuardar="Guardar">
+    <Body>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Producto <span class="text-danger">*</span></label>
+            <select class="form-select @(_eProducto ? "is-invalid" : "")" @bind="_idProducto" disabled="@_edit">
+                <option value="0">Seleccione...</option>
+                @foreach (var p in _productos)
+                {
+                    <option value="@p.IdProducto">@p.Nombre</option>
+                }
+            </select>
+            @if (_eProducto) { <div class="invalid-feedback">Requerido.</div> }
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Proveedor <span class="text-danger">*</span></label>
+            <select class="form-select @(_eProveedor ? "is-invalid" : "")" @bind="_idProveedor" disabled="@_edit">
+                <option value="0">Seleccione...</option>
+                @foreach (var p in _proveedores)
+                {
+                    <option value="@p.IdProveedor">@p.Nombre</option>
+                }
+            </select>
+            @if (_eProveedor) { <div class="invalid-feedback">Requerido.</div> }
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-7">
+                <label class="form-label fw-medium">SKU proveedor</label>
+                <input class="form-control" maxlength="60" @bind="_skuProveedor" />
+            </div>
+            <div class="col-5">
+                <label class="form-label fw-medium">Moneda</label>
+                <input class="form-control text-uppercase" maxlength="3" @bind="_moneda" />
+            </div>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-6">
+                <label class="form-label fw-medium">Costo referencia</label>
+                <input type="number" class="form-control" min="0" step="0.01" @bind="_costoReferencia" />
+            </div>
+            <div class="col-3">
+                <label class="form-label fw-medium">Prioridad</label>
+                <input type="number" class="form-control" min="1" max="999" @bind="_prioridad" />
+            </div>
+            <div class="col-3">
+                <label class="form-label fw-medium">Lead</label>
+                <input type="number" class="form-control" min="0" max="365" @bind="_leadTimeDias" />
+            </div>
+        </div>
+        <div class="mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" @bind="_isPreferente" />
+                <label class="form-check-label">Proveedor preferente</label>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-medium">Notas</label>
+            <textarea class="form-control" maxlength="300" rows="3" @bind="_notas"></textarea>
+        </div>
+    </Body>
+</FormOffcanvas>
+<ConfirmDialog @ref="_confirm" />
+
+@code {
+    PagedResult<ProductoProveedorResponse>? _paged;
+    FiltroProductoProveedorRequest _f = new();
+    List<ProductoResponse> _productos = [];
+    List<ProveedorResponse> _proveedores = [];
+    bool _loading;
+
+    AlertMessage? _alerta;
+    FormOffcanvas? _panel;
+    ConfirmDialog? _confirm;
+
+    bool _edit;
+    int _idProducto;
+    int _idProveedor;
+    bool _isPreferente;
+    short _prioridad = 1;
+    decimal? _costoReferencia;
+    string _moneda = "MXN";
+    int? _leadTimeDias;
+    string _skuProveedor = "";
+    string _notas = "";
+    bool _eProducto;
+    bool _eProveedor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCombos();
+        await Cargar();
+    }
+
+    async Task CargarCombos()
+    {
+        var (productos, ep) = await ProductoSvc.GetPagedAsync(new FiltroProductoRequest { Page = 1, PageSize = 500, IsActive = true });
+        var (proveedores, er) = await ProveedorSvc.GetPagedAsync(new FiltroProveedorRequest { Page = 1, PageSize = 500, IsActive = true });
+
+        if (ep != null) _alerta?.MostrarError(ep);
+        else _productos = productos?.Items ?? [];
+
+        if (er != null) _alerta?.MostrarError(er);
+        else _proveedores = proveedores?.Items ?? [];
+    }
+
+    async Task Cargar()
+    {
+        _loading = true;
+        var (d, e) = await Svc.GetPagedAsync(_f);
+        _loading = false;
+        if (e != null) _alerta?.MostrarError(e);
+        else _paged = d;
+    }
+
+    async Task OnPage(int p) { _f.Page = p; await Cargar(); }
+    async Task OnPageSize(int size) { _f.PageSize = size; _f.Page = 1; await Cargar(); }
+    async Task OnSearch(string? s) { _f.Search = s; _f.Page = 1; await Cargar(); }
+
+    async Task OnProductoFiltro(ChangeEventArgs e)
+    {
+        _f.IdProducto = int.TryParse(e.Value?.ToString(), out var id) && id > 0 ? id : null;
+        _f.Page = 1;
+        await Cargar();
+    }
+
+    async Task OnProveedorFiltro(ChangeEventArgs e)
+    {
+        _f.IdProveedor = int.TryParse(e.Value?.ToString(), out var id) && id > 0 ? id : null;
+        _f.Page = 1;
+        await Cargar();
+    }
+
+    void AbrirNuevo()
+    {
+        _edit = false;
+        _idProducto = _f.IdProducto ?? 0;
+        _idProveedor = _f.IdProveedor ?? 0;
+        _isPreferente = false;
+        _prioridad = 1;
+        _costoReferencia = null;
+        _moneda = "MXN";
+        _leadTimeDias = null;
+        _skuProveedor = "";
+        _notas = "";
+        _eProducto = _eProveedor = false;
+        _panel?.Abrir();
+    }
+
+    void AbrirEditar(ProductoProveedorResponse x)
+    {
+        _edit = true;
+        _idProducto = x.IdProducto;
+        _idProveedor = x.IdProveedor;
+        _isPreferente = x.IsPreferente;
+        _prioridad = x.Prioridad;
+        _costoReferencia = x.CostoReferencia;
+        _moneda = string.IsNullOrWhiteSpace(x.Moneda) ? "MXN" : x.Moneda;
+        _leadTimeDias = x.LeadTimeDias;
+        _skuProveedor = x.SkuProveedor ?? "";
+        _notas = x.Notas ?? "";
+        _eProducto = _eProveedor = false;
+        _panel?.Abrir();
+    }
+
+    async Task Guardar()
+    {
+        _eProducto = _idProducto <= 0;
+        _eProveedor = _idProveedor <= 0;
+        if (_eProducto || _eProveedor)
+        {
+            _panel?.MostrarError("Corrija los campos marcados.");
+            return;
+        }
+
+        var (_, e) = await Svc.UpsertAsync(new UpsertProductoProveedorRequest
+        {
+            IdProducto = _idProducto,
+            IdProveedor = _idProveedor,
+            IsPreferente = _isPreferente,
+            Prioridad = _prioridad < 1 ? (short)1 : _prioridad,
+            CostoReferencia = _costoReferencia,
+            Moneda = string.IsNullOrWhiteSpace(_moneda) ? "MXN" : _moneda.ToUpper(),
+            LeadTimeDias = _leadTimeDias,
+            SkuProveedor = string.IsNullOrWhiteSpace(_skuProveedor) ? null : _skuProveedor,
+            Notas = string.IsNullOrWhiteSpace(_notas) ? null : _notas
+        });
+
+        if (e != null)
+        {
+            _panel?.MostrarError(e);
+            return;
+        }
+
+        _panel?.MostrarExitoYCerrar(_edit ? "Relacion actualizada." : "Relacion creada.");
+        await Cargar();
+    }
+
+    async Task Eliminar(ProductoProveedorResponse x)
+    {
+        if (!await _confirm!.ConfirmarEliminarAsync("relacion producto-proveedor")) return;
+        var (_, e) = await Svc.EliminarAsync(x.IdProducto, x.IdProveedor);
+        if (e != null) _alerta?.MostrarError(e);
+        else { _alerta?.MostrarExito("Relacion eliminada."); await Cargar(); }
+    }
+}
