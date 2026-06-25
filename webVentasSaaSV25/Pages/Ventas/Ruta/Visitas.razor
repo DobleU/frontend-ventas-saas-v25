@@ -9,142 +9,234 @@
 <Breadcrumb Titulo="Visitas" Items="@(new[] { ("Ventas", "/ventas"), ("Ruta", ""), ("Visitas", "") })" />
 <AlertMessage @ref="_alerta" />
 
-<section class="report-shell">
-    <div class="report-header">
+<section class="visit-page">
+    <div class="visit-titlebar">
         <div>
-            <span class="report-kicker"><span class="material-icons-outlined">location_on</span> Auditoria de campo</span>
-            <h3>Visitas de recorrido</h3>
-            <p>Revisa visitas, ventas por cliente, lectura QR y tiempos entre visitas.</p>
+            <span class="visit-kicker"><span class="material-icons-outlined">location_on</span> ROUTE</span>
+            <h3>@TituloModo</h3>
+            <p>Consulta visitas por recorrido, venta, traslado y diferencia de tiempo entre clientes.</p>
         </div>
-        <button class="btn btn-outline-primary" disabled="@(!_items.Any())" @onclick="Exportar">
+        <button class="btn btn-outline-primary" disabled="@(!PuedeExportar)" @onclick="Exportar">
             <span class="material-icons-outlined fs-6">download</span>
             Exportar
         </button>
     </div>
 
-    <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body">
-            <div class="row g-3 align-items-end">
-                <div class="col-12 col-md-4">
-                    <label class="form-label">Ruta</label>
-                    <select class="form-select" @bind="_idRuta">
-                        <option value="0">Selecciona ruta</option>
-                        @foreach (var r in _rutas)
-                        {
-                            <option value="@r.IdRuta">@r.Nombre</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-12 col-md-4">
-                    <label class="form-label">Fecha</label>
-                    <input class="form-control" type="date" @bind="_fecha" />
-                </div>
-                <div class="col-12 col-md-4">
-                    <button class="btn btn-primary w-100" disabled="@(_loading || _idRuta <= 0)" @onclick="Cargar">
-                        <span class="material-icons-outlined fs-6">search</span>
-                        Consultar
-                    </button>
-                </div>
-            </div>
+    <div class="visit-filterbar">
+        <div class="search-box">
+            <span class="material-icons-outlined">search</span>
+            <input class="form-control" placeholder="Sucursal, cliente, direccion o producto" @bind="_search" @bind:event="oninput" />
         </div>
+        <select class="form-select" @bind="_idRuta">
+            <option value="0">Selecciona ruta</option>
+            @foreach (var r in _rutas)
+            {
+                <option value="@r.IdRuta">@r.Nombre</option>
+            }
+        </select>
+        <input class="form-control" type="date" @bind="_fecha" />
+        <select class="form-select" value="@_idRecorrido" @onchange="OnRecorridoChanged">
+            <option value="0">Recorrido del dia</option>
+            @foreach (var r in _recorridos)
+            {
+                <option value="@r.IdRecorrido">@r.Nombre - @r.VisitasRealizadas/@r.VisitasProgramadas visitas</option>
+            }
+        </select>
+        <button class="btn btn-primary" disabled="@(_loading || _idRuta <= 0)" @onclick="Cargar">
+            <span class="material-icons-outlined fs-6">search</span>
+            Buscar
+        </button>
     </div>
 
-    <div class="route-context mb-3">
-        <strong>@(_data.Header.Ruta == string.Empty ? "Sin recorrido seleccionado" : _data.Header.Ruta)</strong>
-        <span>@_data.Header.Fecha.ToString("dd/MM/yyyy")</span>
+    <div class="day-strip">
+        <span class="material-icons-outlined">calendar_month</span>
+        <strong>@DiaSeleccionado</strong>
+        <span>@_fecha.ToString("dd/MM/yyyy")</span>
+        @if (!string.IsNullOrWhiteSpace(_data.Header.Ruta))
+        {
+            <span>@_data.Header.Ruta</span>
+        }
         @if (!string.IsNullOrWhiteSpace(_data.Header.Vendedor))
         {
             <span>@_data.Header.Vendedor</span>
         }
     </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-6 col-xl-3">@Kpi("Visitas", _data.Kpi.TotalVisitas.ToString("N0", _mx), "fact_check")</div>
-        <div class="col-6 col-xl-3">@Kpi("Con venta", _data.Kpi.VisitasConVenta.ToString("N0", _mx), "shopping_cart")</div>
-        <div class="col-6 col-xl-3">@Kpi("QR", $"{_data.Kpi.PorcentajeQr:N1}%", "qr_code_scanner")</div>
-        <div class="col-6 col-xl-3">@Kpi("Ventas", _data.Kpi.MontoVentas.ToString("C2", _mx), "payments")</div>
+    <div class="mode-tabs">
+        @Tab("realizadas", "Visitas Realizadas", "where_to_vote", VisitasRealizadas.Count)
+        @Tab("no-realizadas", "Visitas No Realizadas", "wrong_location", NoRealizadas.Count)
+        @Tab("extras", "Visitas Extras", "add_location_alt", VisitasExtras.Count)
+        @Tab("repetidas", "Visitas Repetidas", "repeat", VisitasRepetidas.Count)
+        @Tab("evidencias", "Evidencias Visita", "fact_check", VisitasConEvidencia.Count)
     </div>
 
-    <div class="card border-0 shadow-sm">
-        <div class="table-responsive">
-            <table class="table align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Cliente / tienda</th>
-                        <th>Estatus</th>
-                        <th>Inicio</th>
-                        <th>Fin</th>
-                        <th class="text-end">Min visita</th>
-                        <th class="text-end">Traslado</th>
-                        <th class="text-center">QR</th>
-                        <th class="text-end">Ventas</th>
-                        <th class="text-end">Monto</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (_loading)
-                    {
-                        <tr><td colspan="9" class="text-center py-4 text-secondary">Cargando...</td></tr>
-                    }
-                    else if (!_items.Any())
-                    {
-                        <tr><td colspan="9" class="text-center py-4 text-secondary">Sin visitas para el filtro.</td></tr>
-                    }
-                    else
-                    {
-                        @foreach (var v in _items)
-                        {
-                            <tr>
-                                <td>
-                                    <div class="fw-semibold">@(v.Sucursal ?? v.Cliente)</div>
-                                    <div class="small text-secondary">@v.Cliente</div>
-                                    @if (!string.IsNullOrWhiteSpace(v.Direccion))
-                                    {
-                                        <div class="small text-secondary">@v.Direccion</div>
-                                    }
-                                </td>
-                                <td>
-                                    <span class="badge bg-light text-dark">@v.Estatus</span>
-                                    @if (!string.IsNullOrWhiteSpace(v.MotivoNoVenta))
-                                    {
-                                        <div class="small text-secondary">@v.MotivoNoVenta</div>
-                                    }
-                                </td>
-                                <td>@Hora(v.FechaInicioUtc)</td>
-                                <td>@Hora(v.FechaFinUtc)</td>
-                                <td class="text-end">@Math.Round(v.SegundosVisita / 60m, 1)</td>
-                                <td class="text-end">@(v.MinutosTraslado?.ToString("N0", _mx) ?? "-")</td>
-                                <td class="text-center">
-                                    <span class="material-icons-outlined @(v.TieneQr ? "text-success" : "text-secondary")">@(v.TieneQr ? "check_circle" : "radio_button_unchecked")</span>
-                                </td>
-                                <td class="text-end">@v.Ventas</td>
-                                <td class="text-end">@v.MontoVentas.ToString("C2", _mx)</td>
-                            </tr>
-                        }
-                    }
-                </tbody>
-            </table>
+    <div class="visit-kpis">
+        @Kpi("Programadas", _data.Kpi.VisitasProgramadas.ToString("N0", _mx), "event_note")
+        @Kpi("Realizadas", _data.Kpi.TotalVisitas.ToString("N0", _mx), "where_to_vote")
+        @Kpi("Sin venta", _data.Kpi.VisitasSinVenta.ToString("N0", _mx), "remove_shopping_cart")
+        @Kpi("Monto venta", _data.Kpi.MontoVentas.ToString("C2", _mx), "payments")
+    </div>
+
+    <div class="visit-panel">
+        <div class="panel-head">
+            <div>
+                <strong>@TituloModo</strong>
+                <span>@ResultadoDescripcion</span>
+            </div>
+            @if (_loading)
+            {
+                <span class="loading-pill">Cargando</span>
+            }
         </div>
+
+        @if (_loading)
+        {
+            <div class="empty-state">Cargando visitas...</div>
+        }
+        else if (_idRuta <= 0)
+        {
+            <div class="empty-state">Selecciona una ruta y fecha para consultar.</div>
+        }
+        else if (ModoActual == "no-realizadas")
+        {
+            @NoRealizadasView()
+        }
+        else
+        {
+            @VisitasView()
+        }
     </div>
 </section>
 
+@if (_ventaDetalle is not null)
+{
+    <div class="modal-backdrop-lite" @onclick="CerrarVentaDetalle"></div>
+    <div class="sale-drawer">
+        <div class="sale-head">
+            <div>
+                <strong>@(_ventaDetalle.Sucursal ?? _ventaDetalle.Cliente)</strong>
+                <span>@_ventaDetalle.Cliente</span>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="CerrarVentaDetalle">
+                <span class="material-icons-outlined fs-6">close</span>
+            </button>
+        </div>
+        <div class="sale-body">
+            <div class="sale-total @(EsVentaCancelada(_ventaDetalle) ? "cancelled" : "")">
+                <span>@(EsVentaCancelada(_ventaDetalle) ? "Venta cancelada" : "Monto vendido")</span>
+                <strong>@_ventaDetalle.MontoVentas.ToString("C2", _mx)</strong>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_ventaDetalle.ProductosVendidos))
+            {
+                <ul class="product-list">
+                    @foreach (var p in Productos(_ventaDetalle))
+                    {
+                        <li>@p</li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <div class="empty-state small">El reporte no devolvio productos vendidos para esta visita.</div>
+            }
+            <div class="sale-note">
+                <strong>Nota</strong>
+                <span>Para mostrar descuento por producto y ventas canceladas con exactitud, el SP debe devolver esos campos por visita/venta. Hoy se infiere cancelacion desde el texto de estatus.</span>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [SupplyParameterFromQuery(Name = "ruta")] public int? QueryRouteId { get; set; }
+    [SupplyParameterFromQuery(Name = "modo")] public string? QueryModo { get; set; }
 
     private readonly CultureInfo _mx = CultureInfo.GetCultureInfo("es-MX");
     private AlertMessage? _alerta;
     private List<MapaRutaOptionResponse> _rutas = [];
+    private List<MapaRecorridoOptionResponse> _recorridos = [];
     private ReporteVisitasResponse _data = new();
-    private IReadOnlyList<ReporteVisitaRowResponse> _items => _data.Visitas;
+    private ReporteVisitaRowResponse? _ventaDetalle;
     private bool _loading;
+    private bool _inicializado;
     private int _idRuta;
+    private long _idRecorrido;
     private DateTime _fecha = DateTime.Today;
+    private string? _search;
+    private string _modo = "realizadas";
+
+    private string ModoActual => NormalizarModo(_modo);
+    private string TituloModo => ModoActual switch
+    {
+        "no-realizadas" => "Visitas No Realizadas",
+        "extras" => "Visitas Extras",
+        "repetidas" => "Visitas Repetidas",
+        "evidencias" => "Evidencias Visita",
+        _ => "Visitas Realizadas"
+    };
+    private string DiaSeleccionado => _mx.TextInfo.ToTitleCase(_fecha.ToString("dddd", _mx));
+    private bool PuedeExportar => ModoActual == "no-realizadas" ? NoRealizadas.Any() : VisitasModo.Any();
+    private string ResultadoDescripcion => ModoActual == "no-realizadas"
+        ? $"{NoRealizadas.Count} cliente(s) programados sin visita"
+        : $"{VisitasModo.Count} visita(s) encontradas";
+
+    private List<ReporteVisitaRowResponse> VisitasRealizadas => _data.Visitas
+        .Where(CoincideBusqueda)
+        .OrderBy(x => x.FechaInicioUtc ?? DateTime.MaxValue)
+        .ThenBy(x => x.IdVisita)
+        .ToList();
+
+    private List<ReporteVisitaRowResponse> VisitasExtras => VisitasRealizadas
+        .Where(x => x.EsExtra || !x.EsProgramada)
+        .ToList();
+
+    private List<ReporteVisitaRowResponse> VisitasRepetidas
+    {
+        get
+        {
+            var repetidos = VisitasRealizadas
+                .GroupBy(x => x.IdCliente)
+                .Where(g => g.Count() > 1)
+                .SelectMany(g => g)
+                .Select(x => x.IdVisita)
+                .ToHashSet();
+            return VisitasRealizadas.Where(x => repetidos.Contains(x.IdVisita)).ToList();
+        }
+    }
+
+    private List<ReporteVisitaRowResponse> VisitasConEvidencia => VisitasRealizadas
+        .Where(x => x.TieneQr || x.GpsValido50m || x.DistanciaMetros.HasValue || !string.IsNullOrWhiteSpace(x.Observaciones))
+        .ToList();
+
+    private List<ReporteVisitaRowResponse> VisitasModo => ModoActual switch
+    {
+        "extras" => VisitasExtras,
+        "repetidas" => VisitasRepetidas,
+        "evidencias" => VisitasConEvidencia,
+        _ => VisitasRealizadas
+    };
+
+    private List<ReporteVisitaPendienteRowResponse> NoRealizadas => _data.NoVisitados
+        .Where(CoincideBusquedaNoRealizada)
+        .OrderBy(x => x.Orden)
+        .ThenBy(x => x.Sucursal ?? x.Cliente)
+        .ToList();
 
     protected override async Task OnInitializedAsync()
     {
+        _modo = NormalizarModo(QueryModo);
         var (rutas, error) = await MapaSvc.GetRutasAsync();
         if (error is null && rutas is not null) _rutas = rutas.ToList();
         if (QueryRouteId is > 0) _idRuta = QueryRouteId.Value;
+        _inicializado = true;
+        if (_idRuta > 0) await Cargar();
+    }
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (!_inicializado) return Task.CompletedTask;
+        _modo = NormalizarModo(QueryModo);
+        return Task.CompletedTask;
     }
 
     private async Task Cargar()
@@ -156,7 +248,9 @@
         }
 
         _loading = true;
-        var (data, error) = await MapaSvc.GetReporteVisitasAsync(_idRuta, _fecha);
+        await CargarRecorridosDia();
+        var idRecorrido = _idRecorrido > 0 ? _idRecorrido : _recorridos.FirstOrDefault()?.IdRecorrido;
+        var (data, error) = await MapaSvc.GetReporteVisitasAsync(_idRuta, _fecha, idRecorrido);
         _loading = false;
 
         if (error is not null)
@@ -166,56 +260,332 @@
         }
 
         _data = data ?? new();
+        _idRecorrido = _data.Header.IdRecorrido ?? idRecorrido ?? 0;
     }
+
+    private async Task CargarRecorridosDia()
+    {
+        var seleccionado = _idRecorrido;
+        var (recorridos, error) = await MapaSvc.GetRecorridosAsync(_idRuta, _fecha);
+        if (error is not null)
+        {
+            _alerta?.MostrarError(error);
+            return;
+        }
+
+        _recorridos = recorridos?.OrderByDescending(x => x.FechaRecorrido).ThenByDescending(x => x.IdRecorrido).ToList() ?? [];
+        _idRecorrido = _recorridos.Any(x => x.IdRecorrido == seleccionado)
+            ? seleccionado
+            : _recorridos.FirstOrDefault()?.IdRecorrido ?? 0;
+    }
+
+    private async Task OnRecorridoChanged(ChangeEventArgs e)
+    {
+        _idRecorrido = long.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        if (_idRuta > 0) await Cargar();
+    }
+
+    private async Task CambiarModo(string modo)
+    {
+        _modo = NormalizarModo(modo);
+        await Task.CompletedTask;
+    }
+
+    private RenderFragment VisitasView() => @<div class="visit-list">
+        @if (!VisitasModo.Any())
+        {
+            <div class="empty-state">Sin visitas para el filtro.</div>
+        }
+        else
+        {
+            @for (var i = 0; i < VisitasModo.Count; i++)
+            {
+                var visita = VisitasModo[i];
+                <div class="visit-row @(EsVentaCancelada(visita) ? "cancelled" : "")">
+                    <div class="visit-order">@((i + 1).ToString("N0", _mx))</div>
+                    <div class="visit-main">
+                        <div class="visit-name">
+                            <strong>@(visita.Sucursal ?? visita.Cliente)</strong>
+                            <span>@visita.Cliente</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(visita.Direccion))
+                        {
+                            <div class="visit-address">@visita.Direccion</div>
+                        }
+                        <div class="visit-meta">
+                            <span>@Hora(visita.FechaInicioUtc) - @Hora(visita.FechaFinUtc)</span>
+                            <span>@TrasladoTexto(visita)</span>
+                            @if (ModoActual == "repetidas")
+                            {
+                                <span>@RepetidaTexto(visita)</span>
+                            }
+                            @if (visita.EsExtra)
+                            {
+                                <span class="tag extra">Extra</span>
+                            }
+                            @if (visita.TieneQr)
+                            {
+                                <span class="tag ok">QR</span>
+                            }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(visita.ProductosVendidos))
+                        {
+                            <div class="products-inline">@ResumenProductos(visita)</div>
+                        }
+                    </div>
+                    <div class="sale-cell">
+                        @if (visita.Ventas > 0 || visita.MontoVentas != 0)
+                        {
+                            <span class="sale-amount @(EsVentaCancelada(visita) ? "cancelled" : "")">@visita.MontoVentas.ToString("C2", _mx)</span>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => VerVenta(visita)">
+                                <span class="material-icons-outlined fs-6">receipt_long</span>
+                                Ver venta
+                            </button>
+                        }
+                        else
+                        {
+                            <span class="no-sale"><span class="material-icons-outlined">block</span> Sin venta</span>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>;
+
+    private RenderFragment NoRealizadasView() => @<div class="visit-list">
+        @if (!NoRealizadas.Any())
+        {
+            <div class="empty-state">Sin clientes programados pendientes para el filtro.</div>
+        }
+        else
+        {
+            @for (var i = 0; i < NoRealizadas.Count; i++)
+            {
+                var visita = NoRealizadas[i];
+                <div class="visit-row pending">
+                    <div class="visit-order">@((visita.Orden > 0 ? visita.Orden : i + 1).ToString("N0", _mx))</div>
+                    <div class="visit-main">
+                        <div class="visit-name">
+                            <strong>@(visita.Sucursal ?? visita.Cliente)</strong>
+                            <span>@visita.Cliente</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(visita.Direccion))
+                        {
+                            <div class="visit-address">@visita.Direccion</div>
+                        }
+                        <div class="visit-meta">
+                            <span>@visita.TipoVisita</span>
+                            @if (!string.IsNullOrWhiteSpace(visita.Telefono))
+                            {
+                                <span>@visita.Telefono</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="sale-cell">
+                        <span class="no-sale"><span class="material-icons-outlined">wrong_location</span> No realizada</span>
+                    </div>
+                </div>
+            }
+        }
+    </div>;
+
+    private RenderFragment Tab(string modo, string titulo, string icono, int total) => @<button type="button" class="@TabClass(modo)" @onclick="() => CambiarModo(modo)">
+        <span class="material-icons-outlined">@icono</span>
+        @titulo
+        <strong>@total</strong>
+    </button>;
+
+    private RenderFragment Kpi(string titulo, string valor, string icono) => @<div class="visit-kpi">
+        <span class="material-icons-outlined">@icono</span>
+        <div>
+            <small>@titulo</small>
+            <strong>@valor</strong>
+        </div>
+    </div>;
+
+    private void VerVenta(ReporteVisitaRowResponse visita) => _ventaDetalle = visita;
+    private void CerrarVentaDetalle() => _ventaDetalle = null;
 
     private async Task Exportar()
     {
         var csv = new StringBuilder();
-        csv.AppendLine("Cliente,Sucursal,Direccion,Estatus,MotivoNoVenta,Inicio,Fin,SegundosVisita,MinutosTraslado,TieneQr,Ventas,MontoVentas,Observaciones");
-        foreach (var v in _items)
+        if (ModoActual == "no-realizadas")
         {
-            csv.AppendLine(string.Join(",",
-                Csv(v.Cliente),
-                Csv(v.Sucursal),
-                Csv(v.Direccion),
-                Csv(v.Estatus),
-                Csv(v.MotivoNoVenta),
-                Csv(v.FechaInicioUtc?.ToString("dd/MM/yyyy HH:mm")),
-                Csv(v.FechaFinUtc?.ToString("dd/MM/yyyy HH:mm")),
-                v.SegundosVisita,
-                v.MinutosTraslado?.ToString(CultureInfo.InvariantCulture) ?? "",
-                v.TieneQr ? "1" : "0",
-                v.Ventas,
-                v.MontoVentas.ToString(CultureInfo.InvariantCulture),
-                Csv(v.Observaciones)));
+            csv.AppendLine("Orden,Cliente,Sucursal,Direccion,TipoVisita,Telefono");
+            foreach (var v in NoRealizadas)
+            {
+                csv.AppendLine(string.Join(",", v.Orden, Csv(v.Cliente), Csv(v.Sucursal), Csv(v.Direccion), Csv(v.TipoVisita), Csv(v.Telefono)));
+            }
+        }
+        else
+        {
+            csv.AppendLine("Cliente,Sucursal,Direccion,Estatus,Inicio,Fin,SegundosVisita,SegundosTraslado,MinutosTraslado,Ventas,MontoVentas,EsExtra,EsProgramada,Productos,Observaciones");
+            foreach (var v in VisitasModo)
+            {
+                csv.AppendLine(string.Join(",",
+                    Csv(v.Cliente),
+                    Csv(v.Sucursal),
+                    Csv(v.Direccion),
+                    Csv(v.Estatus),
+                    Csv(v.FechaInicioUtc?.ToString("dd/MM/yyyy HH:mm")),
+                    Csv(v.FechaFinUtc?.ToString("dd/MM/yyyy HH:mm")),
+                    v.SegundosVisita,
+                    v.SegundosTraslado,
+                    v.MinutosTraslado?.ToString(CultureInfo.InvariantCulture) ?? "",
+                    v.Ventas,
+                    v.MontoVentas.ToString(CultureInfo.InvariantCulture),
+                    v.EsExtra ? "1" : "0",
+                    v.EsProgramada ? "1" : "0",
+                    Csv(v.ProductosVendidos),
+                    Csv(v.Observaciones)));
+            }
         }
 
-        var serialized = System.Text.Json.JsonSerializer.Serialize(csv.ToString());
-        await JS.InvokeVoidAsync("eval",
-            $"const blob=new Blob([{serialized}],{{type:'text/csv;charset=utf-8;'}});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='visitas-ruta.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);");
+        await JS.InvokeVoidAsync("downloadTextFile", $"visitas-{ModoActual}-{DateTime.Now:yyyyMMdd-HHmm}.csv", csv.ToString(), "text/csv;charset=utf-8;");
     }
 
-    private static string Hora(DateTime? value) => value?.ToString("HH:mm") ?? "-";
-    private static string Csv(string? value) => string.Concat("\"", (value ?? string.Empty).Replace("\"", "\"\""), "\"");
+    private bool CoincideBusqueda(ReporteVisitaRowResponse v)
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        return Contiene(v.Cliente, _search)
+            || Contiene(v.Sucursal, _search)
+            || Contiene(v.Direccion, _search)
+            || Contiene(v.Estatus, _search)
+            || Contiene(v.ProductosVendidos, _search);
+    }
 
-    private RenderFragment Kpi(string titulo, string valor, string icono) => @<div class="card border-0 shadow-sm h-100">
-        <div class="card-body d-flex align-items-center justify-content-between">
-            <div>
-                <div class="text-secondary small">@titulo</div>
-                <div class="fs-5 fw-bold">@valor</div>
-            </div>
-            <span class="material-icons-outlined text-primary">@icono</span>
-        </div>
-    </div>;
+    private bool CoincideBusquedaNoRealizada(ReporteVisitaPendienteRowResponse v)
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return true;
+        return Contiene(v.Cliente, _search)
+            || Contiene(v.Sucursal, _search)
+            || Contiene(v.Direccion, _search)
+            || Contiene(v.Telefono, _search);
+    }
+
+    private string RepetidaTexto(ReporteVisitaRowResponse visita)
+    {
+        var anteriores = VisitasRealizadas
+            .Where(x => x.IdCliente == visita.IdCliente && (x.FechaInicioUtc ?? DateTime.MinValue) < (visita.FechaInicioUtc ?? DateTime.MinValue))
+            .OrderByDescending(x => x.FechaInicioUtc)
+            .FirstOrDefault();
+        if (anteriores?.FechaInicioUtc is null || visita.FechaInicioUtc is null) return "Primera repeticion";
+        var minutos = Math.Max(0, (int)(visita.FechaInicioUtc.Value - anteriores.FechaInicioUtc.Value).TotalMinutes);
+        return $"Repetida +{minutos} min";
+    }
+
+    private static string NormalizarModo(string? modo)
+        => (modo ?? "realizadas").Trim().ToLowerInvariant() switch
+        {
+            "no-realizadas" or "no" or "pendientes" => "no-realizadas",
+            "extras" or "extra" => "extras",
+            "repetidas" or "repetidos" => "repetidas",
+            "evidencias" or "evidencia" => "evidencias",
+            _ => "realizadas"
+        };
+
+    private string TabClass(string modo) => ModoActual == modo ? "mode-tab active" : "mode-tab";
+    private static string Hora(DateTime? value) => value?.ToString("HH:mm") ?? "-";
+    private static string TrasladoTexto(ReporteVisitaRowResponse v)
+        => v.SegundosTraslado <= 0 ? "Traslado sin lectura" : $"Traslado {v.MinutosTraslado ?? Math.Max(1, v.SegundosTraslado / 60)} min";
+    private static bool EsVentaCancelada(ReporteVisitaRowResponse v)
+        => Contiene(v.Estatus, "cancel") || Contiene(v.MotivoNoVenta, "cancel");
+    private static string ResumenProductos(ReporteVisitaRowResponse v)
+    {
+        var productos = Productos(v).Take(2).ToList();
+        return productos.Count == 0 ? "" : string.Join(" | ", productos);
+    }
+    private static IEnumerable<string> Productos(ReporteVisitaRowResponse v)
+        => (v.ProductosVendidos ?? "")
+            .Replace("\r", "")
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    private static bool Contiene(string? value, string? search)
+        => Normalizar(value).Contains(Normalizar(search), StringComparison.Ordinal);
+    private static string Normalizar(string? value)
+    {
+        var text = (value ?? string.Empty).Trim().ToUpperInvariant();
+        var normalized = text.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(normalized.Length);
+        foreach (var c in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        }
+        return sb.ToString().Normalize(NormalizationForm.FormC);
+    }
+    private static string Csv(string? value) => string.Concat("\"", (value ?? string.Empty).Replace("\"", "\"\""), "\"");
 }
 
 <style>
-    .report-shell { padding-bottom: 2rem; }
-    .report-header { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:1rem; }
-    .report-header h3 { margin:0; font-weight:800; }
-    .report-header p { margin:.25rem 0 0; color:#6c757d; }
-    .report-kicker { display:flex; align-items:center; gap:.35rem; color:#f05a1a; font-weight:700; font-size:.78rem; text-transform:uppercase; }
-    .route-context { display:flex; flex-wrap:wrap; gap:.6rem; color:#6c757d; }
-    .route-context strong { color:#212529; }
-    @@media (max-width: 768px) { .report-header { flex-direction:column; } }
+    .visit-page { padding-bottom: 2rem; }
+    .visit-titlebar { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+    .visit-titlebar h3 { margin: 0; color: #12324a; font-weight: 800; }
+    .visit-titlebar p { margin: .25rem 0 0; color: #6b7280; }
+    .visit-kicker { display: flex; align-items: center; gap: .4rem; color: #0f7ddf; font-weight: 800; font-size: .78rem; }
+    .visit-filterbar { display: grid; grid-template-columns: minmax(260px, 1fr) 190px 150px minmax(220px, 1fr) 126px; gap: .75rem; align-items: center; margin-bottom: .75rem; }
+    .search-box { position: relative; }
+    .search-box .material-icons-outlined { position: absolute; left: .8rem; top: .55rem; color: #667085; font-size: 1.2rem; }
+    .search-box .form-control { padding-left: 2.35rem; }
+    .day-strip { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; color: #64748b; margin-bottom: .75rem; }
+    .day-strip strong { color: #12324a; }
+    .mode-tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+    .mode-tab { border: 1px solid #e2e8f0; background: #fff; color: #44515f; border-radius: 8px; padding: .55rem .75rem; display: inline-flex; align-items: center; gap: .45rem; min-height: 40px; }
+    .mode-tab.active { background: #e8f1ff; border-color: #a9caff; color: #0d6efd; font-weight: 700; }
+    .mode-tab strong { color: #0d6efd; }
+    .mode-tab .material-icons-outlined { font-size: 1.1rem; }
+    .visit-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1rem; }
+    .visit-kpi { border: 1px solid #e5e7eb; border-radius: 8px; padding: .7rem; display: flex; align-items: center; gap: .6rem; background: #fff; box-shadow: 0 2px 10px rgba(15, 23, 42, .05); }
+    .visit-kpi .material-icons-outlined { color: #0d6efd; }
+    .visit-kpi small { display: block; color: #667085; }
+    .visit-kpi strong { color: #12263a; }
+    .visit-panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 3px 12px rgba(15, 23, 42, .06); overflow: hidden; }
+    .panel-head { min-height: 58px; padding: .8rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #edf2f7; background: linear-gradient(90deg, #f7fbff, #eefaf8); }
+    .panel-head div { display: flex; flex-direction: column; gap: .1rem; }
+    .panel-head strong { color: #12324a; }
+    .panel-head span { color: #667085; font-size: .84rem; }
+    .loading-pill { background: #0d6efd; color: #fff !important; border-radius: 999px; padding: .2rem .55rem; font-weight: 700; }
+    .visit-list { max-height: 63vh; overflow: auto; }
+    .visit-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 160px; gap: .75rem; align-items: center; padding: .85rem 1rem; border-bottom: 1px solid #edf2f7; }
+    .visit-row:nth-child(odd) { background: #f8fbff; }
+    .visit-row.cancelled { background: #fff1f2; }
+    .visit-row.pending { background: #fffaf0; }
+    .visit-order { width: 34px; height: 34px; border-radius: 50%; background: #eef2f7; display: inline-flex; align-items: center; justify-content: center; color: #475569; font-weight: 800; font-size: .86rem; }
+    .visit-main { min-width: 0; }
+    .visit-name { display: flex; flex-wrap: wrap; gap: .35rem .6rem; align-items: baseline; }
+    .visit-name strong { color: #172b4d; overflow-wrap: anywhere; }
+    .visit-name span, .visit-address { color: #667085; font-size: .86rem; overflow-wrap: anywhere; }
+    .visit-meta { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .35rem; color: #475569; font-size: .82rem; }
+    .tag { border-radius: 999px; padding: .1rem .45rem; font-weight: 700; }
+    .tag.extra { background: #e0f2fe; color: #075985; }
+    .tag.ok { background: #dcfce7; color: #166534; }
+    .products-inline { color: #0f766e; font-size: .82rem; margin-top: .35rem; }
+    .sale-cell { display: flex; flex-direction: column; align-items: flex-end; gap: .35rem; }
+    .sale-amount { font-weight: 800; color: #15803d; }
+    .sale-amount.cancelled { color: #dc2626; }
+    .no-sale { display: inline-flex; align-items: center; gap: .25rem; color: #dc2626; font-weight: 800; }
+    .no-sale .material-icons-outlined { font-size: 1.1rem; }
+    .empty-state { padding: 2rem 1rem; color: #667085; text-align: center; }
+    .empty-state.small { padding: 1rem; }
+    .modal-backdrop-lite { position: fixed; inset: 0; background: rgba(15, 23, 42, .28); z-index: 10000; }
+    .sale-drawer { position: fixed; right: 0; top: 0; bottom: 0; width: min(420px, 100vw); background: #fff; z-index: 10001; box-shadow: -8px 0 24px rgba(15, 23, 42, .18); display: flex; flex-direction: column; }
+    .sale-head { min-height: 66px; padding: 1rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; gap: .75rem; align-items: flex-start; }
+    .sale-head strong { display: block; color: #172b4d; }
+    .sale-head span { display: block; color: #667085; font-size: .86rem; }
+    .sale-body { padding: 1rem; overflow: auto; }
+    .sale-total { border: 1px solid #bbf7d0; background: #f0fdf4; color: #166534; border-radius: 8px; padding: .75rem; display: flex; justify-content: space-between; gap: .75rem; margin-bottom: 1rem; }
+    .sale-total.cancelled { border-color: #fecaca; background: #fff1f2; color: #dc2626; }
+    .product-list { padding-left: 1.1rem; }
+    .product-list li { margin-bottom: .35rem; }
+    .sale-note { border: 1px solid #fde68a; background: #fffbeb; color: #92400e; border-radius: 8px; padding: .75rem; display: flex; flex-direction: column; gap: .2rem; }
+    @@media (max-width: 1180px) {
+        .visit-filterbar { grid-template-columns: 1fr 1fr; }
+        .visit-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @@media (max-width: 720px) {
+        .visit-titlebar { flex-direction: column; }
+        .visit-filterbar, .visit-kpis { grid-template-columns: 1fr; }
+        .visit-row { grid-template-columns: 36px minmax(0, 1fr); }
+        .sale-cell { grid-column: 2; align-items: flex-start; }
+        .visit-list { max-height: none; }
+    }
 </style>
