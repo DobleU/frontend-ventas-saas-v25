@@ -304,7 +304,6 @@
             @for (var i = 0; i < visitas.Count; i++)
             {
                 var visita = visitas[i];
-                var visitaAnterior = i > 0 ? visitas[i - 1] : null;
                 <div class="visit-row @(EsVentaCancelada(visita) ? "cancelled" : "")">
                     <div class="visit-order">@((i + 1).ToString("N0", _mx))</div>
                     <div class="visit-main">
@@ -318,7 +317,7 @@
                         }
                         <div class="visit-meta">
                             <span>@Hora(visita.FechaInicioUtc) - @Hora(visita.FechaFinUtc)</span>
-                            <span>@TrasladoTexto(visita, visitaAnterior)</span>
+                            <span class="@TrasladoClass(visita)">@TrasladoTexto(visita)</span>
                             @if (ModoActual == "repetidas")
                             {
                                 <span>@RepetidaTexto(visita)</span>
@@ -490,21 +489,27 @@
 
     private string TabClass(string modo) => ModoActual == modo ? "mode-tab active" : "mode-tab";
     private static string Hora(DateTime? value) => value?.ToString("HH:mm") ?? "-";
-    private static string TrasladoTexto(ReporteVisitaRowResponse actual, ReporteVisitaRowResponse? anterior)
+    private static string TrasladoClass(ReporteVisitaRowResponse visita)
+        => IsTrasladoError(visita) ? "text-danger" : "text-success";
+    private static string TrasladoTexto(ReporteVisitaRowResponse visita)
     {
-        if (anterior is null)
-            return "Primer cliente";
-
-        if (actual.FechaInicioUtc is null || anterior.FechaFinUtc is null)
-            return "Traslado sin horario";
-
-        var segundos = (int)Math.Max(0, (actual.FechaInicioUtc.Value - anterior.FechaFinUtc.Value).TotalSeconds);
-        if (segundos < 60)
-            return $"Traslado {segundos} seg";
-
-        var minutos = Math.Max(1, (int)Math.Round(segundos / 60m));
-        return $"Traslado {minutos} min";
+        var minutos = visita.MinutosTraslado ?? 0;
+        var segundos = EffectiveTrasladoSeconds(visita.SegundosTraslado, visita.MinutosTraslado);
+        var estado = IsTrasladoError(visita) ? "Traslado error" : "Traslado OK";
+        return $"{estado} - {minutos:N0} min - {segundos:N0} seg";
     }
+    private static bool IsTrasladoError(ReporteVisitaRowResponse visita)
+    {
+        var segundos = EffectiveTrasladoSeconds(visita.SegundosTraslado, visita.MinutosTraslado);
+        if (segundos <= 15)
+            return true;
+
+        return (visita.MinutosTraslado ?? 0) > 45;
+    }
+    private static int EffectiveTrasladoSeconds(int segundosTraslado, int? minutosTraslado)
+        => segundosTraslado <= 0 && (minutosTraslado ?? 0) > 0
+            ? minutosTraslado!.Value * 60
+            : segundosTraslado;
     private static bool EsVentaCancelada(ReporteVisitaRowResponse v)
         => Contiene(v.Estatus, "cancel") || Contiene(v.MotivoNoVenta, "cancel");
     private static string ResumenProductos(ReporteVisitaRowResponse v)

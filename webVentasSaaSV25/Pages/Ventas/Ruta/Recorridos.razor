@@ -105,9 +105,22 @@
                                 <span class="@EstatusClass(r)">@EstatusTexto(r)</span>
                             </div>
                             <div class="route-row-metrics">
-                                <span><b>@r.VisitasRealizadas</b>/@r.VisitasProgramadas visitas</span>
-                                <span>@r.Efectividad.ToString("N1", _mx)%</span>
-                                <span>@r.MontoVentas.ToString("C2", _mx)</span>
+                                <span><b>@r.VisitasProgramadas</b> programadas</span>
+                                <span><b>@r.VisitasRealizadas</b> realizadas</span>
+                                <span>@r.Efectividad.ToString("N1", _mx)% efectividad</span>
+                            </div>
+                            <div class="route-row-results">
+                                <span class="result-sale"><span class="material-icons-outlined">payments</span>Ventas <b>@r.MontoVentas.ToString("C2", _mx)</b></span>
+                                <span class="result-cancel"><span class="material-icons-outlined">money_off</span>Cancelaciones <b>@r.MontoCancelaciones.ToString("C2", _mx)</b></span>
+                                @if (r.MontoEfectivo != 0 || r.MontoCredito != 0)
+                                {
+                                    <span>Efectivo @r.MontoEfectivo.ToString("C2", _mx)</span>
+                                    <span>Credito @r.MontoCredito.ToString("C2", _mx)</span>
+                                }
+                                @if (r.TieneRecargas)
+                                {
+                                    <span>Recargas @r.TotalRecargas</span>
+                                }
                             </div>
                         </button>
                     }
@@ -125,10 +138,12 @@
             </div>
 
             <div class="visit-kpis">
-                @Kpi("Programadas", _visitasData.Kpi.VisitasProgramadas.ToString("N0", _mx), "fact_check")
-                @Kpi("Realizadas", _visitasData.Kpi.TotalVisitas.ToString("N0", _mx), "where_to_vote")
-                @Kpi("Con venta", _visitasData.Kpi.VisitasConVenta.ToString("N0", _mx), "shopping_cart")
-                @Kpi("Ventas", _visitasData.Kpi.MontoVentas.ToString("C2", _mx), "payments")
+                @Kpi("Programadas", KpiProgramadas.ToString("N0", _mx), "fact_check")
+                @Kpi("Realizadas", KpiRealizadas.ToString("N0", _mx), "where_to_vote")
+                @Kpi("Con venta", KpiConVenta.ToString("N0", _mx), "shopping_cart")
+                @Kpi("Sin venta", KpiSinVenta.ToString("N0", _mx), "remove_shopping_cart")
+                @Kpi("Ventas", KpiMontoVentas.ToString("C2", _mx), "payments")
+                @Kpi("Cancelaciones", KpiMontoCancelaciones.ToString("C2", _mx), "money_off")
             </div>
 
             <div class="visit-list">
@@ -208,6 +223,20 @@
     private string DetalleSubtitulo => _selected is null
         ? "Sin recorrido seleccionado"
         : $"{_selected.FechaRecorrido:dd/MM/yyyy} - {(_selected.Vendedor ?? "Sin vendedor")}";
+    private int KpiProgramadas => _selected?.VisitasProgramadas > 0
+        ? _selected.VisitasProgramadas
+        : _visitasData.Kpi.VisitasProgramadas;
+    private int KpiRealizadas => _visitasData.Kpi.TotalVisitas > 0
+        ? _visitasData.Kpi.TotalVisitas
+        : _selected?.VisitasRealizadas ?? 0;
+    private int KpiConVenta => _visitasData.Kpi.VisitasConVenta > 0
+        ? _visitasData.Kpi.VisitasConVenta
+        : VisitasSeleccionadas.Count(x => x.Ventas > 0 || x.MontoVentas > 0);
+    private int KpiSinVenta => Math.Max(KpiRealizadas - KpiConVenta, 0);
+    private decimal KpiMontoVentas => _visitasData.Kpi.MontoVentas != 0
+        ? _visitasData.Kpi.MontoVentas
+        : _selected?.MontoVentas ?? 0m;
+    private decimal KpiMontoCancelaciones => _selected?.MontoCancelaciones ?? 0m;
 
     private bool MostrarAvisoSinActivos => !_loading
         && _estatus == EstatusActivo
@@ -436,12 +465,29 @@
     private string RecorridoClass(ReporteRecorridoRowResponse r) => _selected?.IdRecorrido == r.IdRecorrido ? "route-row active" : "route-row";
     private string EstatusTexto(ReporteRecorridoRowResponse r) => string.IsNullOrWhiteSpace(r.Estatus) ? $"Estatus {r.IdEstatus}" : r.Estatus!;
     private string EstatusClass(ReporteRecorridoRowResponse r) => CoincideEstatus(r, EstatusActivo) ? "status-badge active" : "status-badge done";
-    private static string TrasladoClass(ReporteVisitaRowResponse v) => v.SegundosTraslado <= 0 ? "text-danger" : "text-success";
+    private static string TrasladoClass(ReporteVisitaRowResponse v) => IsTrasladoError(v) ? "text-danger" : "text-success";
     private static string VisitDotClass(ReporteVisitaRowResponse v) => v.Ventas > 0 ? "visit-dot sale" : "visit-dot";
     private static string TrasladoTexto(ReporteVisitaRowResponse v)
-        => v.SegundosTraslado <= 0
-            ? "Traslado sin lectura"
-            : $"Traslado OK · {Math.Max(1, v.SegundosTraslado / 60)} min · {v.SegundosTraslado} seg";
+    {
+        var minutos = v.MinutosTraslado ?? 0;
+        var segundos = EffectiveTrasladoSeconds(v.SegundosTraslado, v.MinutosTraslado);
+        var estado = IsTrasladoError(v) ? "Traslado error" : "Traslado OK";
+        return $"{estado} - {minutos:N0} min - {segundos:N0} seg";
+    }
+
+    private static bool IsTrasladoError(ReporteVisitaRowResponse v)
+    {
+        var segundos = EffectiveTrasladoSeconds(v.SegundosTraslado, v.MinutosTraslado);
+        if (segundos <= 15)
+            return true;
+
+        return (v.MinutosTraslado ?? 0) > 45;
+    }
+
+    private static int EffectiveTrasladoSeconds(int segundosTraslado, int? minutosTraslado)
+        => segundosTraslado <= 0 && (minutosTraslado ?? 0) > 0
+            ? minutosTraslado!.Value * 60
+            : segundosTraslado;
 
     private static bool CoincideEstatus(ReporteRecorridoRowResponse r, int estatus)
     {
@@ -512,6 +558,11 @@
     .route-row-main span { color: #667085; font-size: .84rem; }
     .route-row-metrics { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .55rem; color: #4b5563; font-size: .84rem; }
     .route-row-metrics span { background: #f3f6f9; border-radius: 999px; padding: .2rem .45rem; }
+    .route-row-results { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .45rem; color: #556274; font-size: .8rem; }
+    .route-row-results span { display: inline-flex; align-items: center; gap: .25rem; border: 1px solid #e6edf5; border-radius: 999px; padding: .18rem .45rem; background: #fff; }
+    .route-row-results .material-icons-outlined { font-size: .95rem; }
+    .route-row-results .result-sale { color: #075985; background: #eef8ff; border-color: #c7e8ff; }
+    .route-row-results .result-cancel { color: #b42318; background: #fff1f0; border-color: #ffd4cf; }
     .status-badge { border-radius: 999px; padding: .22rem .55rem; font-size: .75rem !important; font-weight: 800; white-space: nowrap; }
     .status-badge.active { background: #dcfce7; color: #15803d; }
     .status-badge.done { background: #e0f2fe; color: #075985; }
