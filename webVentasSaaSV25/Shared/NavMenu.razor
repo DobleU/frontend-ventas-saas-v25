@@ -140,6 +140,7 @@
     private void OnNav(object? s, LocationChangedEventArgs e)
     {
         _ruta = Nav.ToBaseRelativePath(e.Location);
+        _ = JS.InvokeVoidAsync("NavMenu.closeAll");
         StateHasChanged();
     }
 
@@ -158,25 +159,25 @@
         AsegurarSeleccionNivel3(nivel2);
     }
 
-    private void ClickNivel2(MenuNodo nivel2)
+    private async Task ClickNivel2(MenuNodo nivel2)
     {
         if (nivel2.EsProximo)
             return;
 
         if (nivel2.EsHoja && !string.IsNullOrWhiteSpace(nivel2.RutaWeb))
-            Nav.NavigateTo(nivel2.RutaWeb);
+            await NavegarYCerrarAsync(nivel2.RutaWeb);
         else
             AsegurarSeleccionNivel3(nivel2);
     }
 
-    private void ClickNivel3(MenuNodo nivel2, MenuNodo nivel3)
+    private async Task ClickNivel3(MenuNodo nivel2, MenuNodo nivel3)
     {
         if (nivel3.EsProximo)
             return;
 
         if (nivel3.EsHoja && !string.IsNullOrWhiteSpace(nivel3.RutaWeb))
         {
-            Nav.NavigateTo(nivel3.RutaWeb);
+            await NavegarYCerrarAsync(nivel3.RutaWeb);
             return;
         }
 
@@ -185,7 +186,7 @@
 
         var primerDestino = PrimerDestinoNavegable(nivel3);
         if (!string.IsNullOrWhiteSpace(primerDestino) && !Activo(primerDestino))
-            Nav.NavigateTo(primerDestino);
+            await NavegarYCerrarAsync(primerDestino);
     }
 
     private RenderFragment RenderPanelNivel3(MenuNodo raiz) => @<text>
@@ -248,7 +249,8 @@
             <NavLink class="@HojaClass(grande)"
                      ActiveClass="active"
                      href="@nodo.RutaWeb"
-                     Match="NavLinkMatch.All">
+                     Match="NavLinkMatch.All"
+                     @onclick="CerrarMenuAsync">
                 <i class="material-icons-outlined nav-dropdown-icon">@Icono(nodo, "radio_button_unchecked")</i>
                 <span class="nav-dropdown-label">@nodo.Nombre</span>
             </NavLink>
@@ -286,7 +288,7 @@
                         }
                         else
                         {
-                            <NavLink class="menu-level4-icon" ActiveClass="active" href="@item.RutaWeb" Match="NavLinkMatch.All">
+                            <NavLink class="menu-level4-icon" ActiveClass="active" href="@item.RutaWeb" Match="NavLinkMatch.All" @onclick="CerrarMenuAsync">
                                 <i class="material-icons-outlined">@Icono(item, "apps")</i>
                             </NavLink>
                             <span>@item.Nombre</span>
@@ -403,6 +405,17 @@
         if (disabled) classes += " disabled text-muted";
         if (grande) classes += " menu-leaf-large";
         return classes;
+    }
+
+    private async Task NavegarYCerrarAsync(string ruta)
+    {
+        await CerrarMenuAsync();
+        Nav.NavigateTo(ruta);
+    }
+
+    private async Task CerrarMenuAsync()
+    {
+        await JS.InvokeVoidAsync("NavMenu.closeAll");
     }
 
     public void Dispose()

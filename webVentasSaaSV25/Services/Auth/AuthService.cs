@@ -61,7 +61,15 @@ public sealed class AuthService
             {
                 var errBody = await response.Content.ReadAsStringAsync();
                 var errResult = SafeDeserialize<ApiResult<object>>(errBody);
-                return (false, errResult?.Error ?? "Credenciales inválidas.");
+                var error = errResult?.Error ?? "Credenciales invalidas.";
+
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized &&
+                    error.Contains("Usuario o contrase", StringComparison.OrdinalIgnoreCase))
+                {
+                    error = "Usuario/correo o contrasena incorrectos. Verifica que estes usando el acceso correcto.";
+                }
+
+                return (false, error);
             }
 
             var body = await response.Content.ReadAsStringAsync();

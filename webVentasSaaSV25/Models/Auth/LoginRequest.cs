@@ -12,7 +12,7 @@ namespace webVentasSaaSV25.Models.Auth;
 /// </summary>
 public sealed class LoginRequest
 {
-    [Required(ErrorMessage = "Usuario es obligatorio.")]
+    [Required(ErrorMessage = "Usuario o correo es obligatorio.")]
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "La contraseña es obligatoria.")]

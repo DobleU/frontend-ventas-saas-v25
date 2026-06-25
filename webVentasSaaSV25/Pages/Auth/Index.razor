@@ -65,20 +65,20 @@
                         <EditForm Model="@_model" OnValidSubmit="HandleLogin">
                             <DataAnnotationsValidator />
 
-                            <!-- Email -->
+                            <!-- Usuario o correo -->
                             <div class="mb-3">
-                                <label for="inputEmail" class="form-label">Correo electrónico</label>
+                                <label for="inputEmail" class="form-label">Usuario o correo</label>
                                 <input type="text"
                                        id="inputEmail"
                                        class="@EmailCss"
                                        @bind="_model.Email"
                                        @bind:event="oninput"
-                                       placeholder="escriba su usuario"
+                                       placeholder="ej. admin@test.com o william"
                                        disabled="@_cargando"
-                                       autocomplete="email" />
+                                       autocomplete="username" />
                                 @if (_emailError)
                                 {
-                                    <div class="invalid-feedback">Ingresa un correo válido.</div>
+                                    <div class="invalid-feedback">Ingresa tu usuario o correo.</div>
                                 }
                             </div>
 
@@ -207,7 +207,7 @@
         if (string.IsNullOrWhiteSpace(_model.Email) ||
      string.IsNullOrWhiteSpace(_model.Password))
         {
-            _errorMsg = "Completa todos los campos.";
+            _errorMsg = "Completa usuario/correo y contraseña.";
             return;
         }
 
