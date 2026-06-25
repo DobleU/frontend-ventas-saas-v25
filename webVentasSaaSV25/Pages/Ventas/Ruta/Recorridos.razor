@@ -78,6 +78,16 @@
                 {
                     <div class="empty-state">Cargando recorridos...</div>
                 }
+                else if (MostrarAvisoSinActivos)
+                {
+                    <div class="route-warning">
+                        <span class="material-icons-outlined">warning</span>
+                        <div>
+                            <strong>No existen recorridos activos</strong>
+                            <span>Para la fecha y ruta seleccionadas sólo se encontraron recorridos concluidos.</span>
+                        </div>
+                    </div>
+                }
                 else if (!RecorridosVisibles.Any())
                 {
                     <div class="empty-state">Sin recorridos para el filtro.</div>
@@ -195,6 +205,11 @@
     private string DetalleSubtitulo => _selected is null
         ? "Sin recorrido seleccionado"
         : $"{_selected.FechaRecorrido:dd/MM/yyyy} · {(_selected.Vendedor ?? "Sin vendedor")}";
+
+    private bool MostrarAvisoSinActivos => !_loading
+        && _estatus == EstatusActivo
+        && !_items.Any(r => CoincideEstatus(r, EstatusActivo))
+        && _items.Any(r => CoincideEstatus(r, EstatusConcluido));
 
     protected override async Task OnInitializedAsync()
     {
@@ -474,6 +489,10 @@
     .visit-dot { width: 11px; height: 11px; border-radius: 50%; background: #0d6efd; display: inline-block; }
     .visit-dot.sale { background: #16a34a; }
     .empty-state { padding: 2rem 1rem; color: #667085; text-align: center; }
+    .route-warning { margin: 1rem; border: 1px solid #f6d365; background: #fff8db; color: #7a4d00; border-radius: 8px; padding: .85rem; display: flex; gap: .7rem; align-items: flex-start; }
+    .route-warning .material-icons-outlined { color: #d97706; font-size: 1.35rem; }
+    .route-warning strong { display: block; color: #7a4d00; }
+    .route-warning span { display: block; color: #8a6100; font-size: .88rem; }
     @@media (max-width: 1180px) {
         .route-filterbar { grid-template-columns: 1fr 1fr; }
         .route-action { min-height: 38px; }
