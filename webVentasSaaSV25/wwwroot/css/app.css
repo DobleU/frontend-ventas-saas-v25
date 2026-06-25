@@ -272,6 +272,28 @@
     color: #64748b;
     font-size: .78rem;
 }
+
+/* Compacta el espacio entre el menu superior fijo y el titulo de cada modulo. */
+body .main-wrapper {
+    margin-top: 84px !important;
+}
+
+body .main-wrapper .main-content {
+    padding-top: .85rem !important;
+}
+
+@media (min-width: 1200px) {
+    body .main-wrapper {
+        margin-top: 104px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    body .main-wrapper {
+        margin-top: 76px !important;
+    }
+}
+
 /* Grid action menus must float above table-responsive/product-table containers. */
 .grid-action-menu[data-grid-menu-open="true"],
 .grid-action-menu.menu-open,
