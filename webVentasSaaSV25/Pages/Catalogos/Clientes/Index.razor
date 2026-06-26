@@ -53,7 +53,6 @@
             <div class="fw-medium">@SucursalCliente(context)</div>
             <div class="text-muted small">
                 <span class="badge bg-light text-dark border">ID @context.IdCliente</span>
-                <span class="ms-2 badge bg-light text-dark border">No. @NumeroClienteTexto(context)</span>
                 @if (!string.IsNullOrWhiteSpace(context.NombreRuta))
                 {
                     <span class="ms-2 badge bg-secondary-subtle text-secondary-emphasis">@context.NombreRuta</span>
@@ -625,12 +624,11 @@
     {
         var clientes = await ObtenerClientesReporte();
         var csv = new StringBuilder();
-        csv.AppendLine("IdCliente,NumeroCliente,Sucursal / Cliente,Direccion,Estado/Municipio,Colonia,Telefono,Ruta,Dia,Credito,Estado");
+        csv.AppendLine("IdCliente,Sucursal / Cliente,Direccion,Estado/Municipio,Colonia,Telefono,Ruta,Dia,Credito,Estado");
         foreach (var c in clientes)
         {
             csv.AppendLine(string.Join(",",
                 Csv(c.IdCliente.ToString()),
-                Csv(NumeroClienteTexto(c)),
                 Csv(SucursalCliente(c)),
                 Csv(c.Direccion1),
                 Csv(EstadoMunicipioTexto(c)),
@@ -678,14 +676,12 @@
         html.Append(" | Registros: ");
         html.Append(clientes.Count);
         html.Append("</div>");
-        html.Append("<table><thead><tr><th>ID</th><th>Numero</th><th>Sucursal / Cliente</th><th>Direccion</th><th>Estado/Municipio</th><th>Colonia</th><th>Telefono</th></tr></thead><tbody>");
+        html.Append("<table><thead><tr><th>ID</th><th>Sucursal / Cliente</th><th>Direccion</th><th>Estado/Municipio</th><th>Colonia</th><th>Telefono</th></tr></thead><tbody>");
         foreach (var c in clientes)
         {
             html.Append("<tr>");
             html.Append("<td>");
             html.Append(c.IdCliente);
-            html.Append("</td><td>");
-            html.Append(H(NumeroClienteTexto(c)));
             html.Append("</td>");
             html.Append("<td><div class=\"sucursal\">");
             html.Append(H(SucursalCliente(c)));
@@ -758,9 +754,6 @@
         var sucursal = string.IsNullOrWhiteSpace(c.NombreSucursal) ? c.NombreCompleto : c.NombreSucursal.Trim();
         return $"{sucursal} ({c.NombreCompleto})";
     }
-
-    static string NumeroClienteTexto(ClienteResponse c)
-        => string.IsNullOrWhiteSpace(c.NumeroCliente) ? "Sin numero" : c.NumeroCliente.Trim();
 
     static string EstadoMunicipioTexto(ClienteResponse c)
     {
