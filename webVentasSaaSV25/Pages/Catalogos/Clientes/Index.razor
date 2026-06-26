@@ -15,7 +15,7 @@
           OnPageChanged="OnPage" OnSearch="OnSearch" OnNuevo="AbrirNuevo"
           OnExportar="Exportar"
           AccionesExtra="AccionesCliente"
-          SearchPlaceholder="Sucursal, dirección, colonia">
+          SearchPlaceholder="Sucursal, direccion, estado, municipio, colonia">
 
     <FiltrosExtra>
         <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -42,6 +42,7 @@
     <HeaderRow>
         <th style="min-width:260px">Sucursal / Cliente</th>
         <th style="min-width:260px">Dirección</th>
+        <th style="width:220px">Estado/Municipio</th>
         <th style="width:160px">Colonia</th>
         <th style="width:130px">Teléfono</th>
         <th style="width:130px" class="text-center">Crédito</th>
@@ -51,9 +52,11 @@
         <td>
             <div class="fw-medium">@SucursalCliente(context)</div>
             <div class="text-muted small">
+                <span class="badge bg-light text-dark border">ID @context.IdCliente</span>
+                <span class="ms-2 badge bg-light text-dark border">No. @NumeroClienteTexto(context)</span>
                 @if (!string.IsNullOrWhiteSpace(context.NombreRuta))
                 {
-                    <span class="badge bg-secondary-subtle text-secondary-emphasis">@context.NombreRuta</span>
+                    <span class="ms-2 badge bg-secondary-subtle text-secondary-emphasis">@context.NombreRuta</span>
                 }
                 @if (context.DiaSemana is > 0)
                 {
@@ -62,6 +65,7 @@
             </div>
         </td>
         <td class="text-muted small text-wrap">@(context.Direccion1 ?? "—")</td>
+        <td class="text-muted small text-wrap">@EstadoMunicipioTexto(context)</td>
         <td class="text-muted small text-wrap">@(context.Colonia ?? "—")</td>
         <td class="text-muted small">@(context.Telefono1 ?? "—")</td>
         <td class="text-center">
@@ -621,12 +625,15 @@
     {
         var clientes = await ObtenerClientesReporte();
         var csv = new StringBuilder();
-        csv.AppendLine("Sucursal / Cliente,Direccion,Colonia,Telefono,Ruta,Dia,Credito,Estado");
+        csv.AppendLine("IdCliente,NumeroCliente,Sucursal / Cliente,Direccion,Estado/Municipio,Colonia,Telefono,Ruta,Dia,Credito,Estado");
         foreach (var c in clientes)
         {
             csv.AppendLine(string.Join(",",
+                Csv(c.IdCliente.ToString()),
+                Csv(NumeroClienteTexto(c)),
                 Csv(SucursalCliente(c)),
                 Csv(c.Direccion1),
+                Csv(EstadoMunicipioTexto(c)),
                 Csv(c.Colonia),
                 Csv(c.Telefono1),
                 Csv(c.NombreRuta),
@@ -671,10 +678,15 @@
         html.Append(" | Registros: ");
         html.Append(clientes.Count);
         html.Append("</div>");
-        html.Append("<table><thead><tr><th>Sucursal / Cliente</th><th>Dirección</th><th>Colonia</th><th>Teléfono</th></tr></thead><tbody>");
+        html.Append("<table><thead><tr><th>ID</th><th>Numero</th><th>Sucursal / Cliente</th><th>Direccion</th><th>Estado/Municipio</th><th>Colonia</th><th>Telefono</th></tr></thead><tbody>");
         foreach (var c in clientes)
         {
             html.Append("<tr>");
+            html.Append("<td>");
+            html.Append(c.IdCliente);
+            html.Append("</td><td>");
+            html.Append(H(NumeroClienteTexto(c)));
+            html.Append("</td>");
             html.Append("<td><div class=\"sucursal\">");
             html.Append(H(SucursalCliente(c)));
             html.Append("</div><div class=\"muted\">");
@@ -684,6 +696,8 @@
             html.Append("</div></td>");
             html.Append("<td class=\"wrap\">");
             html.Append(H(c.Direccion1));
+            html.Append("</td><td>");
+            html.Append(H(EstadoMunicipioTexto(c)));
             html.Append("</td><td>");
             html.Append(H(c.Colonia));
             html.Append("</td><td>");
@@ -743,6 +757,20 @@
     {
         var sucursal = string.IsNullOrWhiteSpace(c.NombreSucursal) ? c.NombreCompleto : c.NombreSucursal.Trim();
         return $"{sucursal} ({c.NombreCompleto})";
+    }
+
+    static string NumeroClienteTexto(ClienteResponse c)
+        => string.IsNullOrWhiteSpace(c.NumeroCliente) ? "Sin numero" : c.NumeroCliente.Trim();
+
+    static string EstadoMunicipioTexto(ClienteResponse c)
+    {
+        var estado = c.IdEstado.GetValueOrDefault() <= 0 || string.IsNullOrWhiteSpace(c.Estado)
+            ? "Sin Estado"
+            : c.Estado.Trim();
+        var municipio = c.IdMunicipio.GetValueOrDefault() <= 0 || string.IsNullOrWhiteSpace(c.Municipio)
+            ? "Sin Municipio"
+            : c.Municipio.Trim();
+        return $"{estado} / {municipio}";
     }
 
     static string NombreDia(int? dia) => dia switch

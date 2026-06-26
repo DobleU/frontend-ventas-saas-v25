@@ -90,7 +90,7 @@
                 }
                 else if (!RecorridosVisibles.Any())
                 {
-                    <div class="empty-state">Sin recorridos para el filtro.</div>
+                    <div class="empty-state">@MensajeListaVacia</div>
                 }
                 else
                 {
@@ -236,12 +236,16 @@
     private bool _filteringSearch;
     private bool _exportando;
     private bool _inicializado;
+    private bool _busquedaEjecutada;
     private int? _estatusQueryAplicado;
     private int _idRuta;
     private int _estatus = EstatusActivo;
     private DateTime _fechaInicio = DateTime.Today;
     private DateTime _fechaFin = DateTime.Today;
     private string? _searchSucursal;
+    private string MensajeListaVacia => _busquedaEjecutada
+        ? "Sin recorridos para el filtro."
+        : "Selecciona filtros y presiona Buscar.";
 
     private IEnumerable<ReporteRecorridoRowResponse> RecorridosVisibles => _items
         .Where(x => CoincideEstatus(x))
@@ -287,7 +291,6 @@
         if (error is null && rutas is not null) _rutas = rutas.ToList();
         if (QueryRouteId is > 0) _idRuta = QueryRouteId.Value;
         AplicarEstatusDesdeQuery();
-        await Cargar();
         _inicializado = true;
     }
 
@@ -302,6 +305,9 @@
 
         _estatus = estatus;
         _estatusQueryAplicado = estatus;
+        if (!_busquedaEjecutada)
+            return;
+
         await AplicarBusquedaSucursalAsync();
         var actualSigueVisible = _selected is not null && RecorridosVisibles.Any(x => x.IdRecorrido == _selected.IdRecorrido);
         if (!actualSigueVisible)
@@ -323,6 +329,7 @@
         }
 
         _loading = true;
+        _busquedaEjecutada = true;
         _selected = null;
         _visitasData = new();
         _cierreData = new();
@@ -349,6 +356,9 @@
     {
         _estatus = estatus;
         _estatusQueryAplicado = estatus;
+        if (!_busquedaEjecutada)
+            return;
+
         await AplicarBusquedaSucursalAsync();
         var actualSigueVisible = _selected is not null && RecorridosVisibles.Any(x => x.IdRecorrido == _selected.IdRecorrido);
         if (!actualSigueVisible)

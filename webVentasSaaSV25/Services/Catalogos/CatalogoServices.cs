@@ -411,6 +411,7 @@ public sealed class SucursalService(ApiClient api)
 public sealed class ClienteResponse
 {
     public int IdCliente { get; init; }
+    public string? NumeroCliente { get; init; }
     public int IdEmpresa { get; init; }
     public int IdTipoPersona { get; init; }   // 1=física, 2=moral
     public string NombreCompleto { get; init; } = string.Empty;
@@ -435,7 +436,9 @@ public sealed class ClienteResponse
     public string? Direccion1 { get; init; }
     public int? IdPais { get; init; }
     public int? IdEstado { get; init; }
+    public string? Estado { get; init; }
     public int? IdMunicipio { get; init; }
+    public string? Municipio { get; init; }
     public string? CodigoPostal { get; init; }
     public string? Colonia { get; init; }
     public string? Referencias { get; init; }
